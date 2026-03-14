@@ -120,5 +120,5 @@ Contributions are welcome! Please open an issue or submit a pull request.
 ### Development tips
 
 - Path alias `@/*` resolves to `src/*` — use it for all internal imports.
-- The `cn()` utility (`src/components/ui/cn.ts`) combines `clsx` and `tailwind-merge` for conditional class names.
+- The `cn()` utility (`src/lib/utils.ts`) combines `clsx` and `tailwind-merge` for conditional class names.
 - New shadcn/ui components can be scaffolded with `npx shadcn add <component>`.
