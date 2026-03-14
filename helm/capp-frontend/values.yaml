@@ -1,0 +1,36 @@
+# deploymentMode controls which resource is rendered:
+#   "deployment" — renders a Deployment + Service + optional Ingress
+#   "capp"       — renders a Capp CR (rcs.dana.io/v1alpha1)
+deploymentMode: deployment
+
+image:
+  repository: ghcr.io/dana-team/capp-frontend
+  # tag defaults to .Chart.AppVersion when empty
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Number of replicas. Only applies when deploymentMode=deployment.
+# Capp uses Knative autoscaling; this value is ignored in capp mode.
+replicaCount: 1
+
+# Environment variables passed to the container in both deployment modes.
+# Format: [{name: FOO, value: bar}]
+env: []
+
+# Service configuration. Only applies when deploymentMode=deployment.
+service:
+  # Service port. targetPort is always 8080 (the container port).
+  port: 8080
+
+# Ingress configuration. Only applies when deploymentMode=deployment.
+ingress:
+  enabled: false
+  host: ""
+  tls: false
+  # ingressClassName is required on Kubernetes 1.22+
+  className: ""
+
+# Image pull secrets. Only applies when deploymentMode=deployment.
+# Needed if the cluster is not already authenticated to GHCR.
+# Example: [{name: ghcr-secret}]
+imagePullSecrets: []

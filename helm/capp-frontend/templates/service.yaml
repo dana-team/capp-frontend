@@ -1,0 +1,17 @@
+{{- if eq .Values.deploymentMode "deployment" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "capp-frontend.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "capp-frontend.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "capp-frontend.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: 8080
+      protocol: TCP
+{{- end }}

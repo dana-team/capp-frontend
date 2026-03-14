@@ -1,0 +1,6 @@
+apiVersion: v2
+name: capp-frontend
+description: Kubernetes UI management console for Capps (rcs.dana.io/v1alpha1)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
