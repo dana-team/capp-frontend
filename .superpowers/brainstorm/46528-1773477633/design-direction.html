@@ -1,0 +1,114 @@
+<h2>What design direction are you going for?</h2>
+<p class="subtitle">The current UI is functional but plain. Which of these directions resonates most?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="polished" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#09090f;padding:16px;border-radius:8px;font-family:sans-serif;">
+      <div style="display:flex;gap:12px;height:120px;">
+        <div style="width:140px;background:#111118;border-radius:6px;padding:10px;border:1px solid #1e1e2e;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+            <div style="width:20px;height:20px;background:#7c3aed;border-radius:5px;"></div>
+            <span style="color:#fff;font-size:10px;font-weight:600;">Capp Console</span>
+          </div>
+          <div style="height:6px;background:#7c3aed;border-radius:3px;width:80%;margin-bottom:5px;"></div>
+          <div style="height:6px;background:#1e1e2e;border-radius:3px;width:60%;margin-bottom:5px;"></div>
+          <div style="height:6px;background:#1e1e2e;border-radius:3px;width:70%;"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          <div style="background:#111118;border-radius:6px;padding:8px;border:1px solid #1e1e2e;flex:1;">
+            <div style="height:5px;background:#7c3aed22;border-radius:2px;width:40%;margin-bottom:5px;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+              <div style="height:20px;background:#1e1e2e;border-radius:4px;"></div>
+              <div style="height:20px;background:#1e1e2e;border-radius:4px;"></div>
+              <div style="height:20px;background:#1e1e2e;border-radius:4px;"></div>
+              <div style="height:20px;background:#1e1e2e;border-radius:4px;"></div>
+            </div>
+          </div>
+          <div style="background:#111118;border-radius:6px;padding:8px;border:1px solid #1e1e2e;display:flex;gap:6px;align-items:center;">
+            <div style="width:8px;height:8px;background:#22c55e;border-radius:50%;"></div>
+            <div style="height:4px;background:#1e1e2e;border-radius:2px;flex:1;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Polished & Professional</h3>
+      <p>Migrate to shadcn/ui components throughout. Cleaner, more consistent UI with proper accessibility. Better tables, dialogs, selects. Same dark theme — tighter execution.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="animated" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#09090f;padding:16px;border-radius:8px;font-family:sans-serif;position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%, rgba(124,58,237,0.15) 0%, transparent 60%);pointer-events:none;"></div>
+      <div style="display:flex;gap:12px;height:120px;position:relative;">
+        <div style="width:140px;background:#111118;border-radius:6px;padding:10px;border:1px solid rgba(124,58,237,0.3);box-shadow:0 0 20px rgba(124,58,237,0.1);">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+            <div style="width:20px;height:20px;background:linear-gradient(135deg,#7c3aed,#3b82f6);border-radius:5px;box-shadow:0 0 8px rgba(124,58,237,0.5);"></div>
+            <span style="color:#fff;font-size:10px;font-weight:600;">Capp Console</span>
+          </div>
+          <div style="height:6px;background:linear-gradient(90deg,#7c3aed,#3b82f6);border-radius:3px;width:80%;margin-bottom:5px;"></div>
+          <div style="height:6px;background:#1e1e2e;border-radius:3px;width:60%;margin-bottom:5px;"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          <div style="background:#111118;border-radius:8px;padding:8px;border:1px solid rgba(124,58,237,0.2);flex:1;box-shadow:0 0 15px rgba(124,58,237,0.08);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+              <div style="height:22px;background:linear-gradient(135deg,#1e1e2e,#2a1f3d);border-radius:4px;border:1px solid rgba(124,58,237,0.15);"></div>
+              <div style="height:22px;background:linear-gradient(135deg,#1e1e2e,#1a2a3d);border-radius:4px;border:1px solid rgba(59,130,246,0.15);"></div>
+              <div style="height:22px;background:linear-gradient(135deg,#1e1e2e,#2a1f3d);border-radius:4px;border:1px solid rgba(124,58,237,0.15);"></div>
+              <div style="height:22px;background:linear-gradient(135deg,#1e1e2e,#1a2a3d);border-radius:4px;border:1px solid rgba(59,130,246,0.15);"></div>
+            </div>
+          </div>
+          <div style="background:#111118;border-radius:6px;padding:8px;border:1px solid rgba(124,58,237,0.2);display:flex;gap:6px;align-items:center;">
+            <div style="width:8px;height:8px;background:#22c55e;border-radius:50%;box-shadow:0 0 6px #22c55e;"></div>
+            <div style="height:4px;background:linear-gradient(90deg,#7c3aed33,transparent);border-radius:2px;flex:1;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Animated & Vivid</h3>
+      <p>Add Magic UI effects — border beams on cards, number tickers for counts, blur-fade entry animations, shimmer on loading states. More alive and dynamic feel.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="modern" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#09090f;padding:16px;border-radius:8px;font-family:sans-serif;">
+      <div style="display:flex;flex-direction:column;gap:8px;height:120px;">
+        <div style="background:#111118;border-radius:8px;padding:8px 10px;border:1px solid #1e1e2e;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:16px;height:16px;background:#7c3aed;border-radius:4px;"></div>
+            <span style="color:#fff;font-size:9px;font-weight:600;">Capp Console</span>
+          </div>
+          <div style="display:flex;gap:4px;">
+            <div style="height:16px;background:#1e1e2e;border-radius:10px;width:40px;"></div>
+            <div style="height:16px;background:#7c3aed;border-radius:10px;width:30px;"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;flex:1;">
+          <div style="background:#111118;border-radius:8px;padding:8px;border:1px solid #1e1e2e;">
+            <div style="height:4px;background:#7c3aed33;border-radius:2px;width:50%;margin-bottom:4px;"></div>
+            <div style="height:14px;background:#7c3aed;border-radius:4px;width:60%;"></div>
+          </div>
+          <div style="background:#111118;border-radius:8px;padding:8px;border:1px solid #1e1e2e;">
+            <div style="height:4px;background:#22c55e33;border-radius:2px;width:50%;margin-bottom:4px;"></div>
+            <div style="height:14px;background:#22c55e;border-radius:4px;width:60%;"></div>
+          </div>
+          <div style="background:#111118;border-radius:8px;padding:8px;border:1px solid #1e1e2e;">
+            <div style="height:4px;background:#3b82f633;border-radius:2px;width:50%;margin-bottom:4px;"></div>
+            <div style="height:14px;background:#3b82f6;border-radius:4px;width:60%;"></div>
+          </div>
+        </div>
+        <div style="background:#111118;border-radius:6px;border:1px solid #1e1e2e;height:28px;display:flex;align-items:center;padding:0 8px;gap:4px;">
+          <div style="height:3px;background:#7c3aed;border-radius:2px;width:30%;"></div>
+          <div style="height:3px;background:#1e1e2e;border-radius:2px;flex:1;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Dashboard-First Layout</h3>
+      <p>Replace the sidebar+table layout with a top-nav + stat cards overview. Show key metrics at a glance. shadcn Card + Badge components, with Magic UI NumberTicker for counts.</p>
+    </div>
+  </div>
+
+</div>

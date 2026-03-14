@@ -1,0 +1,40 @@
+/* src/styles/theme.css
+ * Single source of truth for all color tokens.
+ * To retheme the entire app, edit the values in :root only.
+ * Colors use HSL channels (no `hsl()` wrapper) so Tailwind can compose opacity.
+ */
+:root {
+  /* Backgrounds */
+  --background:        240 10% 4%;    /* #09090f */
+  --surface:           240 8%  7%;    /* #111118 */
+  --card:              240 9%  6%;    /* #0d0d14 */
+
+  /* Borders */
+  --border:            240 6% 12%;    /* #1e1e2e */
+  --border-subtle:     240 6% 9%;     /* slightly dimmer border */
+
+  /* Text */
+  --text:              214 32% 95%;   /* #f1f5f9 */
+  --text-secondary:    215 20% 65%;   /* #94a3b8 */
+  --text-muted:        215 16% 47%;   /* #64748b */
+
+  /* Primary accent — change these 3 lines to retheme */
+  --primary:           262 83% 55%;   /* #7c3aed violet */
+  --primary-foreground:0   0%  100%;  /* white */
+  --primary-subtle:    262 83% 55%;   /* used at low opacity via Tailwind /10 etc */
+
+  /* Semantic */
+  --success:           152 69% 31%;   /* #10b981 */
+  --danger:            0   72% 51%;   /* #ef4444 */
+  --warning:           38  92% 50%;   /* #f59e0b */
+  --accent:            189 94% 43%;   /* #06b6d4 */
+
+  /* shadcn/ui compatibility aliases */
+  --radius: 0.5rem;
+  --input:  240 6% 12%;   /* same as --border, used by shadcn Input */
+  --ring:   262 83% 55%;  /* focus ring = primary */
+  --muted:              240 8% 7%;
+  --muted-foreground:   215 16% 47%;
+  --popover:            240 10% 4%;
+  --popover-foreground: 214 32% 95%;
+}

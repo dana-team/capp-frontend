@@ -1,0 +1,142 @@
+<h2>How should the Capp list be displayed?</h2>
+<p class="subtitle">This is the main screen users spend the most time on.</p>
+
+<div class="split">
+
+  <div class="mockup" data-choice="cards" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="mockup-header">A — Card Grid</div>
+    <div class="mockup-body" style="background:#09090f;padding:12px;font-family:sans-serif;">
+      <!-- Top nav -->
+      <div style="background:#111118;border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;border:1px solid #1e1e2e;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:16px;height:16px;background:#7c3aed;border-radius:4px;"></div>
+          <span style="color:#fff;font-size:9px;font-weight:700;">Capp Console</span>
+          <span style="color:#444;font-size:9px;">|</span>
+          <span style="color:#7c3aed;font-size:9px;">Capps</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="height:14px;background:#1e1e2e;border-radius:10px;width:60px;"></div>
+          <div style="height:14px;background:#7c3aed;border-radius:4px;width:50px;"></div>
+        </div>
+      </div>
+      <!-- Stat row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
+        <div style="background:#111118;border:1px solid #1e1e2e;border-radius:6px;padding:7px;">
+          <div style="color:#666;font-size:7px;margin-bottom:3px;">TOTAL CAPPS</div>
+          <div style="color:#7c3aed;font-size:14px;font-weight:700;">12</div>
+        </div>
+        <div style="background:#111118;border:1px solid #1e1e2e;border-radius:6px;padding:7px;">
+          <div style="color:#666;font-size:7px;margin-bottom:3px;">ENABLED</div>
+          <div style="color:#22c55e;font-size:14px;font-weight:700;">9</div>
+        </div>
+        <div style="background:#111118;border:1px solid #1e1e2e;border-radius:6px;padding:7px;">
+          <div style="color:#666;font-size:7px;margin-bottom:3px;">NAMESPACES</div>
+          <div style="color:#3b82f6;font-size:14px;font-weight:700;">4</div>
+        </div>
+      </div>
+      <!-- Card grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div style="background:#111118;border:1px solid #7c3aed33;border-radius:6px;padding:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+            <span style="color:#fff;font-size:8px;font-weight:600;">api-gateway</span>
+            <span style="background:#22c55e22;color:#22c55e;font-size:6px;padding:1px 4px;border-radius:3px;">enabled</span>
+          </div>
+          <div style="color:#555;font-size:7px;">production · cpu</div>
+        </div>
+        <div style="background:#111118;border:1px solid #3b82f633;border-radius:6px;padding:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+            <span style="color:#fff;font-size:8px;font-weight:600;">worker-svc</span>
+            <span style="background:#22c55e22;color:#22c55e;font-size:6px;padding:1px 4px;border-radius:3px;">enabled</span>
+          </div>
+          <div style="color:#555;font-size:7px;">staging · rps</div>
+        </div>
+        <div style="background:#111118;border:1px solid #1e1e2e;border-radius:6px;padding:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+            <span style="color:#fff;font-size:8px;font-weight:600;">auth-service</span>
+            <span style="background:#33333355;color:#888;font-size:6px;padding:1px 4px;border-radius:3px;">disabled</span>
+          </div>
+          <div style="color:#555;font-size:7px;">dev · memory</div>
+        </div>
+        <div style="background:#111118;border:1px solid #1e1e2e;border-radius:6px;padding:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+            <span style="color:#fff;font-size:8px;font-weight:600;">log-collector</span>
+            <span style="background:#22c55e22;color:#22c55e;font-size:6px;padding:1px 4px;border-radius:3px;">enabled</span>
+          </div>
+          <div style="color:#555;font-size:7px;">production · —</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" data-choice="table" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="mockup-header">B — Enhanced Table</div>
+    <div class="mockup-body" style="background:#09090f;padding:12px;font-family:sans-serif;">
+      <!-- Top nav -->
+      <div style="background:#111118;border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;border:1px solid #1e1e2e;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:16px;height:16px;background:#7c3aed;border-radius:4px;"></div>
+          <span style="color:#fff;font-size:9px;font-weight:700;">Capp Console</span>
+          <span style="color:#444;font-size:9px;">|</span>
+          <span style="color:#7c3aed;font-size:9px;">Capps</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="height:14px;background:#1e1e2e;border-radius:10px;width:60px;"></div>
+          <div style="height:14px;background:#7c3aed;border-radius:4px;width:50px;"></div>
+        </div>
+      </div>
+      <!-- Stat row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
+        <div style="background:#111118;border:1px solid #1e1e2e;border-radius:6px;padding:7px;">
+          <div style="color:#666;font-size:7px;margin-bottom:3px;">TOTAL CAPPS</div>
+          <div style="color:#7c3aed;font-size:14px;font-weight:700;">12</div>
+        </div>
+        <div style="background:#111118;border:1px solid #1e1e2e;border-radius:6px;padding:7px;">
+          <div style="color:#666;font-size:7px;margin-bottom:3px;">ENABLED</div>
+          <div style="color:#22c55e;font-size:14px;font-weight:700;">9</div>
+        </div>
+        <div style="background:#111118;border:1px solid #1e1e2e;border-radius:6px;padding:7px;">
+          <div style="color:#666;font-size:7px;margin-bottom:3px;">NAMESPACES</div>
+          <div style="color:#3b82f6;font-size:14px;font-weight:700;">4</div>
+        </div>
+      </div>
+      <!-- Table -->
+      <div style="background:#111118;border:1px solid #1e1e2e;border-radius:6px;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:5px 8px;border-bottom:1px solid #1e1e2e;">
+          <span style="color:#555;font-size:7px;text-transform:uppercase;">Name</span>
+          <span style="color:#555;font-size:7px;text-transform:uppercase;">Namespace</span>
+          <span style="color:#555;font-size:7px;text-transform:uppercase;">State</span>
+          <span style="color:#555;font-size:7px;text-transform:uppercase;">Scale</span>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:5px 8px;border-bottom:1px solid #1e1e2e11;align-items:center;">
+          <span style="color:#c4b5fd;font-size:8px;">api-gateway</span>
+          <span style="color:#7c3aed;font-size:7px;">production</span>
+          <span style="background:#22c55e22;color:#22c55e;font-size:6px;padding:1px 4px;border-radius:3px;display:inline-block;">enabled</span>
+          <span style="color:#3b82f6;font-size:7px;">cpu</span>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:5px 8px;border-bottom:1px solid #1e1e2e11;align-items:center;">
+          <span style="color:#c4b5fd;font-size:8px;">worker-svc</span>
+          <span style="color:#7c3aed;font-size:7px;">staging</span>
+          <span style="background:#22c55e22;color:#22c55e;font-size:6px;padding:1px 4px;border-radius:3px;display:inline-block;">enabled</span>
+          <span style="color:#3b82f6;font-size:7px;">rps</span>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:5px 8px;border-bottom:1px solid #1e1e2e11;align-items:center;">
+          <span style="color:#888;font-size:8px;">auth-service</span>
+          <span style="color:#666;font-size:7px;">dev</span>
+          <span style="background:#33333355;color:#666;font-size:6px;padding:1px 4px;border-radius:3px;display:inline-block;">disabled</span>
+          <span style="color:#555;font-size:7px;">memory</span>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:5px 8px;align-items:center;">
+          <span style="color:#c4b5fd;font-size:8px;">log-collector</span>
+          <span style="color:#7c3aed;font-size:7px;">production</span>
+          <span style="background:#22c55e22;color:#22c55e;font-size:6px;padding:1px 4px;border-radius:3px;display:inline-block;">enabled</span>
+          <span style="color:#555;font-size:7px;">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:12px;">
+  <p class="subtitle" style="font-size:13px;">Both options share: top navbar (replacing sidebar), stat cards at the top with animated number counters, and Magic UI effects on hover/load. The difference is how individual Capps are listed.</p>
+</div>
