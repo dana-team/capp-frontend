@@ -6,49 +6,11 @@ import {
 } from '@/components/ui/pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
-import { Capp, FlatCondition } from '@/types/capp';
+import { CappResponse, ConditionResponse } from '@/types/capp';
 import { relativeTime } from '@/utils/time';
 
 interface ConditionsTableProps {
-  capp: Capp;
-}
-
-function flattenConditions(capp: Capp): FlatCondition[] {
-  const conditions: FlatCondition[] = [];
-
-  const addConditions = (
-    source: string,
-    conds: Array<{ type: string; status: 'True' | 'False' | 'Unknown'; lastTransitionTime?: string; reason?: string; message?: string }> | undefined
-  ) => {
-    if (!conds) return;
-    for (const c of conds) {
-      conditions.push({
-        source,
-        type: c.type,
-        status: c.status,
-        lastTransitionTime: c.lastTransitionTime,
-        reason: c.reason,
-        message: c.message,
-      });
-    }
-  };
-
-  addConditions('Knative', capp.status?.knativeObjectStatus?.conditions);
-  addConditions('Logging', capp.status?.loggingStatus?.conditions);
-  addConditions(
-    'Certificate',
-    capp.status?.routeStatus?.certificateObjectStatus?.conditions
-  );
-  addConditions(
-    'DNS',
-    capp.status?.routeStatus?.dnsRecordObjectStatus?.cnameRecordObjectStatus?.conditions
-  );
-  addConditions(
-    'Domain Mapping',
-    capp.status?.routeStatus?.domainMappingObjectStatus?.conditions
-  );
-
-  return conditions;
+  capp: CappResponse;
 }
 
 const PAGE_SIZE = 9;
@@ -62,8 +24,7 @@ const statusVariant = (status: string): 'success' | 'danger' | 'default' => {
 export const ConditionsTable: React.FC<ConditionsTableProps> = ({ capp }) => {
   const [page, setPage] = useState(1);
 
-  const conditions = flattenConditions(capp);
-
+  const conditions: ConditionResponse[] = capp.status?.conditions ?? [];
   const totalPages = Math.max(1, Math.ceil(conditions.length / PAGE_SIZE));
   const paginated = conditions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -85,7 +46,7 @@ export const ConditionsTable: React.FC<ConditionsTableProps> = ({ capp }) => {
             className={cn(
               'rounded-lg border p-3',
               cond.status === 'True'  ? 'border-success/20 bg-success/5' :
-              cond.status === 'False' ? 'border-danger/20  bg-danger/5' :
+              cond.status === 'False' ? 'border-danger/20  bg-danger/5'  :
                                         'border-border      bg-card',
             )}
           >
@@ -93,13 +54,17 @@ export const ConditionsTable: React.FC<ConditionsTableProps> = ({ capp }) => {
               <div className={cn(
                 'w-2 h-2 rounded-full shrink-0',
                 cond.status === 'True'  ? 'bg-success' :
-                cond.status === 'False' ? 'bg-danger' :
+                cond.status === 'False' ? 'bg-danger'  :
                                           'bg-text-muted',
               )} />
-              <span className="text-sm font-semibold text-text">{cond.type}</span>
-              <Badge variant={statusVariant(cond.status)} className="ml-auto">{cond.status}</Badge>
+              <span className="text-sm font-semibold text-text truncate">{cond.type}</span>
+              <Badge variant={statusVariant(cond.status)} className="ml-auto shrink-0">
+                {cond.status}
+              </Badge>
             </div>
-            <p className="text-xs text-text-muted">{cond.source}</p>
+            {cond.source && (
+              <p className="text-xs text-text-muted">{cond.source}</p>
+            )}
             {cond.reason && <p className="text-xs text-text-secondary mt-1">{cond.reason}</p>}
             {cond.lastTransitionTime && (
               <p className="text-xs text-text-muted mt-1">{relativeTime(cond.lastTransitionTime)}</p>
@@ -107,6 +72,7 @@ export const ConditionsTable: React.FC<ConditionsTableProps> = ({ capp }) => {
           </div>
         ))}
       </div>
+
       {totalPages > 1 && (
         <Pagination>
           <PaginationContent>

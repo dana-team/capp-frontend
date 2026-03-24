@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Zap, Eye, EyeOff, Terminal, AlertCircle, Loader2 } from 'lucide-react'
+import { Zap, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,16 +8,10 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AnimatedGridPattern } from '@/components/ui/animated-grid-pattern'
 import { cn } from '@/lib/utils'
-import { k8sClient } from '@/api/client'
-
-interface K8sVersionResponse {
-  major: string
-  minor: string
-  gitVersion: string
-}
+import { fetchClusters } from '@/api/clusters'
 
 export const LoginPage: React.FC = () => {
-  const [clusterUrl, setClusterUrl] = useState('')
+  const [backendUrl, setBackendUrl] = useState('http://localhost:8080')
   const [token, setToken] = useState('')
   const [showToken, setShowToken] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -28,20 +22,19 @@ export const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!clusterUrl.trim()) {
-      setError('Cluster API URL is required')
-      return
-    }
+    if (!backendUrl.trim()) { setError('Backend URL is required'); return }
     setIsLoading(true)
     setError('')
-    setCredentials(clusterUrl.trim(), token.trim())
     try {
-      await k8sClient<K8sVersionResponse>('/version')
+      // Validate the token by fetching the cluster list.
+      // Auto-select the first healthy cluster; the user can switch in the nav.
+      const clusters = await fetchClusters(backendUrl.trim(), token.trim())
+      if (clusters.length === 0) { setError('No clusters configured on this backend'); return }
+      const defaultCluster = clusters.find((c) => c.healthy) ?? clusters[0]
+      setCredentials(backendUrl.trim(), defaultCluster.name, token.trim())
       navigate('/capps')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to connect to the cluster'
-      setError(message)
-      useAuthStore.getState().logout()
+      setError(err instanceof Error ? err.message : 'Failed to connect to the backend')
     } finally {
       setIsLoading(false)
     }
@@ -49,7 +42,6 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-background overflow-hidden">
-      {/* Animated grid background */}
       <AnimatedGridPattern
         numSquares={30}
         maxOpacity={0.08}
@@ -59,14 +51,11 @@ export const LoginPage: React.FC = () => {
           '[mask-image:radial-gradient(500px_circle_at_center,white,transparent)]'
         )}
       />
-
-      {/* Subtle glow behind card */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
       </div>
 
       <div className="relative z-10 w-full max-w-sm">
-        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-2xl shadow-primary/40 mb-4">
             <Zap size={24} className="text-primary-foreground" />
@@ -75,7 +64,6 @@ export const LoginPage: React.FC = () => {
           <p className="mt-1 text-sm text-text-muted">Manage containerized workloads</p>
         </div>
 
-        {/* Card */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-2xl shadow-black/50">
           {error && (
             <Alert variant="destructive" className="mb-4">
@@ -86,15 +74,15 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="clusterUrl" className="text-text-secondary">
-                Cluster API URL <span className="text-danger">*</span>
+              <Label htmlFor="backendUrl" className="text-text-secondary">
+                Backend URL <span className="text-danger">*</span>
               </Label>
               <Input
-                id="clusterUrl"
+                id="backendUrl"
                 type="url"
-                value={clusterUrl}
-                onChange={(e) => setClusterUrl(e.target.value)}
-                placeholder="https://api.cluster.example.com:6443"
+                value={backendUrl}
+                onChange={(e) => setBackendUrl(e.target.value)}
+                placeholder="http://localhost:8080"
                 autoComplete="url"
                 className="bg-surface border-border"
               />
@@ -124,38 +112,12 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isLoading}
-              className="w-full mt-1"
-            >
+            <Button type="submit" variant="primary" disabled={isLoading} className="w-full mt-1">
               {isLoading ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Connecting…</>
               ) : 'Connect'}
             </Button>
           </form>
-        </div>
-
-        {/* kubectl proxy tip */}
-        <div className="mt-4 rounded-xl border border-border bg-surface p-4">
-          <div className="flex gap-2">
-            <Terminal size={14} className="mt-0.5 shrink-0 text-accent" />
-            <div>
-              <p className="text-xs font-medium text-text-secondary">Local cluster tip</p>
-              <p className="mt-1 text-xs text-text-muted">
-                For local clusters, use{' '}
-                <code className="rounded bg-card px-1 py-0.5 font-mono text-accent">
-                  kubectl proxy --port=8001
-                </code>{' '}
-                and connect to{' '}
-                <code className="rounded bg-card px-1 py-0.5 font-mono text-accent">
-                  http://localhost:8001
-                </code>{' '}
-                — no token required.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
