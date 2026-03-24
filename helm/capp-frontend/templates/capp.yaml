@@ -1,0 +1,19 @@
+{{- if eq .Values.deploymentMode "capp" }}
+apiVersion: rcs.dana.io/v1alpha1
+kind: Capp
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "capp-frontend.labels" . | nindent 4 }}
+spec:
+  configurationSpec:
+    template:
+      spec:
+        containers:
+          - image: {{ include "capp-frontend.image" . }}
+            {{- if .Values.env }}
+            env:
+              {{- toYaml .Values.env | nindent 14 }}
+            {{- end }}
+{{- end }}
