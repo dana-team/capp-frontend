@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { CappForm, CappFormValues } from '@/components/capps/CappForm';
 import { useCreateCapp } from '@/hooks/useCapps';
 import { useNamespaceContext } from '@/context/NamespaceContext';
-import { buildCappResource } from '@/utils/cappBuilder';
+import { buildCappRequest } from '@/utils/cappBuilder';
 
 export const CreateCappPage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,14 +13,13 @@ export const CreateCappPage: React.FC = () => {
   const { mutateAsync: createCapp, isPending, error } = useCreateCapp();
 
   const handleSubmit = async (values: CappFormValues) => {
-    const capp = buildCappResource(namespace, values);
-    await createCapp({ namespace, capp });
+    const req = buildCappRequest(namespace, values);
+    await createCapp({ namespace, req });
     navigate(`/capps/${namespace}/${values.name}`);
   };
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm mb-6">
         <Link to="/capps" className="text-text-muted hover:text-text transition-colors">
           Capps

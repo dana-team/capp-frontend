@@ -1,6 +1,18 @@
-import { k8sClient } from './client';
-import { K8sList, K8sNamespace } from '@/types/kubernetes';
+import { backendClient } from './client';
+import { useAuthStore } from '@/store/auth';
 
-export function listNamespaces(): Promise<K8sList<K8sNamespace>> {
-  return k8sClient<K8sList<K8sNamespace>>('/api/v1/namespaces');
+export interface NamespaceItem {
+  name: string;
+  status: string;
+}
+
+interface NamespaceListResponse {
+  items: NamespaceItem[];
+}
+
+export function listNamespaces(): Promise<NamespaceListResponse> {
+  const { cluster } = useAuthStore.getState();
+  return backendClient<NamespaceListResponse>(
+    `/api/v1/clusters/${encodeURIComponent(cluster)}/namespaces`
+  );
 }

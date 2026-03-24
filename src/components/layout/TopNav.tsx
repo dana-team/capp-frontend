@@ -4,6 +4,7 @@ import { Zap, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import { useNamespaces } from '@/hooks/useNamespaces'
+import { useClusters } from '@/hooks/useClusters'
 import { useNamespaceContext } from '@/context/NamespaceContext'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -12,24 +13,24 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 
 export const TopNav: React.FC = () => {
-  const { clusterUrl, logout } = useAuthStore()
+  const { cluster, logout, setCredentials, backendUrl, token } = useAuthStore()
   const navigate = useNavigate()
   const { selectedNamespace, setSelectedNamespace } = useNamespaceContext()
   const { data: namespaces } = useNamespaces()
+  const { data: clusters } = useClusters()
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
 
-  const truncateUrl = (url: string) => {
-    try {
-      const u = new URL(url)
-      return u.host.length > 30 ? u.host.slice(0, 30) + '…' : u.host
-    } catch {
-      return url.length > 30 ? url.slice(0, 30) + '…' : url
-    }
+  const handleClusterChange = (name: string) => {
+    setCredentials(backendUrl, name, token)
+    // Reset namespace selection when switching clusters
+    setSelectedNamespace(undefined)
   }
+
+  const currentCluster = clusters?.find((c) => c.name === cluster)
 
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center border-b border-border bg-surface px-4 gap-4">
@@ -60,8 +61,51 @@ export const TopNav: React.FC = () => {
         </NavLink>
       </nav>
 
-      {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Cluster selector */}
+      {clusters && clusters.length > 1 ? (
+        <Select value={cluster} onValueChange={handleClusterChange}>
+          <SelectTrigger className="h-8 w-44 text-xs bg-card border-border">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={cn(
+                'relative inline-flex h-2 w-2 shrink-0 rounded-full',
+                currentCluster?.healthy !== false ? 'bg-success' : 'bg-danger'
+              )} />
+              <SelectValue />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            {clusters.map((c) => (
+              <SelectItem key={c.name} value={c.name}>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    'relative inline-flex h-2 w-2 shrink-0 rounded-full',
+                    c.healthy ? 'bg-success' : 'bg-danger'
+                  )} />
+                  {c.displayName || c.name}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        /* Single cluster — show as a static badge */
+        <div className="flex items-center gap-2 rounded-md bg-card border border-border px-3 py-1.5">
+          <span className="relative flex h-2 w-2 shrink-0">
+            {currentCluster?.healthy !== false && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+            )}
+            <span className={cn(
+              'relative inline-flex h-2 w-2 rounded-full',
+              currentCluster?.healthy !== false ? 'bg-success' : 'bg-danger'
+            )} />
+          </span>
+          <span className="text-xs text-text-muted truncate max-w-[160px]" title={cluster}>
+            {currentCluster?.displayName || cluster}
+          </span>
+        </div>
+      )}
 
       {/* Namespace selector */}
       <Select
@@ -74,25 +118,13 @@ export const TopNav: React.FC = () => {
         <SelectContent>
           <SelectItem value="__all__">All Namespaces</SelectItem>
           {(namespaces ?? []).map((ns) => (
-            <SelectItem key={ns.metadata.name} value={ns.metadata.name}>
-              {ns.metadata.name}
+            <SelectItem key={ns.name} value={ns.name}>
+              {ns.name}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
 
-      {/* Cluster status */}
-      <div className="flex items-center gap-2 rounded-md bg-card border border-border px-3 py-1.5">
-        <span className="relative flex h-2 w-2 shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-        </span>
-        <span className="text-xs text-text-muted truncate max-w-[160px]" title={clusterUrl}>
-          {truncateUrl(clusterUrl)}
-        </span>
-      </div>
-
-      {/* Disconnect */}
       <Button
         variant="ghost"
         size="sm"

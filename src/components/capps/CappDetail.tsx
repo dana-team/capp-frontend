@@ -1,17 +1,17 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Edit2, Trash2, Globe, Shield, Activity, Clock, Hash, Container, Loader2 } from 'lucide-react'
+import { Edit2, Trash2, Globe, Shield, Activity, Clock, Container, Loader2, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { ConditionsTable } from './ConditionsTable'
-import { Capp } from '@/types/capp'
+import { CappResponse } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
 
 interface CappDetailProps {
-  capp: Capp
+  capp: CappResponse
   onDelete?: () => void
   isDeleting?: boolean
 }
@@ -29,8 +29,7 @@ const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: React.Rea
 )
 
 export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleting }) => {
-  const container = capp.spec.configurationSpec.template.spec.containers[0]
-  const namespace = capp.metadata.namespace ?? ''
+  const namespace = capp.namespace
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,22 +37,22 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-text">{capp.metadata.name}</h1>
-            <Badge variant={capp.spec.state === 'disabled' ? 'default' : 'success'}>
-              {capp.spec.state ?? 'enabled'}
+            <h1 className="text-2xl font-bold text-text">{capp.name}</h1>
+            <Badge variant={capp.state === 'disabled' ? 'default' : 'success'}>
+              {capp.state ?? 'enabled'}
             </Badge>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="violet">{namespace}</Badge>
-            {capp.metadata.uid && (
+            {capp.uid && (
               <span className="text-xs text-text-muted font-mono">
-                {capp.metadata.uid.slice(0, 8)}…
+                {capp.uid.slice(0, 8)}…
               </span>
             )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link to={`/capps/${namespace}/${capp.metadata.name}/edit`}>
+          <Link to={`/capps/${namespace}/${capp.name}/edit`}>
             <Button variant="secondary" size="sm">
               <Edit2 size={14} className="mr-1.5" /> Edit
             </Button>
@@ -83,61 +82,65 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               icon={<Clock size={14} />}
               label="Created"
               value={
-                <span title={formatTimestamp(capp.metadata.creationTimestamp)}>
-                  {relativeTime(capp.metadata.creationTimestamp)}
+                <span title={formatTimestamp(capp.createdAt)}>
+                  {relativeTime(capp.createdAt)}
                 </span>
               }
             />
-            {capp.metadata.uid && (
-              <InfoRow
-                icon={<Hash size={14} />}
-                label="UID"
-                value={
-                  <div className="flex items-center gap-1">
-                    <span className="font-mono text-xs">{capp.metadata.uid}</span>
-                    <CopyButton text={capp.metadata.uid} />
-                  </div>
-                }
-              />
-            )}
             <InfoRow
               icon={<Activity size={14} />}
               label="Scale Metric"
               value={
-                capp.spec.scaleMetric
-                  ? <Badge variant="info">{capp.spec.scaleMetric}</Badge>
+                capp.scaleMetric
+                  ? <Badge variant="info">{capp.scaleMetric}</Badge>
                   : <span className="text-text-muted">default</span>
               }
             />
-            {capp.spec.routeSpec?.hostname && (
+            {capp.routeSpec?.hostname && (
               <InfoRow
                 icon={<Globe size={14} />}
                 label="Hostname"
                 value={
                   <a
-                    href={`http${capp.spec.routeSpec.tlsEnabled ? 's' : ''}://${capp.spec.routeSpec.hostname}`}
+                    href={`http${capp.routeSpec.tlsEnabled ? 's' : ''}://${capp.routeSpec.hostname}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-accent hover:underline"
                   >
-                    {capp.spec.routeSpec.hostname}
+                    {capp.routeSpec.hostname}
                   </a>
                 }
               />
             )}
-            {capp.spec.routeSpec && (
+            {capp.routeSpec && (
               <InfoRow
                 icon={<Shield size={14} />}
                 label="TLS"
                 value={
-                  capp.spec.routeSpec.tlsEnabled
+                  capp.routeSpec.tlsEnabled
                     ? <Badge variant="success">Enabled</Badge>
                     : <Badge variant="default">Disabled</Badge>
                 }
               />
             )}
-            {capp.spec.logSpec && (
-              <InfoRow icon={<Activity size={14} />} label="Log Host" value={capp.spec.logSpec.host} />
+            {capp.logSpec && (
+              <InfoRow icon={<Activity size={14} />} label="Log Host" value={capp.logSpec.host} />
+            )}
+            {capp.status?.applicationLinks?.site && (
+              <InfoRow
+                icon={<ExternalLink size={14} />}
+                label="Site"
+                value={
+                  <a
+                    href={capp.status.applicationLinks.site}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline truncate"
+                  >
+                    {capp.status.applicationLinks.site}
+                  </a>
+                }
+              />
             )}
           </CardContent>
           <BorderBeam size={120} duration={8} />
@@ -155,16 +158,16 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               <div>
                 <p className="text-xs text-text-muted">Image</p>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-sm font-mono text-text">{container?.image}</span>
-                  <CopyButton text={container?.image ?? ''} />
+                  <span className="text-sm font-mono text-text">{capp.image}</span>
+                  <CopyButton text={capp.image ?? ''} />
                 </div>
               </div>
             </div>
 
-            {container?.env && container.env.length > 0 && (
+            {capp.env && capp.env.length > 0 && (
               <div>
                 <p className="mb-2 text-xs text-text-muted">
-                  Environment Variables ({container.env.length})
+                  Environment Variables ({capp.env.length})
                 </p>
                 <div className="overflow-hidden rounded-lg border border-border">
                   <table className="w-full">
@@ -175,7 +178,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
                       </tr>
                     </thead>
                     <tbody>
-                      {container.env.map((env, i) => (
+                      {capp.env.map((env, i) => (
                         <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-surface/50">
                           <td className="px-3 py-2 text-sm font-mono text-text">{env.name}</td>
                           <td className="px-3 py-2 text-sm text-text-secondary font-mono">{env.value}</td>
@@ -187,10 +190,10 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               </div>
             )}
 
-            {container?.volumeMounts && container.volumeMounts.length > 0 && (
+            {capp.volumeMounts && capp.volumeMounts.length > 0 && (
               <div>
                 <p className="mb-2 text-xs text-text-muted">
-                  Volume Mounts ({container.volumeMounts.length})
+                  Volume Mounts ({capp.volumeMounts.length})
                 </p>
                 <div className="overflow-hidden rounded-lg border border-border">
                   <table className="w-full">
@@ -201,7 +204,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
                       </tr>
                     </thead>
                     <tbody>
-                      {container.volumeMounts.map((vm, i) => (
+                      {capp.volumeMounts.map((vm, i) => (
                         <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-surface/50">
                           <td className="px-3 py-2 text-sm font-mono text-text">{vm.name}</td>
                           <td className="px-3 py-2 text-sm text-text-secondary font-mono">{vm.mountPath}</td>
@@ -217,7 +220,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
         </Card>
       </div>
 
-      {/* Status Conditions — full width */}
+      {/* Status Conditions */}
       <Card className="relative overflow-hidden bg-surface border-border">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-success to-transparent" />
         <CardHeader className="pb-2">
@@ -229,19 +232,19 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
         <BorderBeam size={200} duration={10} delay={4} />
       </Card>
 
-      {/* Optional: NFS Volumes */}
-      {capp.spec.volumesSpec?.nfsVolumes && capp.spec.volumesSpec.nfsVolumes.length > 0 && (
+      {/* NFS Volumes */}
+      {capp.nfsVolumes && capp.nfsVolumes.length > 0 && (
         <Card className="relative overflow-hidden bg-surface border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs uppercase tracking-wide text-text-muted">NFS Volumes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
-              {capp.spec.volumesSpec.nfsVolumes.map((vol) => (
+              {capp.nfsVolumes.map((vol) => (
                 <div key={vol.name} className="rounded-lg border border-border bg-card p-3">
                   <p className="font-medium text-sm text-text">{vol.name}</p>
                   <p className="text-xs text-text-muted mt-1">
-                    {vol.server}:{vol.path} · {vol.capacity.storage}
+                    {vol.server}:{vol.path} · {vol.capacity}
                   </p>
                 </div>
               ))}
@@ -251,21 +254,26 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
         </Card>
       )}
 
-      {/* Optional: Kafka Sources */}
-      {capp.spec.sources && capp.spec.sources.length > 0 && (
+      {/* KEDA Sources */}
+      {capp.sources && capp.sources.length > 0 && (
         <Card className="relative overflow-hidden bg-surface border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wide text-text-muted">Kafka Sources</CardTitle>
+            <CardTitle className="text-xs uppercase tracking-wide text-text-muted">KEDA Sources</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            {capp.spec.sources.map((src) => (
+            {capp.sources.map((src) => (
               <div key={src.name} className="rounded-lg border border-border bg-card p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <p className="font-medium text-sm text-text">{src.name}</p>
-                  <Badge variant="info">kafka</Badge>
+                  <Badge variant="info">{src.scalarType}</Badge>
                 </div>
-                <p className="text-xs text-text-muted">Servers: {src.bootstrapServers.join(', ')}</p>
-                <p className="text-xs text-text-muted mt-1">Topics: {src.topic.join(', ')}</p>
+                {src.scalarMetadata && Object.keys(src.scalarMetadata).length > 0 && (
+                  <div className="text-xs text-text-muted space-y-0.5">
+                    {Object.entries(src.scalarMetadata).map(([k, v]) => (
+                      <p key={k}><span className="font-mono">{k}</span>: {v}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </CardContent>

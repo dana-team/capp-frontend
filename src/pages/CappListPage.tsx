@@ -25,10 +25,10 @@ import { cn } from '@/lib/utils'
 import { useCapps, useDeleteCapp } from '@/hooks/useCapps'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useNamespaceContext } from '@/context/NamespaceContext'
-import { Capp } from '@/types/capp'
+import { CappResponse } from '@/types/capp'
 import { relativeTime } from '@/utils/time'
 
-type SortField = 'name' | 'namespace' | 'state' | 'scaleMetric' | 'creationTimestamp'
+type SortField = 'name' | 'namespace' | 'state' | 'scaleMetric' | 'createdAt'
 type SortDir = 'asc' | 'desc'
 
 const PAGE_SIZE = 15
@@ -43,15 +43,15 @@ export const CappListPage: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [page, setPage] = useState(1)
-  const [deleteTarget, setDeleteTarget] = useState<Capp | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<CappResponse | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const { mutateAsync: deleteCapp, isPending: isDeleting } = useDeleteCapp()
 
   // Stats
   const totalCapps = capps?.length ?? 0
-  const enabledCapps = capps?.filter((c) => (c.spec.state ?? 'enabled') === 'enabled').length ?? 0
+  const enabledCapps = capps?.filter((c) => (c.state ?? 'enabled') === 'enabled').length ?? 0
   const namespaceCount = capps
-    ? new Set(capps.map((c) => c.metadata.namespace).filter(Boolean)).size
+    ? new Set(capps.map((c) => c.namespace).filter(Boolean)).size
     : 0
 
   const filtered = useMemo(() => {
@@ -60,8 +60,8 @@ export const CappListPage: React.FC = () => {
     const q = debouncedSearch.toLowerCase()
     return capps.filter(
       (c) =>
-        c.metadata.name.toLowerCase().includes(q) ||
-        (c.metadata.namespace ?? '').toLowerCase().includes(q)
+        c.name.toLowerCase().includes(q) ||
+        (c.namespace ?? '').toLowerCase().includes(q)
     )
   }, [capps, debouncedSearch])
 
@@ -70,11 +70,11 @@ export const CappListPage: React.FC = () => {
       let aVal = ''
       let bVal = ''
       switch (sortField) {
-        case 'name':              aVal = a.metadata.name;              bVal = b.metadata.name;              break
-        case 'namespace':         aVal = a.metadata.namespace ?? '';   bVal = b.metadata.namespace ?? '';   break
-        case 'state':             aVal = a.spec.state ?? 'enabled';    bVal = b.spec.state ?? 'enabled';    break
-        case 'scaleMetric':       aVal = a.spec.scaleMetric ?? '';     bVal = b.spec.scaleMetric ?? '';     break
-        case 'creationTimestamp': aVal = a.metadata.creationTimestamp ?? ''; bVal = b.metadata.creationTimestamp ?? ''; break
+        case 'name':      aVal = a.name;              bVal = b.name;              break
+        case 'namespace': aVal = a.namespace ?? '';   bVal = b.namespace ?? '';   break
+        case 'state':     aVal = a.state ?? 'enabled'; bVal = b.state ?? 'enabled'; break
+        case 'scaleMetric': aVal = a.scaleMetric ?? ''; bVal = b.scaleMetric ?? ''; break
+        case 'createdAt': aVal = a.createdAt ?? '';   bVal = b.createdAt ?? '';   break
       }
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0
       return sortDir === 'asc' ? cmp : -cmp
@@ -97,7 +97,7 @@ export const CappListPage: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      await deleteCapp({ namespace: deleteTarget.metadata.namespace ?? '', name: deleteTarget.metadata.name })
+      await deleteCapp({ namespace: deleteTarget.namespace ?? '', name: deleteTarget.name })
       setDeleteTarget(null)
     } catch (e) {
       setDeleteError((e as Error).message ?? 'Failed to delete Capp')
@@ -185,7 +185,6 @@ export const CappListPage: React.FC = () => {
         </div>
       </BlurFade>
 
-      {/* Error */}
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -193,14 +192,12 @@ export const CappListPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="animate-spin h-8 w-8 text-text-muted" />
         </div>
       )}
 
-      {/* Empty state */}
       {!isLoading && !error && paginated.length === 0 && (
         <EmptyState
           title={debouncedSearch ? 'No results found' : 'No Capps yet'}
@@ -217,7 +214,6 @@ export const CappListPage: React.FC = () => {
         />
       )}
 
-      {/* Table */}
       {!isLoading && paginated.length > 0 && (
         <BlurFade delay={0.15}>
           <div className="space-y-3">
@@ -230,46 +226,46 @@ export const CappListPage: React.FC = () => {
                     <TableHead><SortHeader field="namespace" label="Namespace" /></TableHead>
                     <TableHead><SortHeader field="state" label="State" /></TableHead>
                     <TableHead><SortHeader field="scaleMetric" label="Scale Metric" /></TableHead>
-                    <TableHead><SortHeader field="creationTimestamp" label="Created" /></TableHead>
+                    <TableHead><SortHeader field="createdAt" label="Created" /></TableHead>
                     <TableHead className="w-24" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginated.map((capp) => (
                     <TableRow
-                      key={`${capp.metadata.namespace}/${capp.metadata.name}`}
+                      key={`${capp.namespace}/${capp.name}`}
                       className="group border-border/50 hover:bg-surface/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary"
                     >
                       <TableCell className="w-2 p-0" />
                       <TableCell>
                         <Link
-                          to={`/capps/${capp.metadata.namespace}/${capp.metadata.name}`}
+                          to={`/capps/${capp.namespace}/${capp.name}`}
                           className="font-medium text-text hover:text-primary transition-colors"
                         >
-                          {capp.metadata.name}
+                          {capp.name}
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="violet">{capp.metadata.namespace}</Badge>
+                        <Badge variant="violet">{capp.namespace}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={capp.spec.state === 'disabled' ? 'default' : 'success'}>
-                          {capp.spec.state ?? 'enabled'}
+                        <Badge variant={capp.state === 'disabled' ? 'default' : 'success'}>
+                          {capp.state ?? 'enabled'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {capp.spec.scaleMetric
-                          ? <Badge variant="info">{capp.spec.scaleMetric}</Badge>
+                        {capp.scaleMetric
+                          ? <Badge variant="info">{capp.scaleMetric}</Badge>
                           : <span className="text-sm text-text-muted">—</span>
                         }
                       </TableCell>
                       <TableCell className="text-sm text-text-muted">
-                        {relativeTime(capp.metadata.creationTimestamp)}
+                        {relativeTime(capp.createdAt)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Link
-                            to={`/capps/${capp.metadata.namespace}/${capp.metadata.name}/edit`}
+                            to={`/capps/${capp.namespace}/${capp.name}/edit`}
                             className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-primary/10 hover:text-primary transition-colors"
                           >
                             <Edit2 size={13} />
@@ -314,7 +310,6 @@ export const CappListPage: React.FC = () => {
         </BlurFade>
       )}
 
-      {/* Delete confirm */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => {
         if (!open && isDeleting) return
         if (!open) setDeleteTarget(null)
@@ -323,7 +318,7 @@ export const CappListPage: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Capp</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deleteTarget?.metadata.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError && (

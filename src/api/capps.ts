@@ -1,50 +1,51 @@
-import { k8sClient } from './client';
-import { Capp } from '@/types/capp';
-import { K8sList } from '@/types/kubernetes';
+import { backendClient } from './client';
+import { useAuthStore } from '@/store/auth';
+import { CappRequest, CappResponse, CappListResponse } from '@/types/capp';
 
-const API_GROUP = 'rcs.dana.io';
-const API_VERSION = 'v1alpha1';
-const RESOURCE = 'capps';
-
-export function listCapps(namespace?: string): Promise<K8sList<Capp>> {
-  const path = namespace
-    ? `/apis/${API_GROUP}/${API_VERSION}/namespaces/${namespace}/${RESOURCE}`
-    : `/apis/${API_GROUP}/${API_VERSION}/${RESOURCE}`;
-
-  return k8sClient<K8sList<Capp>>(path);
+function clusterBase(): string {
+  const { cluster } = useAuthStore.getState();
+  return `/api/v1/clusters/${encodeURIComponent(cluster)}`;
 }
 
-export function getCapp(namespace: string, name: string): Promise<Capp> {
-  return k8sClient<Capp>(
-    `/apis/${API_GROUP}/${API_VERSION}/namespaces/${namespace}/${RESOURCE}/${name}`
+/** List all Capps across all namespaces in the selected cluster. */
+export function listCapps(): Promise<CappListResponse> {
+  return backendClient<CappListResponse>(`${clusterBase()}/capps`);
+}
+
+/** List Capps in a specific namespace. */
+export function listCappsInNamespace(namespace: string): Promise<CappListResponse> {
+  return backendClient<CappListResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps`
   );
 }
 
-export function createCapp(namespace: string, capp: Partial<Capp>): Promise<Capp> {
-  return k8sClient<Capp>(
-    `/apis/${API_GROUP}/${API_VERSION}/namespaces/${namespace}/${RESOURCE}`,
-    {
-      method: 'POST',
-      body: JSON.stringify(capp),
-    }
+export function getCapp(namespace: string, name: string): Promise<CappResponse> {
+  return backendClient<CappResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}`
   );
 }
 
-export function updateCapp(namespace: string, name: string, capp: Capp): Promise<Capp> {
-  return k8sClient<Capp>(
-    `/apis/${API_GROUP}/${API_VERSION}/namespaces/${namespace}/${RESOURCE}/${name}`,
-    {
-      method: 'PUT',
-      body: JSON.stringify(capp),
-    }
+export function createCapp(namespace: string, req: CappRequest): Promise<CappResponse> {
+  return backendClient<CappResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps`,
+    { method: 'POST', body: JSON.stringify(req) }
+  );
+}
+
+export function updateCapp(
+  namespace: string,
+  name: string,
+  req: CappRequest
+): Promise<CappResponse> {
+  return backendClient<CappResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}`,
+    { method: 'PUT', body: JSON.stringify(req) }
   );
 }
 
 export function deleteCapp(namespace: string, name: string): Promise<void> {
-  return k8sClient<void>(
-    `/apis/${API_GROUP}/${API_VERSION}/namespaces/${namespace}/${RESOURCE}/${name}`,
-    {
-      method: 'DELETE',
-    }
+  return backendClient<void>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}`,
+    { method: 'DELETE' }
   );
 }

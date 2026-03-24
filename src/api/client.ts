@@ -1,62 +1,67 @@
 import { useAuthStore } from '@/store/auth';
 
-export class K8sApiError extends Error {
+export class BackendApiError extends Error {
   status: number;
-  reason?: string;
-  code?: number;
+  code?: string;
 
-  constructor(message: string, status: number, reason?: string, code?: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
-    this.name = 'K8sApiError';
+    this.name = 'BackendApiError';
     this.status = status;
-    this.reason = reason;
     this.code = code;
   }
 }
 
-interface K8sErrorResponse {
-  message?: string;
-  reason?: string;
-  code?: number;
+interface BackendErrorBody {
+  error?: {
+    code?: string;
+    message?: string;
+  };
 }
 
-export async function k8sClient<T>(
+/**
+ * Sends a request to the capp-backend.
+ *
+ * In dev mode Vite proxies /api paths to the backend (see vite.config.ts),
+ * so the explicit backendUrl from the store is only needed in production.
+ * The Authorization header always carries the stored Bearer token so that
+ * Kubernetes RBAC is enforced per-user in passthrough auth mode.
+ */
+export async function backendClient<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const { clusterUrl, token } = useAuthStore.getState();
+  const { backendUrl, token } = useAuthStore.getState();
 
-  const base = import.meta.env.DEV ? '/k8s-proxy' : clusterUrl.replace(/\/$/, '');
+  const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '');
   const url = `${base}${path}`;
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(import.meta.env.DEV && clusterUrl ? { 'X-K8s-Cluster': clusterUrl.replace(/\/$/, '') } : {}),
+    // In dev mode, tell the Vite proxy where to forward the request.
+    ...(import.meta.env.DEV && backendUrl
+      ? { 'X-Backend-Url': backendUrl.replace(/\/$/, '') }
+      : {}),
     ...((options.headers as Record<string, string>) ?? {}),
   };
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  const response = await fetch(url, { ...options, headers });
 
   if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-    let reason: string | undefined;
-    let code: number | undefined;
+    let message = `HTTP ${response.status}: ${response.statusText}`;
+    let code: string | undefined;
 
     try {
-      const errorBody: K8sErrorResponse = await response.json();
-      if (errorBody.message) errorMessage = errorBody.message;
-      reason = errorBody.reason;
-      code = errorBody.code;
+      const body: BackendErrorBody = await response.json();
+      if (body.error?.message) message = body.error.message;
+      code = body.error?.code;
     } catch {
       // ignore JSON parse errors
     }
 
-    throw new K8sApiError(errorMessage, response.status, reason, code);
+    throw new BackendApiError(message, response.status, code);
   }
 
   if (response.status === 204) {
@@ -65,3 +70,7 @@ export async function k8sClient<T>(
 
   return response.json() as Promise<T>;
 }
+
+// Alias kept for any code that still imports k8sClient / K8sApiError.
+export const k8sClient = backendClient;
+export { BackendApiError as K8sApiError };
