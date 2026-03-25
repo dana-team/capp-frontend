@@ -38,7 +38,7 @@ async function doRefresh(): Promise<string> {
   })
   if (!res.ok) {
     logout()
-    throw new Error('Session expired. Please sign in again.')
+    throw new BackendApiError('Session expired. Please sign in again.', res.status, 'UNAUTHORIZED')
   }
   const pair = await res.json() as { accessToken: string; refreshToken: string }
   updateTokens(pair.accessToken, pair.refreshToken)
@@ -108,6 +108,9 @@ export async function backendClient<T>(
         ?? retryResponse.statusText
       const retryCode = (retryData as { error?: { code?: string } })?.error?.code ?? 'UNKNOWN'
       throw new BackendApiError(retryMsg, retryResponse.status, retryCode)
+    }
+    if (retryResponse.status === 204) {
+      return undefined as unknown as T
     }
     return retryResponse.json() as Promise<T>
   }
