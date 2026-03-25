@@ -12,8 +12,9 @@ import { fetchClusters } from '@/api/clusters'
 
 export const LoginPage: React.FC = () => {
   const [backendUrl, setBackendUrl] = useState('http://localhost:8080')
-  const [token, setToken] = useState('')
-  const [showToken, setShowToken] = useState(false)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -23,18 +24,42 @@ export const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!backendUrl.trim()) { setError('Backend URL is required'); return }
+    if (!username.trim()) { setError('Username is required'); return }
+    if (!password) { setError('Password is required'); return }
     setIsLoading(true)
     setError('')
     try {
-      // Validate the token by fetching the cluster list.
-      // Auto-select the first healthy cluster; the user can switch in the nav.
-      const clusters = await fetchClusters(backendUrl.trim(), token.trim())
+      const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '')
+      const loginHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(import.meta.env.DEV ? { 'X-Backend-Url': backendUrl.replace(/\/$/, '') } : {}),
+      }
+      const loginRes = await fetch(`${base}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: loginHeaders,
+        body: JSON.stringify({ username: username.trim(), password }),
+      })
+      if (!loginRes.ok) {
+        let message = 'Invalid credentials'
+        try {
+          const data = await loginRes.json() as { error?: { message?: string }; message?: string }
+          message = data.error?.message ?? data.message ?? message
+        } catch { /* ignore */ }
+        throw new Error(message)
+      }
+      const { accessToken, refreshToken } = await loginRes.json() as {
+        accessToken: string
+        refreshToken: string
+      }
+
+      const clusters = await fetchClusters(backendUrl.trim(), accessToken)
       if (clusters.length === 0) { setError('No clusters configured on this backend'); return }
       const defaultCluster = clusters.find((c) => c.healthy) ?? clusters[0]
-      setCredentials(backendUrl.trim(), defaultCluster.name, token.trim())
+      setCredentials(backendUrl.trim(), defaultCluster.name, accessToken, refreshToken)
       navigate('/capps')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect to the backend')
+      setError(err instanceof Error ? err.message : 'Failed to sign in')
     } finally {
       setIsLoading(false)
     }
@@ -89,33 +114,48 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="token" className="text-text-secondary">
-                Bearer Token
+              <Label htmlFor="username" className="text-text-secondary">
+                Username <span className="text-danger">*</span>
+              </Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="admin"
+                autoComplete="username"
+                className="bg-surface border-border"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password" className="text-text-secondary">
+                Password <span className="text-danger">*</span>
               </Label>
               <div className="relative">
                 <Input
-                  id="token"
-                  type={showToken ? 'text' : 'password'}
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="eyJhbGciOiJSUzI1NiIs..."
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
                   autoComplete="current-password"
                   className="bg-surface border-border pr-10"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowToken(!showToken)}
+                  onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
                 >
-                  {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
             </div>
 
             <Button type="submit" variant="primary" disabled={isLoading} className="w-full mt-1">
               {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Connecting…</>
-              ) : 'Connect'}
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in…</>
+              ) : 'Sign In'}
             </Button>
           </form>
         </div>
