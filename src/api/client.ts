@@ -19,6 +19,32 @@ interface BackendErrorBody {
   };
 }
 
+let isRefreshing = false
+let refreshQueue: Array<{ resolve: (token: string) => void; reject: (err: Error) => void }> = []
+
+async function doRefresh(): Promise<string> {
+  const { backendUrl, refreshToken, updateTokens, logout } = useAuthStore.getState()
+  const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '')
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(import.meta.env.DEV && backendUrl
+      ? { 'X-Backend-Url': backendUrl.replace(/\/$/, '') }
+      : {}),
+  }
+  const res = await fetch(`${base}/api/v1/auth/refresh`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ refreshToken }),
+  })
+  if (!res.ok) {
+    logout()
+    throw new BackendApiError('Session expired. Please sign in again.', res.status, 'UNAUTHORIZED')
+  }
+  const pair = await res.json() as { accessToken: string; refreshToken: string }
+  updateTokens(pair.accessToken, pair.refreshToken)
+  return pair.accessToken
+}
+
 /**
  * Sends a request to the capp-backend.
  *
@@ -48,6 +74,46 @@ export async function backendClient<T>(
   };
 
   const response = await fetch(url, { ...options, headers });
+
+  if (response.status === 401) {
+    const newToken = await (isRefreshing
+      ? new Promise<string>((resolve, reject) => {
+          refreshQueue.push({ resolve, reject })
+        })
+      : (() => {
+          isRefreshing = true
+          return doRefresh()
+            .then((t) => {
+              refreshQueue.forEach((p) => p.resolve(t))
+              refreshQueue = []
+              return t
+            })
+            .catch((e: Error) => {
+              refreshQueue.forEach((p) => p.reject(e))
+              refreshQueue = []
+              throw e
+            })
+            .finally(() => {
+              isRefreshing = false
+            })
+        })())
+
+    // Retry the original request with the new token
+    const retryHeaders: Record<string, string> = { ...headers, Authorization: `Bearer ${newToken}` }
+    const retryResponse = await fetch(url, { ...options, headers: retryHeaders })
+    if (!retryResponse.ok) {
+      const retryData = await retryResponse.json().catch(() => ({})) as Record<string, unknown>
+      const retryMsg = (retryData as { error?: { message?: string }; message?: string })?.error?.message
+        ?? (retryData as { message?: string })?.message
+        ?? retryResponse.statusText
+      const retryCode = (retryData as { error?: { code?: string } })?.error?.code ?? 'UNKNOWN'
+      throw new BackendApiError(retryMsg, retryResponse.status, retryCode)
+    }
+    if (retryResponse.status === 204) {
+      return undefined as unknown as T
+    }
+    return retryResponse.json() as Promise<T>
+  }
 
   if (!response.ok) {
     let message = `HTTP ${response.status}: ${response.statusText}`;

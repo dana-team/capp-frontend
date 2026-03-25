@@ -1,12 +1,13 @@
 # capp-frontend
 
-`capp-frontend` is a Kubernetes-native web management console for managing [**Capp**](https://github.com/dana-team/container-app-operator) (ContainerApp) custom resources on Kubernetes clusters.
+`capp-frontend` is a web management console for managing [**Capp**](https://github.com/dana-team/container-app-operator) (ContainerApp) custom resources on Kubernetes clusters. It communicates exclusively with [`capp-backend`](https://github.com/dana-team/capp-backend) — it never talks to the Kubernetes API directly.
 
-It provides a clean, dark-themed UI for connecting to any Kubernetes cluster via a Bearer token and performing full lifecycle management of `Capp` resources — create, view, edit, and delete — without needing `kubectl` or deep Kubernetes knowledge.
+It provides a clean, dark-themed UI for signing in with a username and password, then performing full lifecycle management of `Capp` resources — create, view, edit, and delete — without needing `kubectl` or deep Kubernetes knowledge.
 
 ## Features
 
-- **Cluster Authentication** — Connect to any Kubernetes API server using a URL and a Bearer token.
+- **Username / Password Sign-In** — Authenticate against a [Dex](https://dexidp.io/) OIDC provider via the `capp-backend`. Short-lived access tokens are automatically refreshed in the background.
+- **Multi-Cluster Support** — The backend exposes multiple clusters; the UI selects a default healthy cluster on login and allows switching from the navigation bar.
 - **Capp List View** — Browse, search, sort, and paginate `Capp` resources across namespaces.
 - **Capp Detail View** — Inspect the full spec and live conditions (Knative, logging, routing, certificate) of a `Capp`.
 - **Create / Edit Capps** — Form-driven workflow with sections for:
@@ -35,9 +36,9 @@ It provides a clean, dark-themed UI for connecting to any Kubernetes cluster via
 
 ## Prerequisites
 
-- **Node.js** 20 LTS (or later)
+- **Node.js** 20 LTS or later
 - **npm** 9 or later
-- Access to a Kubernetes cluster with the [`container-app-operator`](https://github.com/dana-team/container-app-operator) installed (provides the `rcs.dana.io/v1alpha1` API group)
+- A running [`capp-backend`](https://github.com/dana-team/capp-backend) instance (defaults to `http://localhost:8080` in development)
 
 ## Getting Started
 
@@ -55,7 +56,7 @@ npm run dev
 
 The application will be available at `http://localhost:3000`.
 
-> **Note:** The dev server includes a dynamic reverse-proxy at `/k8s-proxy` that forwards requests to the configured Kubernetes API server, which avoids CORS issues during development. Alternatively, set the `VITE_K8S_URL` environment variable to point to your cluster.
+In dev mode, all `/api` requests are reverse-proxied to the `capp-backend`. The proxy reads an `X-Backend-Url` header (injected automatically by the API client) to route requests to the correct backend. You can set `VITE_BACKEND_URL` to override the default `http://localhost:8080`.
 
 ### Build for production
 
@@ -63,7 +64,7 @@ The application will be available at `http://localhost:3000`.
 npm run build
 ```
 
-This runs `tsc` for type-checking and then `vite build`. The output is placed in the `dist/` directory.
+This runs `tsc` for type-checking and then `vite build`. The output is placed in the `dist/` directory. In production, the frontend is served as a static bundle and calls the `capp-backend` URL entered at login directly (no dev proxy).
 
 ### Preview the production build
 
@@ -83,15 +84,15 @@ Runs ESLint over all `*.ts` and `*.tsx` files in `src/`.
 
 ```
 src/
-├── api/            # Kubernetes API client and CRUD wrappers
+├── api/            # Backend API client and CRUD wrappers (capps, namespaces, clusters)
 ├── components/     # Shared and feature-specific React components
 │   ├── capps/      # Capp form, detail view, section accordions
-│   ├── layout/     # AppShell, TopNav
+│   ├── layout/     # AppShell, TopNav (cluster switcher)
 │   └── ui/         # Generic UI primitives (Button, Input, Select, …)
 ├── context/        # NamespaceContext — selected namespace across pages
 ├── hooks/          # React Query hooks (useCapps, useNamespaces, …)
 ├── pages/          # Top-level page components
-├── store/          # Zustand stores (auth — cluster URL + token)
+├── store/          # Zustand stores (auth — backend URL, cluster, access/refresh JWTs)
 ├── types/          # Shared TypeScript types
 └── utils/          # cappBuilder and other utilities
 ```
@@ -99,9 +100,11 @@ src/
 ## Authentication
 
 1. Navigate to `/login`.
-2. Enter the Kubernetes API server URL (e.g. `https://my-cluster:6443`) and a valid Bearer token.
-3. Credentials are validated against `/version` and persisted in `localStorage` via Zustand.
-4. All other routes are protected and redirect to `/login` when unauthenticated.
+2. Enter the `capp-backend` URL (e.g. `http://localhost:8080`), your username, and your password.
+3. The frontend exchanges credentials with the backend (`POST /api/v1/auth/login`), which authenticates against Dex and returns a short-lived **access JWT** and a long-lived **refresh JWT**.
+4. Both tokens and the selected cluster are persisted in `localStorage` via Zustand.
+5. All API calls include the access JWT as a `Bearer` token. On a `401` response, the client automatically calls `POST /api/v1/auth/refresh` and retries the request; if the refresh also fails, the user is redirected to `/login`.
+6. All non-login routes are protected and redirect to `/login` when unauthenticated.
 
 ## Routing
 
