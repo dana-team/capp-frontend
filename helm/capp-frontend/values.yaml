@@ -13,7 +13,13 @@ image:
 # Capp uses Knative autoscaling; this value is ignored in capp mode.
 replicaCount: 1
 
-# Environment variables passed to the container in both deployment modes.
+# Backend URL passed to the container as the BACKEND_URL environment variable.
+# Caddy injects this into /config.js at serve time so the React app can reach
+# capp-backend without rebuilding the image.
+# Example: backendUrl: "https://capp-backend.example.com"
+backendUrl: ""
+
+# Additional environment variables passed to the container in both deployment modes.
 # Format: [{name: FOO, value: bar}]
 env: []
 

@@ -28,8 +28,14 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-          {{- if .Values.env }}
+          {{- if or .Values.env .Values.backendUrl }}
           env:
+            {{- if .Values.backendUrl }}
+            - name: BACKEND_URL
+              value: {{ .Values.backendUrl | quote }}
+            {{- end }}
+            {{- if .Values.env }}
             {{- toYaml .Values.env | nindent 12 }}
+            {{- end }}
           {{- end }}
 {{- end }}

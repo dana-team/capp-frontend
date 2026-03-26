@@ -9,9 +9,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AnimatedGridPattern } from '@/components/ui/animated-grid-pattern'
 import { cn } from '@/lib/utils'
 import { fetchClusters } from '@/api/clusters'
+import { getBackendUrl } from '@/lib/config'
 
 export const LoginPage: React.FC = () => {
-  const [backendUrl, setBackendUrl] = useState('http://localhost:8080')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -23,12 +23,12 @@ export const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!backendUrl.trim()) { setError('Backend URL is required'); return }
     if (!username.trim()) { setError('Username is required'); return }
     if (!password) { setError('Password is required'); return }
     setIsLoading(true)
     setError('')
     try {
+      const backendUrl = getBackendUrl()
       const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '')
       const loginHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -53,10 +53,10 @@ export const LoginPage: React.FC = () => {
         refreshToken: string
       }
 
-      const clusters = await fetchClusters(backendUrl.trim(), accessToken)
+      const clusters = await fetchClusters(accessToken)
       if (clusters.length === 0) { setError('No clusters configured on this backend'); return }
       const defaultCluster = clusters.find((c) => c.healthy) ?? clusters[0]
-      setCredentials(backendUrl.trim(), defaultCluster.name, accessToken, refreshToken)
+      setCredentials(defaultCluster.name, accessToken, refreshToken)
       navigate('/capps')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in')
@@ -98,21 +98,6 @@ export const LoginPage: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="backendUrl" className="text-text-secondary">
-                Backend URL <span className="text-danger">*</span>
-              </Label>
-              <Input
-                id="backendUrl"
-                type="url"
-                value={backendUrl}
-                onChange={(e) => setBackendUrl(e.target.value)}
-                placeholder="http://localhost:8080"
-                autoComplete="url"
-                className="bg-surface border-border"
-              />
-            </div>
-
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="username" className="text-text-secondary">
                 Username <span className="text-danger">*</span>

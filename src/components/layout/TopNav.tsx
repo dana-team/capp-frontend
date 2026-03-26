@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 
 export const TopNav: React.FC = () => {
-  const { cluster, logout, setCredentials, backendUrl, token, refreshToken } = useAuthStore()
+  const { cluster, logout, setCredentials, token, refreshToken } = useAuthStore()
   const navigate = useNavigate()
   const { selectedNamespace, setSelectedNamespace } = useNamespaceContext()
   const { data: namespaces } = useNamespaces()
@@ -25,7 +25,7 @@ export const TopNav: React.FC = () => {
   }
 
   const handleClusterChange = (name: string) => {
-    setCredentials(backendUrl, name, token, refreshToken)
+    setCredentials(name, token, refreshToken)
     // Reset namespace selection when switching clusters
     setSelectedNamespace(undefined)
   }
