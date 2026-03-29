@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import yaml from 'js-yaml';
-import { AlertCircle, FileText, Code } from 'lucide-react';
+import { WarningCircle, FileText, Code } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -270,7 +270,7 @@ export const CappForm: React.FC<CappFormProps> = ({
 
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <WarningCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -341,7 +341,7 @@ export const CappForm: React.FC<CappFormProps> = ({
           </div>
           {yamlError && (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <WarningCircle className="h-4 w-4" />
               <AlertDescription>YAML parse error: {yamlError}</AlertDescription>
             </Alert>
           )}

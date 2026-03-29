@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Zap, LogOut } from 'lucide-react'
+import { Stack, SignOut } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import { useNamespaces } from '@/hooks/useNamespaces'
@@ -36,10 +36,10 @@ export const TopNav: React.FC = () => {
     <header className="sticky top-0 z-50 flex h-14 items-center border-b border-border bg-surface px-4 gap-4">
       {/* Logo */}
       <div className="flex items-center gap-2.5 shrink-0">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary shadow-lg shadow-primary/30">
-          <Zap size={14} className="text-primary-foreground" />
+        <div className="flex h-7 w-7 items-center justify-center rounded bg-primary">
+          <Stack size={14} weight="duotone" className="text-primary-foreground" />
         </div>
-        <span className="font-semibold text-text text-sm tracking-tight">Capp Console</span>
+        <span className="font-display font-semibold text-text text-sm tracking-tight">Capp Console</span>
       </div>
 
       <Separator orientation="vertical" className="h-5" />
@@ -50,10 +50,10 @@ export const TopNav: React.FC = () => {
           to="/capps"
           className={({ isActive }) =>
             cn(
-              'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              'py-1.5 rounded text-sm font-medium transition-colors',
               isActive
-                ? 'bg-primary/10 border border-primary/20 text-primary'
-                : 'text-text-secondary hover:text-text hover:bg-card'
+                ? 'border-l-2 border-l-primary bg-primary/8 text-primary pl-2.5 pr-3'
+                : 'text-text-secondary hover:text-text hover:bg-card px-3'
             )
           }
         >
@@ -66,7 +66,7 @@ export const TopNav: React.FC = () => {
       {/* Cluster selector */}
       {clusters && clusters.length > 1 ? (
         <Select value={cluster} onValueChange={handleClusterChange}>
-          <SelectTrigger className="h-8 w-44 text-xs bg-card border-border">
+          <SelectTrigger className="h-8 w-44 text-xs font-mono bg-card border-border">
             <div className="flex items-center gap-2 min-w-0">
               <span className={cn(
                 'relative inline-flex h-2 w-2 shrink-0 rounded-full',
@@ -112,7 +112,7 @@ export const TopNav: React.FC = () => {
         value={selectedNamespace ?? '__all__'}
         onValueChange={(v) => setSelectedNamespace(v === '__all__' ? undefined : v)}
       >
-        <SelectTrigger className="h-8 w-44 text-xs bg-card border-border">
+        <SelectTrigger className="h-8 w-44 text-xs font-mono bg-card border-border">
           <SelectValue placeholder="All Namespaces" />
         </SelectTrigger>
         <SelectContent>
@@ -131,7 +131,7 @@ export const TopNav: React.FC = () => {
         onClick={handleLogout}
         className="text-text-muted hover:text-danger h-8"
       >
-        <LogOut size={14} className="mr-1.5" />
+        <SignOut size={14} className="mr-1.5" />
         Disconnect
       </Button>
     </header>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Control, Controller } from 'react-hook-form';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
 import { ArrayInput } from '@/components/ui/ArrayInput';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,7 @@ export const SourcesSection: React.FC<SourcesSectionProps> = ({
                 onClick={() => removeSource(index)}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
               >
-                <Trash2 size={14} />
+                <Trash size={14} />
               </button>
             </div>
             <Controller

@@ -1,12 +1,12 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { Loader2 } from "lucide-react"
+import { CircleNotch } from "@phosphor-icons/react"
 
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -19,13 +19,13 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-surface hover:text-text",
         link: "text-primary underline-offset-4 hover:underline",
-        primary: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+        primary: "bg-primary text-primary-foreground font-medium hover:bg-primary/90 active:scale-[0.98] transition-transform",
         danger:  "bg-danger/10 border border-danger/30 text-danger hover:bg-danger hover:text-white",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        sm: "h-9 rounded px-3",
+        lg: "h-11 rounded px-8",
         icon: "h-10 w-10",
       },
     },
@@ -56,7 +56,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(buttonVariants({ variant, size, className }))}
         {...props}
       >
-        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+        {loading && <CircleNotch className="h-4 w-4 animate-spin" />}
         {!loading && icon && iconPosition !== 'right' && <span className="shrink-0">{icon}</span>}
         {children}
         {!loading && icon && iconPosition === 'right' && <span className="shrink-0">{icon}</span>}
