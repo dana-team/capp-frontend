@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ChevronRight, Loader2, AlertCircle } from 'lucide-react'
+import { CaretRight, CircleNotch, WarningCircle } from '@phosphor-icons/react'
 import { CappDetail } from '@/components/capps/CappDetail'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -8,7 +8,6 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { BlurFade } from '@/components/ui/blur-fade'
 import { useCapp, useDeleteCapp } from '@/hooks/useCapps'
 
 export const CappDetailPage: React.FC = () => {
@@ -37,25 +36,25 @@ export const CappDetailPage: React.FC = () => {
         <Link to="/capps" className="text-text-muted hover:text-text transition-colors">
           Capps
         </Link>
-        <ChevronRight size={14} className="text-text-muted" />
+        <CaretRight size={14} className="text-text-muted" />
         <span className="text-text">{name}</span>
       </nav>
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin h-8 w-8 text-text-muted" />
+          <CircleNotch className="animate-spin h-8 w-8 text-text-muted" />
         </div>
       )}
 
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <WarningCircle className="h-4 w-4" />
           <AlertDescription>{(error as Error).message ?? 'Failed to load Capp'}</AlertDescription>
         </Alert>
       )}
 
       {capp && (
-        <BlurFade>
+        <div>
           <CappDetail
             capp={capp}
             onDelete={() => setShowDeleteConfirm(true)}
@@ -78,7 +77,7 @@ export const CappDetailPage: React.FC = () => {
               </AlertDialogHeader>
               {deleteError && (
                 <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
+                  <WarningCircle className="h-4 w-4" />
                   <AlertDescription>{deleteError}</AlertDescription>
                 </Alert>
               )}
@@ -89,13 +88,13 @@ export const CappDetailPage: React.FC = () => {
                   className="bg-danger hover:bg-danger/90 text-white"
                   disabled={isDeleting}
                 >
-                  {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isDeleting && <CircleNotch className="h-4 w-4 animate-spin" />}
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </BlurFade>
+        </div>
       )}
     </div>
   )

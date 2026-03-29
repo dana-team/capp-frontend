@@ -52,18 +52,21 @@ const config: Config = {
   		},
   		fontFamily: {
   			sans: [
+  				'IBM Plex Sans',
   				'-apple-system',
   				'BlinkMacSystemFont',
-  				'Segoe UI',
   				'system-ui',
   				'sans-serif'
   			],
   			mono: [
+  				'IBM Plex Mono',
   				'ui-monospace',
   				'SFMono-Regular',
-  				'Menlo',
-  				'Monaco',
-  				'Consolas',
+  				'monospace'
+  			],
+  			display: [
+  				'IBM Plex Mono',
+  				'ui-monospace',
   				'monospace'
   			]
   		},

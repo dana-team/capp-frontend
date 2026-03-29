@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package } from 'lucide-react';
+import { Cube } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 
@@ -30,7 +30,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       )}
     >
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-subtle border border-primary/20">
-        {icon ?? <Package size={28} className="text-primary" />}
+        {icon ?? <Cube size={32} weight="duotone" className="text-primary" />}
       </div>
       <div>
         <p className="text-base font-semibold text-text">{title}</p>

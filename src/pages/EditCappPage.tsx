@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { CaretRight, CircleNotch, WarningCircle } from '@phosphor-icons/react';
 import { CappForm, CappFormValues } from '@/components/capps/CappForm';
 import { useCapp, useUpdateCapp } from '@/hooks/useCapps';
 import { buildCappRequest, cappToFormValues } from '@/utils/cappBuilder';
@@ -23,7 +23,7 @@ export const EditCappPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="animate-spin h-8 w-8 text-text-muted" />
+        <CircleNotch className="animate-spin h-8 w-8 text-text-muted" />
       </div>
     );
   }
@@ -32,7 +32,7 @@ export const EditCappPage: React.FC = () => {
     return (
       <div className="p-6 max-w-3xl mx-auto">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <WarningCircle className="h-4 w-4" />
           <AlertDescription>{(loadError as Error).message}</AlertDescription>
         </Alert>
       </div>
@@ -47,14 +47,14 @@ export const EditCappPage: React.FC = () => {
         <Link to="/capps" className="text-text-muted hover:text-text transition-colors">
           Capps
         </Link>
-        <ChevronRight size={14} className="text-text-muted" />
+        <CaretRight size={14} className="text-text-muted" />
         <Link
           to={`/capps/${namespace}/${name}`}
           className="text-text-muted hover:text-text transition-colors"
         >
           {name}
         </Link>
-        <ChevronRight size={14} className="text-text-muted" />
+        <CaretRight size={14} className="text-text-muted" />
         <span className="text-text">Edit</span>
       </nav>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { CaretRight } from '@phosphor-icons/react';
 import { CappForm, CappFormValues } from '@/components/capps/CappForm';
 import { useCreateCapp } from '@/hooks/useCapps';
 import { useNamespaceContext } from '@/context/NamespaceContext';
@@ -24,7 +24,7 @@ export const CreateCappPage: React.FC = () => {
         <Link to="/capps" className="text-text-muted hover:text-text transition-colors">
           Capps
         </Link>
-        <ChevronRight size={14} className="text-text-muted" />
+        <CaretRight size={14} className="text-text-muted" />
         <span className="text-text">Create</span>
       </nav>
 

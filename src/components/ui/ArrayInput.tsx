@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 interface ArrayInputProps {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 export interface KeyValuePair {
@@ -65,7 +65,7 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
                 onClick={() => removeItem(index)}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
               >
-                <Trash2 size={14} />
+                <Trash size={14} />
               </button>
             </div>
           ))}

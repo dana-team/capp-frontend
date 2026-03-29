@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search, Trash2, Edit2, ArrowUpDown, AlertCircle, Loader2 } from 'lucide-react'
+import { Plus, MagnifyingGlass, Trash, PencilSimple, ArrowsDownUp, WarningCircle, CircleNotch } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -17,8 +17,6 @@ import {
   Pagination, PaginationContent, PaginationItem,
   PaginationNext, PaginationPrevious,
 } from '@/components/ui/pagination'
-import { NumberTicker } from '@/components/ui/number-ticker'
-import { BlurFade } from '@/components/ui/blur-fade'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/lib/utils'
@@ -111,7 +109,7 @@ export const CappListPage: React.FC = () => {
       className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-text-muted hover:text-text transition-colors"
     >
       {label}
-      <ArrowUpDown
+      <ArrowsDownUp
         size={11}
         className={cn('transition-opacity', sortField === field ? 'opacity-100 text-primary' : 'opacity-40')}
       />
@@ -121,80 +119,65 @@ export const CappListPage: React.FC = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <BlurFade delay={0}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-text">Capps</h1>
-            <p className="mt-0.5 text-sm text-text-muted">
-              {totalCapps} resource{totalCapps !== 1 ? 's' : ''}
-              {selectedNamespace ? ` in ${selectedNamespace}` : ' across all namespaces'}
-            </p>
-          </div>
-          <Button variant="primary" onClick={() => navigate('/capps/new')}>
-            <Plus size={15} className="mr-1.5" />
-            Create Capp
-          </Button>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-text">Capps</h1>
+          <p className="mt-0.5 text-sm text-text-muted">
+            {totalCapps} resource{totalCapps !== 1 ? 's' : ''}
+            {selectedNamespace ? ` in ${selectedNamespace}` : ' across all namespaces'}
+          </p>
         </div>
-      </BlurFade>
+        <Button variant="primary" onClick={() => navigate('/capps/new')}>
+          <Plus size={15} className="mr-1.5" />
+          Create Capp
+        </Button>
+      </div>
 
       {/* Stat cards */}
       {!isLoading && (
-        <BlurFade delay={0.05}>
-          <div className="grid grid-cols-3 gap-4">
-            <Card className="bg-surface border-border relative overflow-hidden">
-              <CardContent className="pt-5 pb-4">
-                <p className="text-xs uppercase tracking-wide text-text-muted mb-1.5">Total Capps</p>
-                <p className="text-3xl font-bold text-primary leading-none">
-                  {totalCapps > 0 ? <NumberTicker value={totalCapps} /> : '0'}
-                </p>
-              </CardContent>
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-transparent" />
-            </Card>
-            <Card className="bg-surface border-border relative overflow-hidden">
-              <CardContent className="pt-5 pb-4">
-                <p className="text-xs uppercase tracking-wide text-text-muted mb-1.5">Enabled</p>
-                <p className="text-3xl font-bold text-success leading-none">
-                  {enabledCapps > 0 ? <NumberTicker value={enabledCapps} /> : '0'}
-                </p>
-              </CardContent>
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-success to-transparent" />
-            </Card>
-            <Card className="bg-surface border-border relative overflow-hidden">
-              <CardContent className="pt-5 pb-4">
-                <p className="text-xs uppercase tracking-wide text-text-muted mb-1.5">Namespaces</p>
-                <p className="text-3xl font-bold text-accent leading-none">
-                  {namespaceCount > 0 ? <NumberTicker value={namespaceCount} /> : '0'}
-                </p>
-              </CardContent>
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent to-transparent" />
-            </Card>
-          </div>
-        </BlurFade>
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="bg-surface border-border border-l-2 border-l-primary">
+            <CardContent className="pt-4 pb-4 px-5">
+              <p className="text-xs uppercase tracking-widest font-mono text-text-muted mb-2">Total Capps</p>
+              <p className="text-3xl font-display font-bold text-primary tabular-nums leading-none">{totalCapps}</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-surface border-border border-l-2 border-l-success">
+            <CardContent className="pt-4 pb-4 px-5">
+              <p className="text-xs uppercase tracking-widest font-mono text-text-muted mb-2">Enabled</p>
+              <p className="text-3xl font-display font-bold text-success tabular-nums leading-none">{enabledCapps}</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-surface border-border border-l-2 border-l-accent">
+            <CardContent className="pt-4 pb-4 px-5">
+              <p className="text-xs uppercase tracking-widest font-mono text-text-muted mb-2">Namespaces</p>
+              <p className="text-3xl font-display font-bold text-accent tabular-nums leading-none">{namespaceCount}</p>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Search */}
-      <BlurFade delay={0.1}>
-        <div className="relative max-w-sm">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-          <Input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            placeholder="Search by name or namespace…"
-            className="pl-9 bg-card border-border"
-          />
-        </div>
-      </BlurFade>
+      <div className="relative max-w-sm">
+        <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          placeholder="Search by name or namespace…"
+          className="pl-9 bg-card border-border"
+        />
+      </div>
 
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <WarningCircle className="h-4 w-4" />
           <AlertDescription>{(error as Error).message ?? 'Failed to load Capps'}</AlertDescription>
         </Alert>
       )}
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin h-8 w-8 text-text-muted" />
+          <CircleNotch className="animate-spin h-8 w-8 text-text-muted" />
         </div>
       )}
 
@@ -215,8 +198,7 @@ export const CappListPage: React.FC = () => {
       )}
 
       {!isLoading && paginated.length > 0 && (
-        <BlurFade delay={0.15}>
-          <div className="space-y-3">
+        <div className="space-y-3">
             <div className="rounded-xl border border-border overflow-hidden">
               <Table>
                 <TableHeader>
@@ -240,13 +222,13 @@ export const CappListPage: React.FC = () => {
                       <TableCell>
                         <Link
                           to={`/capps/${capp.namespace}/${capp.name}`}
-                          className="font-medium text-text hover:text-primary transition-colors"
+                          className="font-mono font-medium text-sm text-text hover:text-primary transition-colors"
                         >
                           {capp.name}
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="violet">{capp.namespace}</Badge>
+                        <Badge variant="namespace">{capp.namespace}</Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={capp.state === 'disabled' ? 'default' : 'success'}>
@@ -259,7 +241,7 @@ export const CappListPage: React.FC = () => {
                           : <span className="text-sm text-text-muted">—</span>
                         }
                       </TableCell>
-                      <TableCell className="text-sm text-text-muted">
+                      <TableCell className="text-xs font-mono text-text-muted">
                         {relativeTime(capp.createdAt)}
                       </TableCell>
                       <TableCell>
@@ -268,14 +250,14 @@ export const CappListPage: React.FC = () => {
                             to={`/capps/${capp.namespace}/${capp.name}/edit`}
                             className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-primary/10 hover:text-primary transition-colors"
                           >
-                            <Edit2 size={13} />
+                            <PencilSimple size={13} />
                           </Link>
                           <button
                             type="button"
                             onClick={() => { setDeleteTarget(capp); setDeleteError(null) }}
                             className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
                           >
-                            <Trash2 size={13} />
+                            <Trash size={13} />
                           </button>
                         </div>
                       </TableCell>
@@ -307,7 +289,6 @@ export const CappListPage: React.FC = () => {
               </PaginationContent>
             </Pagination>
           </div>
-        </BlurFade>
       )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => {
@@ -323,7 +304,7 @@ export const CappListPage: React.FC = () => {
           </AlertDialogHeader>
           {deleteError && (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <WarningCircle className="h-4 w-4" />
               <AlertDescription>{deleteError}</AlertDescription>
             </Alert>
           )}
@@ -334,7 +315,7 @@ export const CappListPage: React.FC = () => {
               className="bg-danger hover:bg-danger/90 text-white"
               disabled={isDeleting}
             >
-              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isDeleting ? <CircleNotch className="h-4 w-4 animate-spin" /> : null}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

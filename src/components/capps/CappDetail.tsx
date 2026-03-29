@@ -1,11 +1,10 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Edit2, Trash2, Globe, Shield, Activity, Clock, Container, Loader2, ExternalLink } from 'lucide-react'
+import { PencilSimple, Trash, Globe, ShieldCheck, Pulse, Clock, Cube, CircleNotch, ArrowSquareOut, HardDrives } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CopyButton } from '@/components/ui/CopyButton'
-import { BorderBeam } from '@/components/ui/border-beam'
 import { ConditionsTable } from './ConditionsTable'
 import { CappResponse } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
@@ -43,7 +42,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="violet">{namespace}</Badge>
+            <Badge variant="namespace">{namespace}</Badge>
             {capp.uid && (
               <span className="text-xs text-text-muted font-mono">
                 {capp.uid.slice(0, 8)}…
@@ -54,14 +53,14 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
         <div className="flex items-center gap-2">
           <Link to={`/capps/${namespace}/${capp.name}/edit`}>
             <Button variant="secondary" size="sm">
-              <Edit2 size={14} className="mr-1.5" /> Edit
+              <PencilSimple size={14} className="mr-1.5" /> Edit
             </Button>
           </Link>
           {onDelete && (
             <Button variant="danger" size="sm" onClick={onDelete} disabled={isDeleting}>
               {isDeleting
-                ? <Loader2 size={14} className="mr-1.5 animate-spin" />
-                : <Trash2 size={14} className="mr-1.5" />
+                ? <CircleNotch size={14} className="mr-1.5 animate-spin" />
+                : <Trash size={14} className="mr-1.5" />
               }
               Delete
             </Button>
@@ -72,10 +71,9 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
       {/* 2-column card grid */}
       <div className="grid grid-cols-2 gap-4">
         {/* Overview card */}
-        <Card className="relative overflow-hidden bg-surface border-border">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-primary to-transparent" />
+        <Card className="bg-surface border-border border-l-2 border-l-primary">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wide text-text-muted">Overview</CardTitle>
+            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">Overview</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <InfoRow
@@ -88,7 +86,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               }
             />
             <InfoRow
-              icon={<Activity size={14} />}
+              icon={<Pulse size={14} />}
               label="Scale Metric"
               value={
                 capp.scaleMetric
@@ -114,7 +112,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
             )}
             {capp.routeSpec && (
               <InfoRow
-                icon={<Shield size={14} />}
+                icon={<ShieldCheck size={14} />}
                 label="TLS"
                 value={
                   capp.routeSpec.tlsEnabled
@@ -124,11 +122,11 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               />
             )}
             {capp.logSpec && (
-              <InfoRow icon={<Activity size={14} />} label="Log Host" value={capp.logSpec.host} />
+              <InfoRow icon={<HardDrives size={14} />} label="Log Host" value={capp.logSpec.host} />
             )}
             {capp.status?.applicationLinks?.site && (
               <InfoRow
-                icon={<ExternalLink size={14} />}
+                icon={<ArrowSquareOut size={14} />}
                 label="Site"
                 value={
                   <a
@@ -143,18 +141,16 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               />
             )}
           </CardContent>
-          <BorderBeam size={120} duration={8} />
         </Card>
 
         {/* Container card */}
-        <Card className="relative overflow-hidden bg-surface border-border">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-accent to-transparent" />
+        <Card className="bg-surface border-border border-l-2 border-l-accent">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wide text-text-muted">Container</CardTitle>
+            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">Container</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="flex items-start gap-3">
-              <Container size={14} className="mt-0.5 text-text-muted shrink-0" />
+              <Cube size={14} weight="duotone" className="mt-0.5 text-text-muted shrink-0" />
               <div>
                 <p className="text-xs text-text-muted">Image</p>
                 <div className="flex items-center gap-1 mt-0.5">
@@ -216,27 +212,24 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               </div>
             )}
           </CardContent>
-          <BorderBeam size={120} duration={8} delay={2} />
         </Card>
       </div>
 
       {/* Status Conditions */}
-      <Card className="relative overflow-hidden bg-surface border-border">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-success to-transparent" />
+      <Card className="bg-surface border-border border-l-2 border-l-success">
         <CardHeader className="pb-2">
-          <CardTitle className="text-xs uppercase tracking-wide text-text-muted">Status Conditions</CardTitle>
+          <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">Status Conditions</CardTitle>
         </CardHeader>
         <CardContent>
           <ConditionsTable capp={capp} />
         </CardContent>
-        <BorderBeam size={200} duration={10} delay={4} />
       </Card>
 
       {/* NFS Volumes */}
       {capp.nfsVolumes && capp.nfsVolumes.length > 0 && (
-        <Card className="relative overflow-hidden bg-surface border-border">
+        <Card className="bg-surface border-border border-l-2 border-l-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wide text-text-muted">NFS Volumes</CardTitle>
+            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">NFS Volumes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
@@ -250,15 +243,14 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               ))}
             </div>
           </CardContent>
-          <BorderBeam size={120} duration={8} delay={6} />
         </Card>
       )}
 
       {/* KEDA Sources */}
       {capp.sources && capp.sources.length > 0 && (
-        <Card className="relative overflow-hidden bg-surface border-border">
+        <Card className="bg-surface border-border border-l-2 border-l-warning">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wide text-text-muted">KEDA Sources</CardTitle>
+            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">KEDA Sources</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {capp.sources.map((src) => (
@@ -277,7 +269,6 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               </div>
             ))}
           </CardContent>
-          <BorderBeam size={120} duration={8} delay={8} />
         </Card>
       )}
     </div>
