@@ -11,12 +11,14 @@ import { cn } from '@/lib/utils'
 import { fetchClusters } from '@/api/clusters'
 import { getBackendUrl } from '@/lib/config'
 
-type AuthMode = 'detecting' | 'dex' | 'openshift'
+type AuthMode = 'detecting' | 'dex' | 'openshift' | 'passthrough'
 
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [token, setToken] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showToken, setShowToken] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [authMode, setAuthMode] = useState<AuthMode>('detecting')

@@ -7,11 +7,18 @@ metadata:
   labels:
     {{- include "capp-frontend.labels" . | nindent 4 }}
 spec:
+  scaleMetric: {{ .Values.capp.scaleMetric }}
+  state: {{ .Values.capp.state }}
+
   configurationSpec:
     template:
       spec:
         containers:
-          - image: {{ include "capp-frontend.image" . }}
+          - name: capp-frontend
+            image: {{ include "capp-frontend.image" . }}
+            ports:
+              - containerPort: 8080
+                protocol: TCP
             {{- if or .Values.env .Values.backendUrl }}
             env:
               {{- if .Values.backendUrl }}
@@ -22,4 +29,28 @@ spec:
               {{- toYaml .Values.env | nindent 14 }}
               {{- end }}
             {{- end }}
+            livenessProbe:
+              {{- toYaml .Values.livenessProbe | nindent 14 }}
+            readinessProbe:
+              {{- toYaml .Values.readinessProbe | nindent 14 }}
+            resources:
+              {{- toYaml .Values.resources | nindent 14 }}
+            securityContext:
+              {{- toYaml .Values.securityContext | nindent 14 }}
+
+  {{- if .Values.capp.route.enabled }}
+  routeSpec:
+    hostname: {{ .Values.capp.route.hostname | quote }}
+    tlsEnabled: {{ .Values.capp.route.tlsEnabled }}
+    routeTimeoutSeconds: {{ .Values.capp.route.routeTimeoutSeconds }}
+  {{- end }}
+
+  {{- if .Values.capp.log.enabled }}
+  logSpec:
+    type: {{ .Values.capp.log.type | quote }}
+    host: {{ .Values.capp.log.host | quote }}
+    index: {{ .Values.capp.log.index | quote }}
+    user: {{ .Values.capp.log.user | quote }}
+    passwordSecret: {{ .Values.capp.log.passwordSecret | quote }}
+  {{- end }}
 {{- end }}
