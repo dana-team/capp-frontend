@@ -27,3 +27,5 @@ docs/.superpowers/*
 
 
 .superpowers/*
+
+.env

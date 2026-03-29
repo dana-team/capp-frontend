@@ -44,7 +44,7 @@ imagePullSecrets: []
 # Pod-level security context. Only applies when deploymentMode=deployment.
 podSecurityContext: {}
 
-# Container-level security context. Applied only when deploymentMode=deployment.
+# Container-level security context. Applied in both deployment and capp modes.
 # Defaults enforce non-root execution and hardening while remaining compatible
 # with OpenShift's restricted SCC (no fixed UID/GID — the platform assigns one).
 # The image is built with group-0 permissions on /data and /config so Caddy can
@@ -56,3 +56,52 @@ securityContext:
     drop: ["ALL"]
   seccompProfile:
     type: RuntimeDefault
+
+# Resource requests and limits. Applied in both deployment and capp modes.
+resources:
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "128Mi"
+
+# Liveness and readiness probes. Applied in both deployment and capp modes.
+livenessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+# Capp-mode specific settings. Only used when deploymentMode=capp.
+capp:
+  # scaleMetric controls the Knative autoscaling metric.
+  # Options: concurrency | rps | cpu | memory
+  scaleMetric: "concurrency"
+
+  # state: enabled | disabled
+  state: "enabled"
+
+  # route configures the external hostname via the CAPP operator.
+  route:
+    enabled: false
+    hostname: ""
+    tlsEnabled: true
+    routeTimeoutSeconds: 30
+
+  # log configures Elasticsearch log shipping via SyslogNG.
+  log:
+    enabled: false
+    type: "elastic"
+    host: ""
+    index: ""
+    user: ""
+    passwordSecret: ""
