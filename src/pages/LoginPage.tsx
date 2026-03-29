@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Zap, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { Button } from '@/components/ui/button'
@@ -11,15 +11,101 @@ import { cn } from '@/lib/utils'
 import { fetchClusters } from '@/api/clusters'
 import { getBackendUrl } from '@/lib/config'
 
+type AuthMode = 'detecting' | 'dex' | 'openshift'
+
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [authMode, setAuthMode] = useState<AuthMode>('detecting')
+  const [authorizeUrl, setAuthorizeUrl] = useState('')
 
   const { setCredentials } = useAuthStore()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  const backendUrl = getBackendUrl()
+  const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '')
+  const devHeaders: Record<string, string> = import.meta.env.DEV
+    ? { 'X-Backend-Url': backendUrl.replace(/\/$/, '') }
+    : {}
+
+  const finishLogin = async (accessToken: string, refreshToken: string) => {
+    const clusters = await fetchClusters(accessToken)
+    if (clusters.length === 0) {
+      setError('No clusters configured on this backend')
+      return
+    }
+    const defaultCluster = clusters.find((c) => c.healthy) ?? clusters[0]
+    setCredentials(defaultCluster.name, accessToken, refreshToken)
+    navigate('/capps')
+  }
+
+  // Effect 1: handle ?code= OAuth callback from OpenShift redirect
+  useEffect(() => {
+    const code = searchParams.get('code')
+    if (!code) return
+
+    const redirectUri = window.location.origin + window.location.pathname
+    setIsLoading(true)
+    setError('')
+    ;(async () => {
+      try {
+        const res = await fetch(`${base}/api/v1/auth/openshift/callback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...devHeaders },
+          body: JSON.stringify({ code, redirectUri }),
+        })
+        if (!res.ok) {
+          let message = 'OAuth authentication failed'
+          try {
+            const data = await res.json() as { error?: { message?: string } }
+            message = data.error?.message ?? message
+          } catch { /* ignore */ }
+          throw new Error(message)
+        }
+        const { accessToken, refreshToken } = await res.json() as {
+          accessToken: string
+          refreshToken: string
+        }
+        await finishLogin(accessToken, refreshToken)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Authentication failed')
+        setIsLoading(false)
+        // Clear the code from the URL so the user can retry
+        navigate('/login', { replace: true })
+        setAuthMode('openshift')
+      }
+    })()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Effect 2: detect auth mode by probing the openshift authorize endpoint
+  useEffect(() => {
+    if (searchParams.get('code')) return // already handling OAuth callback
+
+    ;(async () => {
+      try {
+        const res = await fetch(`${base}/api/v1/auth/openshift/authorize`, {
+          headers: { Accept: 'application/json', ...devHeaders },
+        })
+        if (res.ok) {
+          const data = await res.json() as { authorizeUrl: string }
+          setAuthorizeUrl(data.authorizeUrl)
+          setAuthMode('openshift')
+        } else {
+          setAuthMode('dex')
+        }
+      } catch {
+        setAuthMode('dex')
+      }
+    })()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleOpenShiftLogin = () => {
+    window.location.href = authorizeUrl
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,16 +114,9 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true)
     setError('')
     try {
-      const backendUrl = getBackendUrl()
-      const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '')
-      const loginHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...(import.meta.env.DEV ? { 'X-Backend-Url': backendUrl.replace(/\/$/, '') } : {}),
-      }
       const loginRes = await fetch(`${base}/api/v1/auth/login`, {
         method: 'POST',
-        headers: loginHeaders,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...devHeaders },
         body: JSON.stringify({ username: username.trim(), password }),
       })
       if (!loginRes.ok) {
@@ -52,12 +131,7 @@ export const LoginPage: React.FC = () => {
         accessToken: string
         refreshToken: string
       }
-
-      const clusters = await fetchClusters(accessToken)
-      if (clusters.length === 0) { setError('No clusters configured on this backend'); return }
-      const defaultCluster = clusters.find((c) => c.healthy) ?? clusters[0]
-      setCredentials(defaultCluster.name, accessToken, refreshToken)
-      navigate('/capps')
+      await finishLogin(accessToken, refreshToken)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in')
     } finally {
@@ -89,61 +163,81 @@ export const LoginPage: React.FC = () => {
           <p className="mt-1 text-sm text-text-muted">Manage containerized workloads</p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-2xl shadow-black/50">
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+        {authMode === 'detecting' ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-2xl shadow-black/50">
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="username" className="text-text-secondary">
-                Username <span className="text-danger">*</span>
-              </Label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
-                autoComplete="username"
-                className="bg-surface border-border"
-              />
-            </div>
+            {authMode === 'openshift' ? (
+              <Button
+                type="button"
+                variant="primary"
+                disabled={isLoading}
+                className="w-full"
+                onClick={handleOpenShiftLogin}
+              >
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in…</>
+                ) : 'Sign in with OpenShift'}
+              </Button>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="username" className="text-text-secondary">
+                    Username <span className="text-danger">*</span>
+                  </Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="admin"
+                    autoComplete="username"
+                    className="bg-surface border-border"
+                  />
+                </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password" className="text-text-secondary">
-                Password <span className="text-danger">*</span>
-              </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  className="bg-surface border-border pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
-                >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="password" className="text-text-secondary">
+                    Password <span className="text-danger">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      className="bg-surface border-border pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
 
-            <Button type="submit" variant="primary" disabled={isLoading} className="w-full mt-1">
-              {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in…</>
-              ) : 'Sign In'}
-            </Button>
-          </form>
-        </div>
+                <Button type="submit" variant="primary" disabled={isLoading} className="w-full mt-1">
+                  {isLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in…</>
+                  ) : 'Sign In'}
+                </Button>
+              </form>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

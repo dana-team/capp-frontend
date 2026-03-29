@@ -40,3 +40,18 @@ ingress:
 # Needed if the cluster is not already authenticated to GHCR.
 # Example: [{name: ghcr-secret}]
 imagePullSecrets: []
+
+# Pod-level security context. Only applies when deploymentMode=deployment.
+podSecurityContext: {}
+
+# Container-level security context. Defaults enforce non-root execution so the
+# pod is admitted by OpenShift's restricted SCC without requiring anyuid.
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: RuntimeDefault
