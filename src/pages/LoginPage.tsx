@@ -35,12 +35,28 @@ export const LoginPage: React.FC = () => {
   const finishLogin = async (accessToken: string, refreshToken: string) => {
     const clusters = await fetchClusters(accessToken)
     if (clusters.length === 0) {
-      setError('No clusters configured on this backend')
-      return
+      throw new Error('No clusters configured on this backend')
     }
     const defaultCluster = clusters.find((c) => c.healthy) ?? clusters[0]
     setCredentials(defaultCluster.name, accessToken, refreshToken)
     navigate('/capps')
+  }
+
+  const detectAuthMode = async () => {
+    try {
+      const res = await fetch(`${base}/api/v1/auth/openshift/authorize`, {
+        headers: { Accept: 'application/json', ...devHeaders },
+      })
+      if (res.ok) {
+        const data = await res.json() as { authorizeUrl: string }
+        setAuthorizeUrl(data.authorizeUrl)
+        setAuthMode('openshift')
+      } else {
+        setAuthMode('dex')
+      }
+    } catch {
+      setAuthMode('dex')
+    }
   }
 
   // Effect 1: handle ?code= OAuth callback from OpenShift redirect
@@ -48,7 +64,6 @@ export const LoginPage: React.FC = () => {
     const code = searchParams.get('code')
     if (!code) return
 
-    const redirectUri = window.location.origin + window.location.pathname
     setIsLoading(true)
     setError('')
     ;(async () => {
@@ -56,7 +71,7 @@ export const LoginPage: React.FC = () => {
         const res = await fetch(`${base}/api/v1/auth/openshift/callback`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...devHeaders },
-          body: JSON.stringify({ code, redirectUri }),
+          body: JSON.stringify({ code }),
         })
         if (!res.ok) {
           let message = 'OAuth authentication failed'
@@ -76,32 +91,17 @@ export const LoginPage: React.FC = () => {
         setIsLoading(false)
         // Clear the code from the URL so the user can retry
         navigate('/login', { replace: true })
-        setAuthMode('openshift')
+        // Effect 2 skipped its probe because ?code was present, so run it now.
+        await detectAuthMode()
       }
     })()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, []) 
 
   // Effect 2: detect auth mode by probing the openshift authorize endpoint
   useEffect(() => {
-    if (searchParams.get('code')) return // already handling OAuth callback
-
-    ;(async () => {
-      try {
-        const res = await fetch(`${base}/api/v1/auth/openshift/authorize`, {
-          headers: { Accept: 'application/json', ...devHeaders },
-        })
-        if (res.ok) {
-          const data = await res.json() as { authorizeUrl: string }
-          setAuthorizeUrl(data.authorizeUrl)
-          setAuthMode('openshift')
-        } else {
-          setAuthMode('dex')
-        }
-      } catch {
-        setAuthMode('dex')
-      }
-    })()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (searchParams.get('code')) return // Effect 1 handles this case and calls detectAuthMode on failure
+    detectAuthMode()
+  }, [])
 
   const handleOpenShiftLogin = () => {
     window.location.href = authorizeUrl

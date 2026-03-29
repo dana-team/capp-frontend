@@ -44,12 +44,13 @@ imagePullSecrets: []
 # Pod-level security context. Only applies when deploymentMode=deployment.
 podSecurityContext: {}
 
-# Container-level security context. Defaults enforce non-root execution so the
-# pod is admitted by OpenShift's restricted SCC without requiring anyuid.
+# Container-level security context. Applied only when deploymentMode=deployment.
+# Defaults enforce non-root execution and hardening while remaining compatible
+# with OpenShift's restricted SCC (no fixed UID/GID — the platform assigns one).
+# The image is built with group-0 permissions on /data and /config so Caddy can
+# write under any arbitrary UID.
 securityContext:
   runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
   allowPrivilegeEscalation: false
   capabilities:
     drop: ["ALL"]

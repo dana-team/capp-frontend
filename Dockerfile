@@ -20,11 +20,10 @@ COPY --from=builder /app/dist /srv
 # Copy Caddy configuration
 COPY Caddyfile /etc/caddy/Caddyfile
 
-# Caddy needs write access to /data (cert cache) and /config (admin state).
-# Grant ownership to UID 1000 (the built-in caddy user) so the container can
-# run as non-root, satisfying OpenShift's restricted SCC without anyuid.
-RUN chown -R 1000:1000 /data /config
-
-USER 1000
+# Make Caddy's runtime dirs writable by any group member (group 0) so the
+# container runs under an arbitrary UID assigned by OpenShift's restricted SCC.
+RUN mkdir -p /data /config \
+    && chown -R root:0 /data /config \
+    && chmod -R g=u /data /config
 
 EXPOSE 8080
