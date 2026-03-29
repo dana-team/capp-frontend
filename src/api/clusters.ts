@@ -1,5 +1,6 @@
 import { backendClient, BackendApiError } from './client';
 import { ClusterMeta } from '@/types/capp';
+import { getBackendUrl } from '@/lib/config';
 
 interface ClusterListResponse {
   items: ClusterMeta[];
@@ -15,9 +16,9 @@ export function listClusters(): Promise<ClusterListResponse> {
  * Used during login before the store is populated.
  */
 export async function fetchClusters(
-  backendUrl: string,
   token: string
 ): Promise<ClusterMeta[]> {
+  const backendUrl = getBackendUrl()
   const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '');
   const headers: Record<string, string> = {
     Accept: 'application/json',

@@ -13,7 +13,13 @@ image:
 # Capp uses Knative autoscaling; this value is ignored in capp mode.
 replicaCount: 1
 
-# Environment variables passed to the container in both deployment modes.
+# Backend URL passed to the container as the BACKEND_URL environment variable.
+# Caddy injects this into /config.js at serve time so the React app can reach
+# capp-backend without rebuilding the image.
+# Example: backendUrl: "https://capp-backend.example.com"
+backendUrl: ""
+
+# Additional environment variables passed to the container in both deployment modes.
 # Format: [{name: FOO, value: bar}]
 env: []
 
@@ -34,3 +40,19 @@ ingress:
 # Needed if the cluster is not already authenticated to GHCR.
 # Example: [{name: ghcr-secret}]
 imagePullSecrets: []
+
+# Pod-level security context. Only applies when deploymentMode=deployment.
+podSecurityContext: {}
+
+# Container-level security context. Applied only when deploymentMode=deployment.
+# Defaults enforce non-root execution and hardening while remaining compatible
+# with OpenShift's restricted SCC (no fixed UID/GID — the platform assigns one).
+# The image is built with group-0 permissions on /data and /config so Caddy can
+# write under any arbitrary UID.
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: RuntimeDefault

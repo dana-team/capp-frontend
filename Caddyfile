@@ -1,5 +1,12 @@
-:8080
+:8080 {
+  root * /srv
 
-root * /srv
-file_server
-try_files {path} /index.html
+  handle /config.js {
+    templates
+    header Content-Type "application/javascript; charset=utf-8"
+    file_server
+  }
+
+  file_server
+  try_files {path} /index.html
+}

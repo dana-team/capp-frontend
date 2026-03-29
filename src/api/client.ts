@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/store/auth';
+import { getBackendUrl } from '@/lib/config';
 
 export class BackendApiError extends Error {
   status: number;
@@ -23,11 +24,12 @@ let isRefreshing = false
 let refreshQueue: Array<{ resolve: (token: string) => void; reject: (err: Error) => void }> = []
 
 async function doRefresh(): Promise<string> {
-  const { backendUrl, refreshToken, updateTokens, logout } = useAuthStore.getState()
+  const { refreshToken, updateTokens, logout } = useAuthStore.getState()
+  const backendUrl = getBackendUrl()
   const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '')
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(import.meta.env.DEV && backendUrl
+    ...(import.meta.env.DEV
       ? { 'X-Backend-Url': backendUrl.replace(/\/$/, '') }
       : {}),
   }
@@ -49,7 +51,7 @@ async function doRefresh(): Promise<string> {
  * Sends a request to the capp-backend.
  *
  * In dev mode Vite proxies /api paths to the backend (see vite.config.ts),
- * so the explicit backendUrl from the store is only needed in production.
+ * so the explicit backendUrl from config is only needed in production.
  * The Authorization header always carries the stored Bearer token so that
  * Kubernetes RBAC is enforced per-user in passthrough auth mode.
  */
@@ -57,7 +59,8 @@ export async function backendClient<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const { backendUrl, token } = useAuthStore.getState();
+  const { token } = useAuthStore.getState();
+  const backendUrl = getBackendUrl();
 
   const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '');
   const url = `${base}${path}`;
@@ -67,7 +70,7 @@ export async function backendClient<T>(
     Accept: 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     // In dev mode, tell the Vite proxy where to forward the request.
-    ...(import.meta.env.DEV && backendUrl
+    ...(import.meta.env.DEV
       ? { 'X-Backend-Url': backendUrl.replace(/\/$/, '') }
       : {}),
     ...((options.headers as Record<string, string>) ?? {}),
