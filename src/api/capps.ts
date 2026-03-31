@@ -1,11 +1,6 @@
-import { backendClient } from './client';
-import { useAuthStore } from '@/store/auth';
+import { backendClient, clusterBase } from './client';
 import { CappRequest, CappResponse, CappListResponse } from '@/types/capp';
 
-function clusterBase(): string {
-  const { cluster } = useAuthStore.getState();
-  return `/api/v1/clusters/${encodeURIComponent(cluster)}`;
-}
 
 /** List all Capps across all namespaces in the selected cluster. */
 export function listCapps(): Promise<CappListResponse> {

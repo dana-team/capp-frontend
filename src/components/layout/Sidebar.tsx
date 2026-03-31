@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { SignOut } from '@phosphor-icons/react'
+import { SignOutIcon, ShippingContainerIcon, CactusIcon, BookOpenTextIcon } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import { useNamespaces } from '@/hooks/useNamespaces'
@@ -35,8 +35,10 @@ export const Sidebar: React.FC = () => {
       style={{ minHeight: 0 }}
     >
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-border">
-        <span className="font-display font-extrabold text-xl text-text tracking-tight">capp</span>
+      <div className="px-4 py-4 border-b border-border flex content-between items-center justify-between">
+        <span className="font-display font-extrabold text-xl text-text tracking-tight">RCS</span>
+        <CactusIcon size={25} className="text-primary" />
+
       </div>
 
       {/* Nav links */}
@@ -47,12 +49,29 @@ export const Sidebar: React.FC = () => {
             cn(
               'px-4 py-1.5 text-sm font-medium transition-colors',
               isActive
-                ? 'border-l-2 border-primary bg-primary/[0.08] text-primary pl-[14px]'
-                : 'border-l-2 border-transparent text-text-secondary hover:text-text pl-[14px]'
+                ? 'border-l-2 border-primary bg-primary/[0.08] text-primary pl-[14px] flex items-center justify-between'
+                : 'border-l-2 border-transparent text-text-secondary hover:text-text pl-[14px] flex items-center justify-between'
             )
           }
         >
           Capps
+          <ShippingContainerIcon size={14} className="text-primary ml-1" />
+        </NavLink>
+      </nav>
+            <nav className="flex flex-col py-2">
+        <NavLink
+          to="/configmaps"
+          className={({ isActive }) =>
+            cn(
+              'px-4 py-1.5 text-sm font-medium transition-colors',
+              isActive
+                ? 'border-l-2 border-primary bg-primary/[0.08] text-primary pl-[14px] flex items-center justify-between'
+                : 'border-l-2 border-transparent text-text-secondary hover:text-text pl-[14px] flex items-center justify-between'
+            )
+          }
+        >
+          ConfigMaps
+          <BookOpenTextIcon size={14} className="text-primary ml-1" />
         </NavLink>
       </nav>
 
@@ -126,7 +145,7 @@ export const Sidebar: React.FC = () => {
           onClick={handleLogout}
           className="flex items-center gap-1.5 text-xs text-text-muted hover:text-danger transition-colors mt-1"
         >
-          <SignOut size={13} />
+          <SignOutIcon size={13} />
           Disconnect
         </button>
       </div>

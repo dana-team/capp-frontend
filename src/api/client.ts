@@ -143,3 +143,8 @@ export async function backendClient<T>(
 // Alias kept for any code that still imports k8sClient / K8sApiError.
 export const k8sClient = backendClient;
 export { BackendApiError as K8sApiError };
+
+export function clusterBase(): string {
+  const { cluster } = useAuthStore.getState();
+  return `/api/v1/clusters/${encodeURIComponent(cluster)}`;
+}

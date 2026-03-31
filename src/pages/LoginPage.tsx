@@ -253,8 +253,8 @@ export const LoginPage: React.FC = () => {
 
         {/* Logo */}
         <div className="text-center mb-7">
-          <div className="font-display font-extrabold text-2xl text-text tracking-tight">capp</div>
-          <div className="text-[9px] tracking-[2.5px] text-text-muted mt-0.5 uppercase">Console</div>
+          <div className="font-display font-extrabold text-2xl text-text tracking-tight">RCS</div>
+          <div className="text-[9px] tracking-[2.5px] text-text-muted mt-0.5 uppercase">Run Container Service</div>
         </div>
 
         {authMode === 'detecting' && (
