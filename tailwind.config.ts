@@ -13,10 +13,9 @@ const config: Config = {
   			primary: {
   				DEFAULT: 'hsl(var(--primary))',
   				hover: 'hsl(var(--primary) / 0.85)',
-  				subtle: 'hsl(var(--primary) / 0.15)',
+  				subtle: 'hsl(var(--primary) / 0.08)',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
-  			accent: 'hsl(var(--accent))',
   			success: 'hsl(var(--success))',
   			danger: 'hsl(var(--danger))',
   			warning: 'hsl(var(--warning))',
@@ -47,28 +46,14 @@ const config: Config = {
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			md: 'var(--radius)',
+  			sm: '0px',
+  			DEFAULT: 'var(--radius)',
   		},
   		fontFamily: {
-  			sans: [
-  				'IBM Plex Sans',
-  				'-apple-system',
-  				'BlinkMacSystemFont',
-  				'system-ui',
-  				'sans-serif'
-  			],
-  			mono: [
-  				'IBM Plex Mono',
-  				'ui-monospace',
-  				'SFMono-Regular',
-  				'monospace'
-  			],
-  			display: [
-  				'IBM Plex Mono',
-  				'ui-monospace',
-  				'monospace'
-  			]
+  			sans: ['Outfit', 'system-ui', 'sans-serif'],
+  			mono: ['DM Mono', 'ui-monospace', 'monospace'],
+  			display: ['Outfit', 'system-ui', 'sans-serif'],
   		},
   		animation: {
   			'pulse-dot': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -78,24 +63,12 @@ const config: Config = {
   		},
   		keyframes: {
   			'accordion-down': {
-  				from: {
-  					height: '0',
-  					opacity: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)',
-  					opacity: '1'
-  				}
+  				from: { height: '0', opacity: '0' },
+  				to: { height: 'var(--radix-accordion-content-height)', opacity: '1' }
   			},
   			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)',
-  					opacity: '1'
-  				},
-  				to: {
-  					height: '0',
-  					opacity: '0'
-  				}
+  				from: { height: 'var(--radix-accordion-content-height)', opacity: '1' },
+  				to: { height: '0', opacity: '0' }
   			}
   		}
   	}

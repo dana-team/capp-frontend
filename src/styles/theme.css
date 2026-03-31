@@ -1,40 +1,37 @@
 /* src/styles/theme.css
  * Single source of truth for all color tokens.
- * To retheme the entire app, edit the values in :root only.
- * Colors use HSL channels (no `hsl()` wrapper) so Tailwind can compose opacity.
+ * Values are HSL channels (no hsl() wrapper) so Tailwind can compose opacity.
  */
 :root {
-  /* Backgrounds — dark slate */
-  --background:        222 18%  4%;    /* #0a0b0f */
-  --surface:           222 14%  8%;    /* #13141a */
-  --card:              222 16%  6%;    /* #0f1014 */
+  /* Backgrounds — warm parchment */
+  --background:        37 51% 92%;    /* #f5ede0 — page canvas */
+  --surface:           41 45% 87%;    /* #ede4d0 — sidebar, elevated surfaces */
+  --card:              37 51% 92%;    /* same as background — no floating card illusion */
 
   /* Borders */
-  --border:            222 10% 14%;    /* #1e2030 */
-  --border-subtle:     222 10% 10%;
+  --border:            39 35% 79%;    /* #ddd0b8 */
+  --border-subtle:     38 41% 85%;    /* #e8dcc8 — row dividers */
 
   /* Text */
-  --text:              214 32% 95%;    /* #f0f4ff */
-  --text-secondary:    215 20% 65%;    /* #94a3b8 */
-  --text-muted:        215 16% 47%;    /* #64748b */
+  --text:              24 56%  7%;    /* #1c1008 — near-black warm brown */
+  --text-secondary:    27 38% 30%;    /* #6a4a30 — medium warm brown */
+  --text-muted:        30 29% 44%;    /* #907050 — muted warm tan */
 
-  /* Primary accent — electric amber */
-  --primary:           38  92% 50%;    /* #f59e0b */
-  --primary-foreground:222 18%  4%;    /* dark bg for contrast on amber */
-  --primary-subtle:    38  92% 50%;    /* used at low opacity via Tailwind /10 etc */
+  /* Primary accent — terracotta */
+  --primary:           19 61% 49%;    /* #c86030 */
+  --primary-foreground:37 51% 92%;    /* #f5ede0 — parchment on terracotta buttons */
 
   /* Semantic */
-  --success:           152 69% 31%;    /* #10b981 */
-  --danger:            0   72% 51%;    /* #ef4444 */
-  --warning:           38  92% 50%;    /* #f59e0b — same as primary */
-  --accent:            199 89% 48%;    /* #38bdf8 sky blue */
+  --success:          107 47% 30%;    /* #387028 — warm forest green */
+  --danger:            10 69% 41%;    /* #b03820 — warm brick red */
+  --warning:           37 69% 41%;    /* #b07820 — amber ochre */
 
   /* shadcn/ui compatibility aliases */
-  --radius: 0.375rem;
-  --input:  222 10% 14%;   /* same as --border */
-  --ring:   38  92% 50%;   /* focus ring = amber primary */
-  --muted:              222 14%  8%;
-  --muted-foreground:   215 16% 47%;
-  --popover:            222 18%  4%;
-  --popover-foreground: 214 32% 95%;
+  --radius:            2px;
+  --input:             39 35% 79%;    /* same as --border */
+  --ring:              19 61% 49%;    /* focus ring = primary */
+  --muted:             41 45% 87%;    /* same as --surface */
+  --muted-foreground:  30 29% 44%;    /* same as --text-muted */
+  --popover:           41 45% 87%;
+  --popover-foreground: 24 56%  7%;
 }

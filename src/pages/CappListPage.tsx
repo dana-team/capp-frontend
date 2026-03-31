@@ -17,7 +17,6 @@ import {
   Pagination, PaginationContent, PaginationItem,
   PaginationNext, PaginationPrevious,
 } from '@/components/ui/pagination'
-import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/lib/utils'
 import { useCapps, useDeleteCapp } from '@/hooks/useCapps'
@@ -133,27 +132,23 @@ export const CappListPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Stat cards */}
+      {/* Inline stats */}
       {!isLoading && (
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="bg-surface border-border border-l-2 border-l-primary">
-            <CardContent className="pt-4 pb-4 px-5">
-              <p className="text-xs uppercase tracking-widest font-mono text-text-muted mb-2">Total Capps</p>
-              <p className="text-3xl font-display font-bold text-primary tabular-nums leading-none">{totalCapps}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-surface border-border border-l-2 border-l-success">
-            <CardContent className="pt-4 pb-4 px-5">
-              <p className="text-xs uppercase tracking-widest font-mono text-text-muted mb-2">Enabled</p>
-              <p className="text-3xl font-display font-bold text-success tabular-nums leading-none">{enabledCapps}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-surface border-border border-l-2 border-l-accent">
-            <CardContent className="pt-4 pb-4 px-5">
-              <p className="text-xs uppercase tracking-widest font-mono text-text-muted mb-2">Namespaces</p>
-              <p className="text-3xl font-display font-bold text-accent tabular-nums leading-none">{namespaceCount}</p>
-            </CardContent>
-          </Card>
+        <div className="flex items-center gap-4 text-sm pb-3 border-b border-border">
+          <span>
+            <span className="font-semibold text-text">{totalCapps}</span>
+            <span className="text-text-muted ml-1">total</span>
+          </span>
+          <span className="text-text-muted">·</span>
+          <span>
+            <span className="font-semibold text-success">{enabledCapps}</span>
+            <span className="text-text-muted ml-1">enabled</span>
+          </span>
+          <span className="text-text-muted">·</span>
+          <span>
+            <span className="font-semibold text-text">{namespaceCount}</span>
+            <span className="text-text-muted ml-1">namespaces</span>
+          </span>
         </div>
       )}
 
@@ -204,11 +199,11 @@ export const CappListPage: React.FC = () => {
                 <TableHeader>
                   <TableRow className="bg-card hover:bg-card border-border">
                     <TableHead className="w-2 p-0" />
-                    <TableHead><SortHeader field="name" label="Name" /></TableHead>
-                    <TableHead><SortHeader field="namespace" label="Namespace" /></TableHead>
-                    <TableHead><SortHeader field="state" label="State" /></TableHead>
-                    <TableHead><SortHeader field="scaleMetric" label="Scale Metric" /></TableHead>
-                    <TableHead><SortHeader field="createdAt" label="Created" /></TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium"><SortHeader field="name" label="Name" /></TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium"><SortHeader field="namespace" label="Namespace" /></TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium"><SortHeader field="state" label="State" /></TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium"><SortHeader field="scaleMetric" label="Scale Metric" /></TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium"><SortHeader field="createdAt" label="Created" /></TableHead>
                     <TableHead className="w-24" />
                   </TableRow>
                 </TableHeader>
@@ -216,19 +211,21 @@ export const CappListPage: React.FC = () => {
                   {paginated.map((capp) => (
                     <TableRow
                       key={`${capp.namespace}/${capp.name}`}
-                      className="group border-border/50 hover:bg-surface/50 transition-colors border-l-2 border-l-transparent hover:border-l-primary"
+                      className="group border-b border-border/50 hover:bg-primary/[0.06] cursor-pointer transition-colors"
+                      onClick={() => navigate(`/capps/${capp.namespace}/${capp.name}`)}
                     >
                       <TableCell className="w-2 p-0" />
-                      <TableCell>
+                      <TableCell className="font-semibold text-text text-sm">
                         <Link
                           to={`/capps/${capp.namespace}/${capp.name}`}
                           className="font-mono font-medium text-sm text-text hover:text-primary transition-colors"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           {capp.name}
                         </Link>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="namespace">{capp.namespace}</Badge>
+                      <TableCell className="font-mono text-xs text-text-muted">
+                        {capp.namespace}
                       </TableCell>
                       <TableCell>
                         <Badge variant={capp.state === 'disabled' ? 'default' : 'success'}>
@@ -241,20 +238,21 @@ export const CappListPage: React.FC = () => {
                           : <span className="text-sm text-text-muted">—</span>
                         }
                       </TableCell>
-                      <TableCell className="text-xs font-mono text-text-muted">
+                      <TableCell className="font-mono text-xs text-text-muted text-right">
                         {relativeTime(capp.createdAt)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                           <Link
                             to={`/capps/${capp.namespace}/${capp.name}/edit`}
                             className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-primary/10 hover:text-primary transition-colors"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <PencilSimple size={13} />
                           </Link>
                           <button
                             type="button"
-                            onClick={() => { setDeleteTarget(capp); setDeleteError(null) }}
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(capp); setDeleteError(null) }}
                             className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
                           >
                             <Trash size={13} />

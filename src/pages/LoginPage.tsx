@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Stack, Eye, EyeSlash, WarningCircle, CircleNotch } from '@phosphor-icons/react'
+import { EyeIcon, WarningCircleIcon, CircleNotchIcon, EyeSlashIcon } from '@phosphor-icons/react'
 import { useAuthStore } from '@/store/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { cn } from '@/lib/utils'
 import { fetchClusters } from '@/api/clusters'
 import { getBackendUrl } from '@/lib/config'
 
-type AuthMode = 'detecting' | 'dex' | 'openshift' | 'passthrough'
+type AuthMode = 'detecting' | 'dex' | 'openshift' | 'passthrough' | 'jwt'
 
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [token, setToken] = useState('')
+  const [cluster, setCluster] = useState('local')
   const [showPassword, setShowPassword] = useState(false)
   const [showToken, setShowToken] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -45,15 +44,39 @@ export const LoginPage: React.FC = () => {
 
   const detectAuthMode = async () => {
     try {
-      const res = await fetch(`${base}/api/v1/auth/openshift/authorize`, {
+      const res = await fetch(`${base}/api/v1/auth/mode`, {
         headers: { Accept: 'application/json', ...devHeaders },
       })
-      if (res.ok) {
-        const data = await res.json() as { authorizeUrl: string }
-        setAuthorizeUrl(data.authorizeUrl)
-        setAuthMode('openshift')
-      } else {
+      if (!res.ok) { setAuthMode('dex'); return }
+      const { mode } = await res.json() as { mode: string }
+
+      if (mode === 'openshift') {
+        try {
+          const authRes = await fetch(`${base}/api/v1/auth/openshift/authorize`, {
+            headers: { Accept: 'application/json', ...devHeaders },
+          })
+         if (!authRes.ok) {
+            throw new Error('Failed to get OpenShift authorize URL')
+          }
+          const data = await authRes.json() as { authorizeUrl: string }
+          if (!data.authorizeUrl) {
+            throw new Error('OpenShift authorize URL is missing')
+          }
+          setAuthorizeUrl(data.authorizeUrl)
+          setAuthMode('openshift')
+          return
+        } catch {
+          setError('Failed to initialize OpenShift authentication, falling back to standard login.')
+          setAuthMode('dex')
+          return
+        }
+      } else if (mode === 'dex') {
         setAuthMode('dex')
+      } else if (mode === 'jwt' || mode === 'static') {
+        setAuthMode('jwt')
+      } else {
+        // passthrough: token is used directly, no login endpoint
+        setAuthMode('passthrough')
       }
     } catch {
       setAuthMode('dex')
@@ -104,8 +127,52 @@ export const LoginPage: React.FC = () => {
     detectAuthMode()
   }, [])
 
-  const handleOpenShiftLogin = () => {
-    window.location.href = authorizeUrl
+  // passthrough mode: token is used directly as a k8s bearer token, no login endpoint
+  const handlePassthroughSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token.trim()) { setError('Token is required'); return }
+    setIsLoading(true)
+    setError('')
+    try {
+      await finishLogin(token.trim(), '')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // jwt/static mode: exchange cluster + token for a session JWT
+  const handleJwtSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!cluster.trim()) { setError('Cluster is required'); return }
+    if (!token.trim()) { setError('Token is required'); return }
+    setIsLoading(true)
+    setError('')
+    try {
+      const loginRes = await fetch(`${base}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...devHeaders },
+        body: JSON.stringify({ cluster: cluster.trim(), token: token.trim() }),
+      })
+      if (!loginRes.ok) {
+        let message = 'Invalid credentials'
+        try {
+          const data = await loginRes.json() as { error?: { message?: string }; message?: string }
+          message = data.error?.message ?? data.message ?? message
+        } catch { /* ignore */ }
+        throw new Error(message)
+      }
+      const { accessToken, refreshToken } = await loginRes.json() as {
+        accessToken: string
+        refreshToken: string
+      }
+      await finishLogin(accessToken, refreshToken)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign in')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,96 +208,179 @@ export const LoginPage: React.FC = () => {
   }
 
   return (
-    <div
-      className="relative min-h-screen flex items-center justify-center p-4 bg-background overflow-hidden"
-      style={{
-        backgroundImage: 'radial-gradient(circle, hsl(38 92% 50% / 0.12) 1px, transparent 1px)',
-        backgroundSize: '24px 24px',
-      }}
-    >
-      <div className="relative z-10 w-full max-w-sm">
-        <div className="flex flex-col items-center mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary mb-4">
-            <Stack size={26} weight="duotone" className="text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-display font-bold text-text tracking-tight">Capp Console</h1>
-          <p className="mt-1 text-sm text-text-muted">Manage containerized workloads</p>
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden"
+         style={{ background: 'hsl(41 45% 80%)' }}>
+      {/* Canyon silhouette SVG background */}
+      <svg
+        className="absolute inset-0 w-full h-full"
+        viewBox="0 0 1200 800"
+        preserveAspectRatio="xMidYMid slice"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(38 57% 87%)" />
+            <stop offset="100%" stopColor="hsl(41 50% 82%)" />
+          </linearGradient>
+          <linearGradient id="wall1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(19 61% 49%)" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="hsl(19 65% 30%)" stopOpacity="0.7" />
+          </linearGradient>
+          <linearGradient id="wall2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(22 60% 42%)" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="hsl(22 62% 24%)" stopOpacity="0.6" />
+          </linearGradient>
+          <linearGradient id="wall3" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(15 58% 38%)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="hsl(15 60% 22%)" stopOpacity="0.5" />
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="800" fill="url(#sky)" />
+        {/* Far right wall */}
+        <path d="M820,0 L1200,0 L1200,800 L950,800 L920,650 L970,500 L940,340 L990,200 L820,0 Z" fill="url(#wall3)" />
+        {/* Left wall */}
+        <path d="M0,0 L340,0 L300,130 L360,280 L320,460 L390,600 L280,800 L0,800 Z" fill="url(#wall1)" />
+        {/* Closer right wall */}
+        <path d="M1020,0 L1200,0 L1200,800 L1080,800 L1050,570 L1100,400 L1060,220 L1020,0 Z" fill="url(#wall2)" />
+        {/* Floor hint */}
+        <path d="M0,740 Q300,720 600,730 Q900,740 1200,725 L1200,800 L0,800 Z" fill="hsl(19 55% 28%)" opacity="0.25" />
+      </svg>
+
+      {/* Login card */}
+      <div className="relative z-10 w-[320px] border border-border p-8"
+           style={{ background: 'hsl(var(--background))', boxShadow: '0 8px 32px rgba(80,30,10,0.22)' }}>
+
+        {/* Logo */}
+        <div className="text-center mb-7">
+          <div className="font-display font-extrabold text-2xl text-text tracking-tight">capp</div>
+          <div className="text-[9px] tracking-[2.5px] text-text-muted mt-0.5 uppercase">Console</div>
         </div>
 
-        {authMode === 'detecting' ? (
-          <div className="flex justify-center py-8">
-            <CircleNotch className="h-8 w-8 animate-spin text-primary" />
+        {authMode === 'detecting' && (
+          <div className="flex justify-center py-4">
+            <CircleNotchIcon size={20} className="animate-spin text-text-muted" />
           </div>
-        ) : (
-          <div className="rounded-lg border border-border bg-card p-6 shadow-xl shadow-black/40">
+        )}
+
+        {authMode === 'openshift' && (
+          <div className="flex flex-col gap-2">
+            {authorizeUrl && (
+              <a
+                href={authorizeUrl}
+                className="flex items-center justify-center h-9 border border-primary text-primary text-sm font-semibold hover:bg-primary/[0.08] transition-colors"
+              >
+                OpenShift OAuth
+              </a>
+            )}
             {error && (
-              <Alert variant="destructive" className="mb-4">
-                <WarningCircle className="h-4 w-4" />
+              <Alert variant="destructive">
+                <WarningCircleIcon size={14} />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-
-            {authMode === 'openshift' ? (
-              <Button
-                type="button"
-                variant="primary"
-                disabled={isLoading}
-                className="w-full"
-                onClick={handleOpenShiftLogin}
-              >
-                {isLoading ? (
-                  <><CircleNotch className="mr-2 h-4 w-4 animate-spin" /> Signing in…</>
-                ) : 'Sign in with OpenShift'}
-              </Button>
-            ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="username" className="text-text-secondary">
-                    Username <span className="text-danger">*</span>
-                  </Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="admin"
-                    autoComplete="username"
-                    className="bg-surface border-border"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="password" className="text-text-secondary">
-                    Password <span className="text-danger">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                      className="bg-surface border-border pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
-                    >
-                      {showPassword ? <EyeSlash size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-
-                <Button type="submit" variant="primary" disabled={isLoading} className="w-full mt-1">
-                  {isLoading ? (
-                    <><CircleNotch className="mr-2 h-4 w-4 animate-spin" /> Signing in…</>
-                  ) : 'Sign In'}
-                </Button>
-              </form>
-            )}
           </div>
+        )}
+
+        {authMode === 'dex' && (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+            <div className="relative">
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 bottom-2 text-text-muted hover:text-text"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeSlashIcon size={15} /> : <EyeIcon size={15} />}
+              </button>
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <WarningCircleIcon size={14} />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <Button type="submit" variant="default" loading={isLoading} className="w-full mt-1">
+              Continue →
+            </Button>
+          </form>
+        )}
+
+        {authMode === 'passthrough' && (
+          <form onSubmit={handlePassthroughSubmit} className="flex flex-col gap-3">
+            <div className="relative">
+              <Input
+                label="Bearer Token"
+                type={showToken ? 'text' : 'password'}
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="eyJhbGci..."
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowToken(!showToken)}
+                className="absolute right-2 bottom-2 text-text-muted hover:text-text"
+                tabIndex={-1}
+              >
+                {showToken ? <EyeSlashIcon size={15} /> : <EyeIcon size={15} />}
+              </button>
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <WarningCircleIcon size={14} />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <Button type="submit" variant="default" loading={isLoading} className="w-full mt-1">
+              Continue →
+            </Button>
+          </form>
+        )}
+
+        {authMode === 'jwt' && (
+          <form onSubmit={handleJwtSubmit} className="flex flex-col gap-3">
+            <Input
+              label="Cluster"
+              value={cluster}
+              onChange={(e) => setCluster(e.target.value)}
+              required
+            />
+            <div className="relative">
+              <Input
+                label="Token"
+                type={showPassword ? 'text' : 'password'}
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 bottom-2 text-text-muted hover:text-text"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeSlashIcon size={15} /> : <EyeIcon size={15} />}
+              </button>
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <WarningCircleIcon size={14} />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <Button type="submit" variant="default" loading={isLoading} className="w-full mt-1">
+              Continue →
+            </Button>
+          </form>
         )}
       </div>
     </div>

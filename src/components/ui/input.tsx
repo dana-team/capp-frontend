@@ -17,11 +17,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         type={type}
         id={inputId}
         className={cn(
-          "flex h-9 w-full rounded-lg border bg-card px-3 text-sm text-text placeholder:text-text-muted",
-          "transition-all duration-150 outline-none",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "flex h-9 w-full rounded border bg-background px-3 text-sm text-text placeholder:text-text-muted",
+          "transition-colors duration-150 outline-none",
+          "focus:outline-none focus:border-primary",
           "disabled:cursor-not-allowed disabled:opacity-50",
-          error ? "border-danger focus-visible:ring-danger" : "border-border",
+          error ? "border-danger focus:border-danger" : "border-border",
           className
         )}
         ref={ref}
@@ -39,7 +39,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-sm font-medium text-text-secondary"
+            className="text-xs font-medium text-text-secondary"
           >
             {label}
             {required && <span className="text-danger ml-1">*</span>}

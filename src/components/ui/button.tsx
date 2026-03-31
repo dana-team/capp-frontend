@@ -6,27 +6,24 @@ import { CircleNotch } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background hover:bg-surface hover:text-text",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-surface hover:text-text",
-        link: "text-primary underline-offset-4 hover:underline",
-        primary: "bg-primary text-primary-foreground font-medium hover:bg-primary/90 active:scale-[0.98] transition-transform",
-        danger:  "bg-danger/10 border border-danger/30 text-danger hover:bg-danger hover:text-white",
+        default:     "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-danger text-primary-foreground hover:bg-danger/90",
+        outline:     "border border-border bg-background hover:bg-surface hover:text-text",
+        secondary:   "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost:       "hover:bg-surface hover:text-text text-text-secondary",
+        link:        "text-primary underline-offset-4 hover:underline",
+        primary:     "bg-primary text-primary-foreground hover:bg-primary/90",
+        danger:      "bg-danger/10 border border-danger/30 text-danger hover:bg-danger hover:text-primary-foreground",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded px-3",
-        lg: "h-11 rounded px-8",
-        icon: "h-10 w-10",
+        default: "h-9 px-4 py-2",
+        sm:      "h-8 px-3",
+        lg:      "h-10 px-8",
+        icon:    "h-9 w-9",
       },
     },
     defaultVariants: {
