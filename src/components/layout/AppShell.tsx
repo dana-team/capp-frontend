@@ -1,11 +1,11 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom'
-import { TopNav } from './TopNav'
+import { Sidebar } from './Sidebar'
 
 export const AppShell: React.FC = () => {
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <TopNav />
+    <div className="flex h-screen overflow-hidden bg-background">
+      <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <Outlet />
       </main>
