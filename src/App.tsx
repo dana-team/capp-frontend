@@ -13,6 +13,10 @@ import { CreateCappPage } from '@/pages/CreateCappPage';
 import { EditCappPage } from '@/pages/EditCappPage';
 import { CappDetailPage } from '@/pages/CappDetailPage';
 import { useAuthStore } from '@/store/auth';
+import { ConfigMapListPage } from '@/pages/ConfigMapListPage';
+import { ConfigMapDetailPage } from '@/pages/ConfigMapDetailPage';
+import { CreateConfigMapPage } from '@/pages/CreateConfigMapPage';
+import { EditConfigMapPage } from '@/pages/EditConfigMapPage';
 
 const ProtectedLayout: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
@@ -39,6 +43,11 @@ const App: React.FC = () => {
           <Route path="/capps/new" element={<CreateCappPage />} />
           <Route path="/capps/:namespace/:name" element={<CappDetailPage />} />
           <Route path="/capps/:namespace/:name/edit" element={<EditCappPage />} />
+          <Route path="/configmaps" element={<ConfigMapListPage />} />
+          <Route path="/configmaps/new" element={<CreateConfigMapPage />} />
+          <Route path="/configmaps/:namespace/:name" element={<ConfigMapDetailPage />} />
+          <Route path="/configmaps/:namespace/:name/edit" element={<EditConfigMapPage />} />
+
         </Route>
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
