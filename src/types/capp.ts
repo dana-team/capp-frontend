@@ -23,9 +23,9 @@ export interface RouteSpec {
 }
 
 export interface LogSpec {
-  type: 'elastic';
+  type: 'elastic' | 'elastic-datastream';
   host: string;
-  index: string;
+  index?: string;
   user: string;
   passwordSecret: string;
 }
