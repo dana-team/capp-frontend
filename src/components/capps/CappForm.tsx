@@ -33,6 +33,8 @@ export interface KafkaSourceFormValue {
   topics: string[];
 }
 
+export type LogType = 'elastic' | 'elastic-datastream';
+
 export interface CappFormValues {
   name: string;
   scaleMetric: ScaleMetric | '';
@@ -43,6 +45,7 @@ export interface CappFormValues {
   hostname: string;
   tlsEnabled?: boolean;
   routeTimeoutSeconds?: number;
+  logType: LogType | '';
   logHost: string;
   logIndex: string;
   logUser: string;
@@ -67,6 +70,7 @@ const schema = z.object({
   hostname: z.string().optional(),
   tlsEnabled: z.boolean().optional(),
   routeTimeoutSeconds: z.number().optional(),
+  logType: z.enum(['', 'elastic', 'elastic-datastream']).optional(),
   logHost: z.string().optional(),
   logIndex: z.string().optional(),
   logUser: z.string().optional(),
@@ -99,6 +103,7 @@ const defaultValues: CappFormValues = {
   hostname: '',
   tlsEnabled: undefined,
   routeTimeoutSeconds: undefined,
+  logType: '',
   logHost: '',
   logIndex: '',
   logUser: '',
@@ -209,6 +214,7 @@ export const CappForm: React.FC<CappFormProps> = ({
             hostname: (route?.hostname as string) ?? '',
             tlsEnabled: route?.tlsEnabled as boolean | undefined,
             routeTimeoutSeconds: route?.routeTimeoutSeconds as number | undefined,
+            logType: (log?.type === 'elastic' || log?.type === 'elastic-datastream' ? log.type : ''),
             logHost: (log?.host as string) ?? '',
             logIndex: (log?.index as string) ?? '',
             logUser: (log?.user as string) ?? '',
@@ -300,7 +306,7 @@ export const CappForm: React.FC<CappFormProps> = ({
             <DetailsSection control={control} watch={watch as (name: keyof CappFormValues) => unknown} />
             <ConfigurationSection control={control} errors={errors} watch={watch as (name: keyof CappFormValues) => unknown} />
             <RouteSection control={control} watch={watch as (name: keyof CappFormValues) => unknown} />
-            <LogSection control={control} watch={watch as (name: keyof CappFormValues) => unknown} />
+            <LogSection control={control} />
             <VolumesSection
               control={control}
               errors={errors}
