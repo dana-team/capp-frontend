@@ -51,6 +51,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+ServiceAccount name: when creating a ServiceAccount, use .Values.serviceAccount.name if set,
+otherwise fall back to fullname. When not creating one, use the provided name or "default".
+*/}}
+{{- define "capp-frontend.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "capp-frontend.fullname" .) .Values.serviceAccount.name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
+{{/*
 Full image reference: repository:tag, where tag falls back to .Chart.AppVersion.
 An empty .Values.image.tag uses .Chart.AppVersion via Helm's `default` filter
 (empty string is falsy in Helm template expressions).

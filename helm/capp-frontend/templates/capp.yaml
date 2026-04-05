@@ -13,6 +13,9 @@ spec:
   configurationSpec:
     template:
       spec:
+        {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
+        serviceAccountName: {{ include "capp-frontend.serviceAccountName" . }}
+        {{- end }}
         containers:
           - name: capp-frontend
             image: {{ include "capp-frontend.image" . }}

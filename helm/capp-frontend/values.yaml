@@ -36,6 +36,15 @@ ingress:
   # ingressClassName is required on Kubernetes 1.22+
   className: ""
 
+# ServiceAccount configuration. When create=true a ServiceAccount is created and
+# referenced by both deployment and capp modes. Set name to override the default
+# (which is the release fullname). Leave name empty to use the fullname as the SA name.
+# Annotations are useful for IRSA / Workload Identity.
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
 # Image pull secrets. Only applies when deploymentMode=deployment.
 # Needed if the cluster is not already authenticated to GHCR.
 # Example: [{name: ghcr-secret}]

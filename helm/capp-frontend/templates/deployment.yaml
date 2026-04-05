@@ -16,6 +16,9 @@ spec:
       labels:
         {{- include "capp-frontend.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
+      serviceAccountName: {{ include "capp-frontend.serviceAccountName" . }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
