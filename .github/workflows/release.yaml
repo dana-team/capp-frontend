@@ -48,11 +48,11 @@ jobs:
       - name: Package Helm chart
         run: |
           helm package helm/capp-frontend \
-            --version "${{ steps.version.outputs.semver }}" \
+            --version "${{ steps.version.outputs.tag }}" \
             --app-version "${{ steps.version.outputs.tag }}"
 
       - name: Push Helm chart to GHCR
         run: |
           helm push \
-            "capp-frontend-${{ steps.version.outputs.semver }}.tgz" \
+            "capp-frontend-${{ steps.version.outputs.tag }}.tgz" \
             oci://ghcr.io/dana-team/helm-charts

@@ -13,6 +13,7 @@ spec:
   configurationSpec:
     template:
       spec:
+        serviceAccountName: {{ include "capp-frontend.serviceAccountName" . }}
         containers:
           - name: capp-frontend
             image: {{ include "capp-frontend.image" . }}
