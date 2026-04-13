@@ -17,6 +17,10 @@ import { ConfigMapListPage } from '@/pages/ConfigMapListPage';
 import { ConfigMapDetailPage } from '@/pages/ConfigMapDetailPage';
 import { CreateConfigMapPage } from '@/pages/CreateConfigMapPage';
 import { EditConfigMapPage } from '@/pages/EditConfigMapPage';
+import { SecretListPage } from '@/pages/SecretListPage';
+import { SecretDetailPage } from '@/pages/SecretDetailPage';
+import { CreateSecretPage } from '@/pages/CreateSecretPage';
+import { EditSecretPage } from '@/pages/EditSecretPage';
 
 const ProtectedLayout: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
@@ -47,7 +51,10 @@ const App: React.FC = () => {
           <Route path="/configmaps/new" element={<CreateConfigMapPage />} />
           <Route path="/configmaps/:namespace/:name" element={<ConfigMapDetailPage />} />
           <Route path="/configmaps/:namespace/:name/edit" element={<EditConfigMapPage />} />
-
+          <Route path="/secrets" element={<SecretListPage />} />
+          <Route path="/secrets/new" element={<CreateSecretPage />} />
+          <Route path="/secrets/:namespace/:name" element={<SecretDetailPage />} />
+          <Route path="/secrets/:namespace/:name/edit" element={<EditSecretPage />} />
         </Route>
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />

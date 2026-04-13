@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { SignOutIcon, ShippingContainerIcon, CactusIcon, BookOpenTextIcon } from '@phosphor-icons/react'
+import { SignOutIcon, ShippingContainerIcon, CactusIcon, BookOpenTextIcon, KeyIcon } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import { useNamespaces } from '@/hooks/useNamespaces'
@@ -72,6 +72,22 @@ export const Sidebar: React.FC = () => {
         >
           ConfigMaps
           <BookOpenTextIcon size={14} className="text-primary ml-1" />
+        </NavLink>
+      </nav>
+      <nav className="flex flex-col py-2">
+        <NavLink
+          to="/secrets"
+          className={({ isActive }) =>
+            cn(
+              'px-4 py-1.5 text-sm font-medium transition-colors',
+              isActive
+                ? 'border-l-2 border-primary bg-primary/[0.08] text-primary pl-[14px] flex items-center justify-between'
+                : 'border-l-2 border-transparent text-text-secondary hover:text-text pl-[14px] flex items-center justify-between'
+            )
+          }
+        >
+          Secrets
+          <KeyIcon size={14} className="text-primary ml-1" />
         </NavLink>
       </nav>
 
