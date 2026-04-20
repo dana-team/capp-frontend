@@ -1,36 +1,47 @@
-import React, { useState } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Plus, Trash, WarningCircle, Eye, EyeSlash } from '@phosphor-icons/react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
+import React, { useState } from "react";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Plus,
+  Trash,
+  WarningCircle,
+  Eye,
+  EyeSlash,
+} from "@phosphor-icons/react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 const secretSchema = z.object({
   name: z
     .string()
-    .min(1, 'Name is required')
-    .regex(/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$/, 'Must be a valid DNS label (lowercase, alphanumeric, hyphens)'),
-  data: z.array(
-    z.object({
-      key: z.string().min(1, 'Key is required'),
-      value: z.string(),
-    })
-  ).superRefine((entries, ctx) => {
-    const seen = new Set<string>();
-    entries.forEach((entry, index) => {
-      if (entry.key && seen.has(entry.key)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Duplicate key',
-          path: [index, 'key'],
-        });
-      }
-      seen.add(entry.key);
-    });
-  }),
+    .min(1, "Name is required")
+    .regex(
+      /^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$/,
+      "Must be a valid DNS label (lowercase, alphanumeric, hyphens)",
+    ),
+  data: z
+    .array(
+      z.object({
+        key: z.string().min(1, "Key is required"),
+        value: z.string(),
+      }),
+    )
+    .superRefine((entries, ctx) => {
+      const seen = new Set<string>();
+      entries.forEach((entry, index) => {
+        if (entry.key && seen.has(entry.key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Duplicate key",
+            path: [index, "key"],
+          });
+        }
+        seen.add(entry.key);
+      });
+    }),
 });
 
 export interface SecretFormValues {
@@ -64,11 +75,13 @@ export const SecretForm: React.FC<SecretFormProps> = ({
     formState: { errors },
   } = useForm<SecretFormValues>({
     resolver: zodResolver(secretSchema),
-    defaultValues: initialValues ?? { name: '', data: [] },
+    defaultValues: initialValues ?? { name: "", data: [] },
   });
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'data' });
-  const [revealedIndices, setRevealedIndices] = useState<Set<number>>(new Set());
+  const { fields, append, remove } = useFieldArray({ control, name: "data" });
+  const [revealedIndices, setRevealedIndices] = useState<Set<number>>(
+    new Set(),
+  );
 
   const toggleReveal = (index: number) => {
     setRevealedIndices((prev) => {
@@ -87,7 +100,7 @@ export const SecretForm: React.FC<SecretFormProps> = ({
         disabled={isEdit}
         error={errors.name?.message}
         placeholder="my-secret"
-        {...register('name')}
+        {...register("name")}
       />
 
       <div className="flex flex-col gap-3">
@@ -107,13 +120,17 @@ export const SecretForm: React.FC<SecretFormProps> = ({
                           {...f}
                           placeholder="Key"
                           className={cn(
-                            'h-9 w-full rounded border bg-background px-3 text-sm text-text placeholder:text-text-muted',
-                            'transition-colors duration-150 outline-none focus:outline-none focus:border-primary',
-                            fieldState.error ? 'border-danger' : 'border-border'
+                            "h-9 w-full rounded border bg-background px-3 text-sm text-text placeholder:text-text-muted",
+                            "transition-colors duration-150 outline-none focus:outline-none focus:border-primary",
+                            fieldState.error
+                              ? "border-danger"
+                              : "border-border",
                           )}
                         />
                         {fieldState.error && (
-                          <p className="text-xs text-danger">{fieldState.error.message}</p>
+                          <p className="text-xs text-danger">
+                            {fieldState.error.message}
+                          </p>
                         )}
                       </>
                     )}
@@ -126,17 +143,27 @@ export const SecretForm: React.FC<SecretFormProps> = ({
                     placeholder="Value"
                     rows={3}
                     className={cn(
-                      'w-full rounded border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-muted transition-colors duration-150 outline-none focus:outline-none focus:border-primary resize-y',
-                      !revealedIndices.has(index) && 'text-security-disc'
+                      "h-9 w-full rounded border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-muted transition-colors duration-150 outline-none focus:outline-none focus:border-primary resize-y",
+                      !revealedIndices.has(index) && "text-security-disc",
                     )}
-                    style={!revealedIndices.has(index) ? { WebkitTextSecurity: 'disc' } as React.CSSProperties : undefined}
+                    style={
+                      !revealedIndices.has(index)
+                        ? ({
+                            WebkitTextSecurity: "disc",
+                          } as React.CSSProperties)
+                        : undefined
+                    }
                   />
                   <button
                     type="button"
                     onClick={() => toggleReveal(index)}
                     className="absolute top-2 right-2 text-text-muted hover:text-text transition-colors"
                   >
-                    {revealedIndices.has(index) ? <EyeSlash size={14} /> : <Eye size={14} />}
+                    {revealedIndices.has(index) ? (
+                      <EyeSlash size={14} />
+                    ) : (
+                      <Eye size={14} />
+                    )}
                   </button>
                 </div>
 
@@ -164,7 +191,7 @@ export const SecretForm: React.FC<SecretFormProps> = ({
 
         <button
           type="button"
-          onClick={() => append({ key: '', value: '' })}
+          onClick={() => append({ key: "", value: "" })}
           className="flex items-center gap-2 text-sm text-text-muted hover:text-text transition-colors w-fit"
         >
           <Plus size={14} />
