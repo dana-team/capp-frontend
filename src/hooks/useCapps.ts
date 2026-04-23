@@ -1,23 +1,34 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listCapps, listCappsInNamespace, getCapp, createCapp, updateCapp, deleteCapp } from '@/api/capps';
-import { CappRequest } from '@/types/capp';
-import { useAuthStore } from '@/store/auth';
-import { getBackendUrl } from '@/lib/config';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  listCapps,
+  listCappsInNamespace,
+  getCapp,
+  createCapp,
+  updateCapp,
+  deleteCapp,
+} from "@/api/capps";
+import { CappRequest } from "@/types/capp";
+import { useAuthStore } from "@/store/auth";
+import { getBackendUrl } from "@/lib/config";
 
 export function useCapps(namespace?: string) {
   const cluster = useAuthStore((s) => s.cluster);
   return useQuery({
-    queryKey: ['capps', getBackendUrl(), cluster, namespace ?? 'all'],
+    queryKey: ["capps", getBackendUrl(), cluster, namespace ?? "all"],
     queryFn: () => (namespace ? listCappsInNamespace(namespace) : listCapps()),
     select: (data) => data.items,
     enabled: Boolean(cluster),
+    refetchInterval: 8000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    staleTime: 3000,
   });
 }
 
 export function useCapp(namespace: string, name: string) {
   const cluster = useAuthStore((s) => s.cluster);
   return useQuery({
-    queryKey: ['capp', getBackendUrl(), cluster, namespace, name],
+    queryKey: ["capp", getBackendUrl(), cluster, namespace, name],
     queryFn: () => getCapp(namespace, name),
     enabled: Boolean(cluster && namespace && name),
   });
@@ -31,8 +42,12 @@ export function useCreateCapp() {
     mutationFn: ({ namespace, req }: { namespace: string; req: CappRequest }) =>
       createCapp(namespace, req),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['capps', getBackendUrl(), cluster] });
-      queryClient.invalidateQueries({ queryKey: ['capps', getBackendUrl(), cluster, variables.namespace] });
+      queryClient.invalidateQueries({
+        queryKey: ["capps", getBackendUrl(), cluster],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["capps", getBackendUrl(), cluster, variables.namespace],
+      });
     },
   });
 }
@@ -52,8 +67,18 @@ export function useUpdateCapp() {
       req: CappRequest;
     }) => updateCapp(namespace, name, req),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['capps', getBackendUrl(), cluster] });
-      queryClient.invalidateQueries({ queryKey: ['capp', getBackendUrl(), cluster, variables.namespace, variables.name] });
+      queryClient.invalidateQueries({
+        queryKey: ["capps", getBackendUrl(), cluster],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "capp",
+          getBackendUrl(),
+          cluster,
+          variables.namespace,
+          variables.name,
+        ],
+      });
     },
   });
 }
@@ -66,8 +91,18 @@ export function useDeleteCapp() {
     mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
       deleteCapp(namespace, name),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['capps', getBackendUrl(), cluster] });
-      queryClient.invalidateQueries({ queryKey: ['capp', getBackendUrl(), cluster, variables.namespace, variables.name] });
+      queryClient.invalidateQueries({
+        queryKey: ["capps", getBackendUrl(), cluster],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "capp",
+          getBackendUrl(),
+          cluster,
+          variables.namespace,
+          variables.name,
+        ],
+      });
     },
   });
 }
