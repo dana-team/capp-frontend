@@ -1,23 +1,26 @@
-import React from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Plus, Trash, WarningCircle } from '@phosphor-icons/react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Plus, Trash, WarningCircle } from "@phosphor-icons/react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 const configMapSchema = z.object({
   name: z
     .string()
-    .min(1, 'Name is required')
-    .regex(/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$/, 'Must be a valid DNS label (lowercase, alphanumeric, hyphens)'),
+    .min(1, "Name is required")
+    .regex(
+      /^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$/,
+      "Must be a valid DNS label (lowercase, alphanumeric, hyphens)",
+    ),
   data: z.array(
     z.object({
-      key: z.string().min(1, 'Key is required'),
+      key: z.string().min(1, "Key is required"),
       value: z.string(),
-    })
+    }),
   ),
 });
 
@@ -52,10 +55,10 @@ export const ConfigMapForm: React.FC<ConfigMapFormProps> = ({
     formState: { errors },
   } = useForm<ConfigMapFormValues>({
     resolver: zodResolver(configMapSchema),
-    defaultValues: initialValues ?? { name: '', data: [] },
+    defaultValues: initialValues ?? { name: "", data: [] },
   });
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'data' });
+  const { fields, append, remove } = useFieldArray({ control, name: "data" });
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
@@ -66,7 +69,7 @@ export const ConfigMapForm: React.FC<ConfigMapFormProps> = ({
         disabled={isEdit}
         error={errors.name?.message}
         placeholder="my-configmap"
-        {...register('name')}
+        {...register("name")}
       />
 
       {/* Data */}
@@ -88,13 +91,17 @@ export const ConfigMapForm: React.FC<ConfigMapFormProps> = ({
                           {...f}
                           placeholder="Key"
                           className={cn(
-                            'h-9 w-full rounded border bg-background px-3 text-sm text-text placeholder:text-text-muted',
-                            'transition-colors duration-150 outline-none focus:outline-none focus:border-primary',
-                            fieldState.error ? 'border-danger' : 'border-border'
+                            "h-9 w-full rounded border bg-background px-3 text-sm text-text placeholder:text-text-muted",
+                            "transition-colors duration-150 outline-none focus:outline-none focus:border-primary",
+                            fieldState.error
+                              ? "border-danger"
+                              : "border-border",
                           )}
                         />
                         {fieldState.error && (
-                          <p className="text-xs text-danger">{fieldState.error.message}</p>
+                          <p className="text-xs text-danger">
+                            {fieldState.error.message}
+                          </p>
                         )}
                       </>
                     )}
@@ -107,7 +114,7 @@ export const ConfigMapForm: React.FC<ConfigMapFormProps> = ({
                     {...register(`data.${index}.value`)}
                     placeholder="Value"
                     rows={3}
-                    className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-muted transition-colors duration-150 outline-none focus:outline-none focus:border-primary resize-y"
+                    className="h-9 w-full rounded border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-muted transition-colors duration-150 outline-none focus:outline-none focus:border-primary resize-y"
                   />
                 </div>
 
@@ -126,7 +133,7 @@ export const ConfigMapForm: React.FC<ConfigMapFormProps> = ({
 
         <button
           type="button"
-          onClick={() => append({ key: '', value: '' })}
+          onClick={() => append({ key: "", value: "" })}
           className="flex items-center gap-2 text-sm text-text-muted hover:text-text transition-colors w-fit"
         >
           <Plus size={14} />
