@@ -18,6 +18,7 @@ import { SourcesSection } from "./sections/SourcesSection";
 import { buildCappResource, cappToYaml } from "@/utils/cappBuilder";
 import type { KeyValuePair } from "@/components/ui/KeyValueList";
 import { ScaleMetric, CappState } from "@/types/capp";
+import { CappYamlEditor } from "./CappYamlEditor";
 
 export interface NFSVolumeFormValue {
   name: string;
@@ -132,7 +133,7 @@ interface CappFormProps {
   onCancel?: () => void;
 }
 
-type Tab = "form" | "yaml";
+export type Tab = "form" | "yaml";
 
 export const CappForm: React.FC<CappFormProps> = ({
   initialValues,
@@ -266,11 +267,10 @@ export const CappForm: React.FC<CappFormProps> = ({
     }
   };
 
-  const handleFormSubmit = async (values: CappFormValues) => {
+  const handleFormSubmit = async () => {
+    const values = getValues();
     await onSubmit(values);
   };
-
-  const lineCount = yamlContent.split("\n").length;
 
   return (
     <form
@@ -305,107 +305,105 @@ export const CappForm: React.FC<CappFormProps> = ({
       )}
 
       {activeTab === "form" ? (
-        <div className="flex flex-col gap-3">
-          {/* Name field */}
-          <div className="rounded-xl border border-border bg-card p-5">
-            <Controller
-              name="name"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  label="Name"
-                  required
-                  placeholder="my-capp"
-                  error={errors.name?.message}
-                  hint="Lowercase alphanumeric and hyphens only, max 63 characters"
-                  disabled={isEdit}
-                  {...field}
-                />
-              )}
-            />
-          </div>
-
-          <Accordion
-            type="multiple"
-            defaultValue={["details", "configuration"]}
-            className="flex flex-col gap-3"
-          >
-            <DetailsSection
-              control={control}
-              watch={watch as (name: keyof CappFormValues) => unknown}
-            />
-            <ConfigurationSection
-              control={control}
-              errors={errors}
-              watch={watch as (name: keyof CappFormValues) => unknown}
-            />
-            <RouteSection
-              control={control}
-              watch={watch as (name: keyof CappFormValues) => unknown}
-            />
-            <LogSection control={control} />
-            <VolumesSection
-              control={control}
-              errors={errors}
-              watch={watch as (name: keyof CappFormValues) => unknown}
-              setValue={
-                setValue as (name: keyof CappFormValues, value: unknown) => void
-              }
-            />
-            <SourcesSection
-              control={control}
-              watch={watch as (name: keyof CappFormValues) => unknown}
-              setValue={
-                setValue as (name: keyof CappFormValues, value: unknown) => void
-              }
-            />
-          </Accordion>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border px-4 py-2">
-              <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
-                YAML Editor
-              </span>
-              <span className="text-xs text-text-muted">{lineCount} lines</span>
-            </div>
-            <div className="flex">
-              {/* Line numbers */}
-              <div className="select-none border-r border-border bg-surface px-3 py-4 text-right font-mono text-xs text-text-muted leading-6 min-w-[3rem]">
-                {Array.from({ length: lineCount }, (_, i) => (
-                  <div key={i}>{i + 1}</div>
-                ))}
-              </div>
-              <textarea
-                value={yamlContent}
-                onChange={(e) => handleYamlChange(e.target.value)}
-                className="flex-1 min-h-[400px] resize-y bg-card px-4 py-4 font-mono text-sm text-text leading-6 outline-none placeholder:text-text-muted"
-                spellCheck={false}
-                placeholder="# YAML will appear here when you switch to this tab"
+        <>
+          <div className="flex flex-col gap-3">
+            {/* Name field */}
+            <div className="rounded-xl border border-border bg-card p-5">
+              <Controller
+                name="name"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    label="Name"
+                    required
+                    placeholder="my-capp"
+                    error={errors.name?.message}
+                    hint="Lowercase alphanumeric and hyphens only, max 63 characters"
+                    disabled={isEdit}
+                    {...field}
+                  />
+                )}
               />
             </div>
-          </div>
-          {yamlError && (
-            <Alert variant="destructive">
-              <WarningCircle className="h-4 w-4" />
-              <AlertDescription>YAML parse error: {yamlError}</AlertDescription>
-            </Alert>
-          )}
-        </div>
-      )}
 
-      {/* Actions */}
-      <div className="flex items-center gap-3 justify-end pt-2">
-        {onCancel && (
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
-        <Button type="submit" variant="primary" loading={isLoading}>
-          {submitLabel}
-        </Button>
-      </div>
+            <Accordion
+              type="multiple"
+              defaultValue={["details", "configuration"]}
+              className="flex flex-col gap-3"
+            >
+              <DetailsSection
+                control={control}
+                watch={watch as (name: keyof CappFormValues) => unknown}
+              />
+              <ConfigurationSection
+                control={control}
+                errors={errors}
+                watch={watch as (name: keyof CappFormValues) => unknown}
+              />
+              <RouteSection
+                control={control}
+                watch={watch as (name: keyof CappFormValues) => unknown}
+              />
+              <LogSection control={control} />
+              <VolumesSection
+                control={control}
+                errors={errors}
+                watch={watch as (name: keyof CappFormValues) => unknown}
+                setValue={
+                  setValue as (
+                    name: keyof CappFormValues,
+                    value: unknown,
+                  ) => void
+                }
+              />
+              <SourcesSection
+                control={control}
+                watch={watch as (name: keyof CappFormValues) => unknown}
+                setValue={
+                  setValue as (
+                    name: keyof CappFormValues,
+                    value: unknown,
+                  ) => void
+                }
+              />
+            </Accordion>
+          </div>
+          <div className="flex items-center gap-3 justify-end pt-2">
+            {onCancel && (
+              <Button type="button" variant="ghost" onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
+            <Button type="submit" variant="primary" loading={isLoading}>
+              {submitLabel}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <CappYamlEditor
+            handleYamlChange={handleYamlChange}
+            yamlContent={yamlContent}
+            yamlError={yamlError}
+          />
+
+          <div className="flex items-center gap-3 justify-end pt-2">
+            {onCancel && (
+              <Button type="button" variant="ghost" onClick={onCancel}>
+                Cancel
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="primary"
+              loading={isLoading}
+              onClick={async () => handleFormSubmit()}
+            >
+              {submitLabel}
+            </Button>
+          </div>
+        </>
+      )}
     </form>
   );
 };
