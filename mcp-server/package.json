@@ -1,0 +1,25 @@
+{
+  "name": "capp-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server exposing capp-backend operations as AI-callable tools",
+  "type": "module",
+  "bin": {
+    "capp-mcp": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc --watch"
+  },
+  "files": [
+    "build"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0"
+  }
+}
