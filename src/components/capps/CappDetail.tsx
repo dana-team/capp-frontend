@@ -89,11 +89,25 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
               icon={<Pulse size={14} />}
               label="Scale Metric"
               value={
-                capp.scaleMetric
-                  ? <Badge variant="info">{capp.scaleMetric}</Badge>
-                  : <span className="text-text-muted">default</span>
+                capp.scaleSpec?.metric
+                  ? <Badge variant="info">{capp.scaleSpec.metric}</Badge>
+                  : <span className="text-text-muted">concurrency (default)</span>
               }
             />
+            {capp.scaleSpec?.minReplicas !== undefined && (
+              <InfoRow
+                icon={<Pulse size={14} />}
+                label="Min Replicas"
+                value={<span className="font-mono">{capp.scaleSpec.minReplicas}</span>}
+              />
+            )}
+            {capp.scaleSpec?.scaleDelaySeconds !== undefined && capp.scaleSpec.scaleDelaySeconds > 0 && (
+              <InfoRow
+                icon={<Clock size={14} />}
+                label="Scale Delay"
+                value={<span className="font-mono">{capp.scaleSpec.scaleDelaySeconds}s</span>}
+              />
+            )}
             {capp.routeSpec?.hostname && (
               <InfoRow
                 icon={<Globe size={14} />}
@@ -246,31 +260,6 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
         </Card>
       )}
 
-      {/* KEDA Sources */}
-      {capp.sources && capp.sources.length > 0 && (
-        <Card className="bg-surface border-border border-l-2 border-l-warning">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">KEDA Sources</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {capp.sources.map((src) => (
-              <div key={src.name} className="rounded-lg border border-border bg-card p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="font-medium text-sm text-text">{src.name}</p>
-                  <Badge variant="info">{src.scalarType}</Badge>
-                </div>
-                {src.scalarMetadata && Object.keys(src.scalarMetadata).length > 0 && (
-                  <div className="text-xs text-text-muted space-y-0.5">
-                    {Object.entries(src.scalarMetadata).map(([k, v]) => (
-                      <p key={k}><span className="font-mono">{k}</span>: {v}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

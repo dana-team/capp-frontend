@@ -94,9 +94,13 @@ export const CappListPage: React.FC = () => {
         case "namespace":
           aVal = a.namespace ?? ""; bVal = b.namespace ?? ""; break;
         case "state":
-          aVal = a.state ?? "enabled"; bVal = b.state ?? "enabled"; break;
+          aVal = a.state ?? "enabled";
+          bVal = b.state ?? "enabled";
+          break;
         case "metric":
-          aVal = a.scaleMetric ?? ""; bVal = b.scaleMetric ?? ""; break;
+          aVal = a.scaleSpec?.metric ?? "concurrency";
+          bVal = b.scaleSpec?.metric ?? "concurrency";
+          break;
         case "createdAt":
           aVal = a.createdAt ?? ""; bVal = b.createdAt ?? ""; break;
       }
@@ -345,6 +349,130 @@ export const CappListPage: React.FC = () => {
               : undefined
           }
         />
+      )}
+
+      {!isLoading && paginated.length > 0 && (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-card hover:bg-card border-border">
+                  <TableHead className="w-2 p-0" />
+                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
+                    <SortHeader field="name" label="Name" />
+                  </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
+                    <SortHeader field="namespace" label="Namespace" />
+                  </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
+                    <SortHeader field="state" label="State" />
+                  </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
+                    <SortHeader field="metric" label="Metric" />
+                  </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
+                    <SortHeader field="createdAt" label="Created" />
+                  </TableHead>
+                  <TableHead className="w-24" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginated.map((capp) => (
+                  <TableRow
+                    key={`${capp.namespace}/${capp.name}`}
+                    className="group border-b border-border/50 hover:bg-primary/[0.06] cursor-pointer transition-colors"
+                    onClick={() =>
+                      navigate(`/capps/${capp.namespace}/${capp.name}`)
+                    }
+                  >
+                    <TableCell className="w-2 p-0" />
+                    <TableCell className="font-semibold text-text text-sm">
+                      <Link
+                        to={`/capps/${capp.namespace}/${capp.name}`}
+                        className="font-mono font-medium text-sm text-text hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {capp.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-text-muted">
+                      {capp.namespace}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          capp.state === "disabled" ? "default" : "success"
+                        }
+                      >
+                        {capp.state ?? "enabled"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={capp.scaleSpec?.metric ? "info" : "default"}>
+                        {capp.scaleSpec?.metric ?? "concurrency"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-text-muted">
+                      {relativeTime(capp.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                        <Link
+                          to={`/capps/${capp.namespace}/${capp.name}/edit`}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-primary/10 hover:text-primary transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <PencilSimple size={13} />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(capp);
+                            setDeleteError(null);
+                          }}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
+                        >
+                          <Trash size={13} />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setPage(page - 1)}
+                  className={
+                    page === 1
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <span className="px-3 text-sm text-text-muted">
+                  Page {page} of {totalPages}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setPage(page + 1)}
+                  className={
+                    page === totalPages
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
 
       <AlertDialog
