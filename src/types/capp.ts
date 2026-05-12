@@ -3,7 +3,7 @@ import type { K8sResource } from './kubernetes';
 // ── Backend DTO types (capp-backend REST API) ─────────────────────────────────
 // These mirror the Go types in capp-backend/internal/resources/capps/types.go
 
-export type ScaleMetric = 'concurrency' | 'cpu' | 'memory' | 'rps' | 'external';
+export type ScaleMetric = 'concurrency' | 'cpu' | 'memory' | 'rps';
 export type CappState = 'enabled' | 'disabled';
 
 export interface EnvVar {
@@ -37,12 +37,10 @@ export interface NFSVolume {
   capacity: string; // e.g. "10Gi"
 }
 
-export interface KedaSource {
-  name: string;
-  scalarType: string;
-  scalarMetadata?: Record<string, string>;
+export interface ScaleSpec {
+  metric?: ScaleMetric | '';
   minReplicas?: number;
-  maxReplicas?: number;
+  scaleDelaySeconds?: number;
 }
 
 // ── Request body for create / update ──────────────────────────────────────
@@ -50,9 +48,8 @@ export interface KedaSource {
 export interface CappRequest {
   name: string;
   namespace?: string;
-  scaleMetric?: ScaleMetric | '';
+  scaleSpec?: ScaleSpec;
   state?: CappState;
-  minReplicas?: number;
   image: string;
   containerName?: string;
   env?: EnvVar[];
@@ -60,7 +57,6 @@ export interface CappRequest {
   routeSpec?: RouteSpec;
   logSpec?: LogSpec;
   nfsVolumes?: NFSVolume[];
-  sources?: KedaSource[];
 }
 
 // ── Response types ─────────────────────────────────────────────────────────
@@ -98,9 +94,8 @@ export interface CappResponse {
   resourceVersion?: string;
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
-  scaleMetric?: ScaleMetric;
+  scaleSpec: ScaleSpec;
   state?: CappState;
-  minReplicas: number;
   image: string;
   containerName?: string;
   env?: EnvVar[];
@@ -108,7 +103,6 @@ export interface CappResponse {
   routeSpec?: RouteSpec;
   logSpec?: LogSpec;
   nfsVolumes?: NFSVolume[];
-  sources?: KedaSource[];
   status: CappStatusResponse;
 }
 
@@ -130,7 +124,7 @@ export interface ClusterMeta {
 // They are never sent to capp-backend over the network.
 
 export interface LegacyCappSpec {
-  scaleMetric?: ScaleMetric;
+  scaleSpec?: ScaleSpec;
   state?: CappState;
   configurationSpec: {
     template: {
@@ -158,12 +152,6 @@ export interface LegacyCappSpec {
       capacity: { storage: string };
     }>;
   };
-  sources?: Array<{
-    name: string;
-    type: 'kafka';
-    bootstrapServers: string[];
-    topic: string[];
-  }>;
 }
 
 export type LegacyCapp = K8sResource<LegacyCappSpec, unknown>;

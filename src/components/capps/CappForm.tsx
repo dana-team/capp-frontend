@@ -14,7 +14,6 @@ import { ConfigurationSection } from "./sections/ConfigurationSection";
 import { RouteSection } from "./sections/RouteSection";
 import { LogSection } from "./sections/LogSection";
 import { VolumesSection } from "./sections/VolumesSection";
-import { SourcesSection } from "./sections/SourcesSection";
 import { buildCappResource, cappToYaml } from "@/utils/cappBuilder";
 import type { KeyValuePair } from "@/components/ui/KeyValueList";
 import { ScaleMetric, CappState } from "@/types/capp";
@@ -28,17 +27,13 @@ export interface NFSVolumeFormValue {
   capacityUnit: "Mi" | "Gi" | "Ti";
 }
 
-export interface KafkaSourceFormValue {
-  name: string;
-  bootstrapServers: string[];
-  topics: string[];
-}
-
 export type LogType = "elastic" | "elastic-datastream";
 
 export interface CappFormValues {
   name: string;
   scaleMetric: ScaleMetric | "";
+  minReplicas?: number;
+  scaleDelaySeconds?: number;
   state: CappState;
   image: string;
   containerName: string;
@@ -52,7 +47,6 @@ export interface CappFormValues {
   logUser: string;
   logPasswordSecret: string;
   nfsVolumes: NFSVolumeFormValue[];
-  kafkaSources: KafkaSourceFormValue[];
 }
 
 const k8sNameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
@@ -66,7 +60,9 @@ const schema = z.object({
       k8sNameRegex,
       "Name must consist of lowercase alphanumeric characters or hyphens, and start/end with an alphanumeric",
     ),
-  scaleMetric: z.string().optional(),
+  scaleMetric: z.enum(['concurrency', 'cpu', 'memory', 'rps', '']).optional(),
+  minReplicas: z.number().int().min(0).optional(),
+  scaleDelaySeconds: z.number().int().min(0).optional(),
   state: z.enum(["enabled", "disabled"]).default("enabled"),
   image: z.string().min(1, "Container image is required"),
   containerName: z.string().optional(),
@@ -92,20 +88,13 @@ const schema = z.object({
       }),
     )
     .default([]),
-  kafkaSources: z
-    .array(
-      z.object({
-        name: z.string(),
-        bootstrapServers: z.array(z.string()),
-        topics: z.array(z.string()),
-      }),
-    )
-    .default([]),
 });
 
 const defaultValues: CappFormValues = {
   name: "",
   scaleMetric: "",
+  minReplicas: undefined,
+  scaleDelaySeconds: undefined,
   state: "enabled",
   image: "",
   containerName: "",
@@ -119,7 +108,6 @@ const defaultValues: CappFormValues = {
   logUser: "",
   logPasswordSecret: "",
   nfsVolumes: [],
-  kafkaSources: [],
 };
 
 interface CappFormProps {
@@ -212,14 +200,15 @@ export const CappForm: React.FC<CappFormProps> = ({
           const volumes = spec.volumesSpec as
             | Record<string, unknown>
             | undefined;
-          const sources =
-            (spec.sources as Array<Record<string, unknown>>) ?? [];
+          const scaleSpec = spec.scaleSpec as Record<string, unknown> | undefined;
 
           const meta = parsed.metadata as Record<string, unknown> | undefined;
 
           reset({
             name: (meta?.name as string) ?? "",
-            scaleMetric: (spec.scaleMetric as ScaleMetric) ?? "",
+            scaleMetric: (scaleSpec?.metric as ScaleMetric) ?? "",
+            minReplicas: scaleSpec?.minReplicas as number | undefined,
+            scaleDelaySeconds: scaleSpec?.scaleDelaySeconds as number | undefined,
             state: (spec.state as CappState) ?? "enabled",
             image: (container.image as string) ?? "",
             containerName: (container.name as string) ?? "",
@@ -253,11 +242,6 @@ export const CappForm: React.FC<CappFormProps> = ({
                 capacityUnit: (match ? match[2] : "Gi") as "Mi" | "Gi" | "Ti",
               };
             }),
-            kafkaSources: sources.map((s) => ({
-              name: s.name as string,
-              bootstrapServers: (s.bootstrapServers as string[]) ?? [],
-              topics: (s.topic as string[]) ?? [],
-            })),
           });
         }
         setYamlError("");
@@ -348,16 +332,6 @@ export const CappForm: React.FC<CappFormProps> = ({
               <VolumesSection
                 control={control}
                 errors={errors}
-                watch={watch as (name: keyof CappFormValues) => unknown}
-                setValue={
-                  setValue as (
-                    name: keyof CappFormValues,
-                    value: unknown,
-                  ) => void
-                }
-              />
-              <SourcesSection
-                control={control}
                 watch={watch as (name: keyof CappFormValues) => unknown}
                 setValue={
                   setValue as (

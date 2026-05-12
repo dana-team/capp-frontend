@@ -46,7 +46,7 @@ import { useNamespaceContext } from "@/context/NamespaceContext";
 import { CappResponse } from "@/types/capp";
 import { relativeTime } from "@/utils/time";
 
-type SortField = "name" | "namespace" | "state" | "scaleMetric" | "createdAt";
+type SortField = "name" | "namespace" | "state" | "metric" | "createdAt";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 15;
@@ -101,9 +101,9 @@ export const CappListPage: React.FC = () => {
           aVal = a.state ?? "enabled";
           bVal = b.state ?? "enabled";
           break;
-        case "scaleMetric":
-          aVal = a.scaleMetric ?? "";
-          bVal = b.scaleMetric ?? "";
+        case "metric":
+          aVal = a.scaleSpec?.metric ?? "concurrency";
+          bVal = b.scaleSpec?.metric ?? "concurrency";
           break;
         case "createdAt":
           aVal = a.createdAt ?? "";
@@ -269,7 +269,7 @@ export const CappListPage: React.FC = () => {
                     <SortHeader field="state" label="State" />
                   </TableHead>
                   <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
-                    <SortHeader field="scaleMetric" label="Scale Metric" />
+                    <SortHeader field="metric" label="Metric" />
                   </TableHead>
                   <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
                     <SortHeader field="createdAt" label="Created" />
@@ -309,11 +309,9 @@ export const CappListPage: React.FC = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {capp.scaleMetric ? (
-                        <Badge variant="info">{capp.scaleMetric}</Badge>
-                      ) : (
-                        <span className="text-sm text-text-muted">—</span>
-                      )}
+                      <Badge variant={capp.scaleSpec?.metric ? "info" : "default"}>
+                        {capp.scaleSpec?.metric ?? "concurrency"}
+                      </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-text-muted">
                       {relativeTime(capp.createdAt)}
