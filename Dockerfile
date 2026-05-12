@@ -20,10 +20,18 @@ COPY --from=builder /app/dist /srv
 # Copy Caddy configuration
 COPY Caddyfile /etc/caddy/Caddyfile
 
+
+ENV XDG_DATA_HOME=/data \
+    XDG_CONFIG_HOME=/config
+
 # Make Caddy's runtime dirs writable by any group member (group 0) so the
 # container runs under an arbitrary UID assigned by OpenShift's restricted SCC.
-RUN mkdir -p /data /config \
-    && chown -R root:0 /data /config \
-    && chmod -R g=u /data /config
+RUN mkdir -p /data/caddy /config/caddy && \
+    chgrp -R 0 /data /config /usr/share/caddy /etc/caddy && \
+    chmod -R g=u /data /config /usr/share/caddy /etc/caddy
+
+
+USER 1001
+
 
 EXPOSE 8080
