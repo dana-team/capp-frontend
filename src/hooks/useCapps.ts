@@ -6,6 +6,7 @@ import {
   createCapp,
   updateCapp,
   deleteCapp,
+  syncCappToGit,
 } from "@/api/capps";
 import { CappRequest } from "@/types/capp";
 import { useAuthStore } from "@/store/auth";
@@ -70,6 +71,27 @@ export function useUpdateCapp() {
       queryClient.invalidateQueries({
         queryKey: ["capps", getBackendUrl(), cluster],
       });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "capp",
+          getBackendUrl(),
+          cluster,
+          variables.namespace,
+          variables.name,
+        ],
+      });
+    },
+  });
+}
+
+export function useSyncCappToGit() {
+  const queryClient = useQueryClient();
+  const cluster = useAuthStore((s) => s.cluster);
+
+  return useMutation({
+    mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
+      syncCappToGit(namespace, name),
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: [
           "capp",

@@ -8,7 +8,8 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useCapp, useDeleteCapp } from '@/hooks/useCapps'
+import { useCapp, useDeleteCapp, useSyncCappToGit } from '@/hooks/useCapps'
+import { SyncToGitResponse } from '@/types/capp'
 
 export const CappDetailPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>()
@@ -16,9 +17,12 @@ export const CappDetailPage: React.FC = () => {
 
   const { data: capp, isLoading, error } = useCapp(namespace, name)
   const { mutateAsync: deleteCapp, isPending: isDeleting } = useDeleteCapp()
+  const { mutateAsync: syncToGit, isPending: isSyncing } = useSyncCappToGit()
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [syncResult, setSyncResult] = useState<SyncToGitResponse | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   const handleDelete = async () => {
     try {
@@ -26,6 +30,17 @@ export const CappDetailPage: React.FC = () => {
       navigate('/capps')
     } catch (e) {
       setDeleteError((e as Error).message ?? 'Failed to delete Capp')
+    }
+  }
+
+  const handleSync = async () => {
+    setSyncResult(null)
+    setSyncError(null)
+    try {
+      const result = await syncToGit({ namespace, name })
+      setSyncResult(result)
+    } catch (e) {
+      setSyncError((e as Error).message ?? 'Failed to sync to Git')
     }
   }
 
@@ -59,6 +74,10 @@ export const CappDetailPage: React.FC = () => {
             capp={capp}
             onDelete={() => setShowDeleteConfirm(true)}
             isDeleting={isDeleting}
+            onSync={handleSync}
+            isSyncing={isSyncing}
+            syncResult={syncResult}
+            syncError={syncError}
           />
 
           <AlertDialog
