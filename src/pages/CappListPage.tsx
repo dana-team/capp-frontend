@@ -7,8 +7,8 @@ import {
   PencilSimple,
   ArrowsDownUp,
   WarningCircle,
-  CircleNotch,
 } from "@phosphor-icons/react";
+import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { useCapps, useDeleteCapp } from "@/hooks/useCapps";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -65,7 +66,6 @@ export const CappListPage: React.FC = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { mutateAsync: deleteCapp, isPending: isDeleting } = useDeleteCapp();
 
-  // Stats
   const totalCapps = capps?.length ?? 0;
   const enabledCapps =
     capps?.filter((c) => (c.state ?? "enabled") === "enabled").length ?? 0;
@@ -90,13 +90,9 @@ export const CappListPage: React.FC = () => {
       let bVal = "";
       switch (sortField) {
         case "name":
-          aVal = a.name;
-          bVal = b.name;
-          break;
+          aVal = a.name; bVal = b.name; break;
         case "namespace":
-          aVal = a.namespace ?? "";
-          bVal = b.namespace ?? "";
-          break;
+          aVal = a.namespace ?? ""; bVal = b.namespace ?? ""; break;
         case "state":
           aVal = a.state ?? "enabled";
           bVal = b.state ?? "enabled";
@@ -106,9 +102,7 @@ export const CappListPage: React.FC = () => {
           bVal = b.scaleSpec?.metric ?? "concurrency";
           break;
         case "createdAt":
-          aVal = a.createdAt ?? "";
-          bVal = b.createdAt ?? "";
-          break;
+          aVal = a.createdAt ?? ""; bVal = b.createdAt ?? ""; break;
       }
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDir === "asc" ? cmp : -cmp;
@@ -162,58 +156,57 @@ export const CappListPage: React.FC = () => {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-text">Capps</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-text">Capps</h1>
           <p className="mt-0.5 text-sm text-text-muted">
-            {totalCapps} resource{totalCapps !== 1 ? "s" : ""}
-            {selectedNamespace
-              ? ` in ${selectedNamespace}`
-              : " across all namespaces"}
+            {selectedNamespace ? `Namespace: ${selectedNamespace}` : "All namespaces"}
           </p>
         </div>
         <Button variant="primary" onClick={() => navigate("/capps/new")}>
-          <Plus size={15} className="mr-1.5" />
-          Create Capp
+          <Plus size={14} />
+          New Capp
         </Button>
       </div>
 
-      {/* Inline stats */}
-      {!isLoading && (
-        <div className="flex items-center gap-4 text-sm pb-3 border-b border-border">
+      {/* Stats strip */}
+      {!isLoading && capps && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex items-center gap-5 text-sm pb-4 border-b border-border"
+        >
           <span>
-            <span className="font-semibold text-text">{totalCapps}</span>
-            <span className="text-text-muted ml-1">total</span>
+            <span className="font-semibold tabular-nums text-text">{totalCapps}</span>
+            <span className="text-text-muted ml-1.5">total</span>
           </span>
-          <span className="text-text-muted">·</span>
+          <span className="text-border">·</span>
           <span>
-            <span className="font-semibold text-success">{enabledCapps}</span>
-            <span className="text-text-muted ml-1">enabled</span>
+            <span className="font-semibold tabular-nums text-success">{enabledCapps}</span>
+            <span className="text-text-muted ml-1.5">enabled</span>
           </span>
-          <span className="text-text-muted">·</span>
+          <span className="text-border">·</span>
           <span>
-            <span className="font-semibold text-text">{namespaceCount}</span>
-            <span className="text-text-muted ml-1">namespaces</span>
+            <span className="font-semibold tabular-nums text-text">{namespaceCount}</span>
+            <span className="text-text-muted ml-1.5">{namespaceCount === 1 ? "namespace" : "namespaces"}</span>
           </span>
-        </div>
+        </motion.div>
       )}
 
       {/* Search */}
-      <div className="relative max-w-sm">
+      <div className="relative max-w-xs">
         <MagnifyingGlass
-          size={14}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+          size={13}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
         />
         <Input
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          placeholder="Search by name or namespace…"
-          className="pl-9 bg-card border-border"
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Search capps…"
+          className="pl-8 h-8 text-sm bg-card border-border"
         />
       </div>
 
@@ -226,9 +219,119 @@ export const CappListPage: React.FC = () => {
         </Alert>
       )}
 
-      {isLoading && (
-        <div className="flex items-center justify-center py-16">
-          <CircleNotch className="animate-spin h-8 w-8 text-text-muted" />
+      {/* Table */}
+      {(isLoading || paginated.length > 0) && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-surface hover:bg-surface border-border">
+                  <TableHead className="w-2 p-0" />
+                  <TableHead><SortHeader field="name" label="Name" /></TableHead>
+                  <TableHead><SortHeader field="namespace" label="Namespace" /></TableHead>
+                  <TableHead><SortHeader field="state" label="State" /></TableHead>
+                  <TableHead><SortHeader field="metric" label="Metric" /></TableHead>
+                  <TableHead><SortHeader field="createdAt" label="Created" /></TableHead>
+                  <TableHead className="w-24" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <TableRowSkeleton key={i} cols={5} />
+                    ))
+                  : paginated.map((capp, i) => (
+                      <motion.tr
+                        key={`${capp.namespace}/${capp.name}`}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.15, delay: i * 0.03, ease: [0.16, 1, 0.3, 1] }}
+                        className="group border-b border-border/50 last:border-0 hover:bg-primary/[0.04] cursor-pointer transition-colors"
+                        role="link"
+                        tabIndex={0}
+                        onClick={() => navigate(`/capps/${capp.namespace}/${capp.name}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/capps/${capp.namespace}/${capp.name}`); } }}
+                      >
+                        <TableCell className="w-2 p-0" />
+                        <TableCell className="py-2.5">
+                          <Link
+                            to={`/capps/${capp.namespace}/${capp.name}`}
+                            className="font-mono font-medium text-sm text-text hover:text-primary transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {capp.name}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="py-2.5 font-mono text-xs text-text-muted">
+                          {capp.namespace}
+                        </TableCell>
+                        <TableCell className="py-2.5">
+                          <Badge variant={capp.state === "disabled" ? "default" : "success"}>
+                            {capp.state ?? "enabled"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-2.5">
+                          {capp.scaleSpec?.metric ? (
+                            <Badge variant="info">{capp.scaleSpec.metric}</Badge>
+                          ) : (
+                            <span className="text-xs text-text-muted font-mono">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-2.5 font-mono text-xs text-text-muted">
+                          {relativeTime(capp.createdAt)}
+                        </TableCell>
+                        <TableCell className="py-2.5">
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                            <Link
+                              to={`/capps/${capp.namespace}/${capp.name}/edit`}
+                              className="flex h-7 w-7 items-center justify-center rounded text-text-muted hover:bg-primary/10 hover:text-primary transition-all active:scale-95"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <PencilSimple size={13} />
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget(capp);
+                                setDeleteError(null);
+                              }}
+                              className="flex h-7 w-7 items-center justify-center rounded text-text-muted hover:bg-danger/10 hover:text-danger transition-all active:scale-95"
+                            >
+                              <Trash size={13} />
+                            </button>
+                          </div>
+                        </TableCell>
+                      </motion.tr>
+                    ))
+                }
+              </TableBody>
+            </Table>
+          </div>
+
+          {!isLoading && totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage(page - 1)}
+                    className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <span className="px-3 text-sm text-text-muted font-mono">
+                    {page} / {totalPages}
+                  </span>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage(page + 1)}
+                    className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </div>
       )}
 
@@ -242,138 +345,10 @@ export const CappListPage: React.FC = () => {
           }
           action={
             !debouncedSearch
-              ? {
-                  label: "Create Capp",
-                  onClick: () => navigate("/capps/new"),
-                  icon: <Plus size={14} />,
-                }
+              ? { label: "Create Capp", onClick: () => navigate("/capps/new"), icon: <Plus size={14} /> }
               : undefined
           }
         />
-      )}
-
-      {!isLoading && paginated.length > 0 && (
-        <div className="space-y-3">
-          <div className="rounded-xl border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-card hover:bg-card border-border">
-                  <TableHead className="w-2 p-0" />
-                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
-                    <SortHeader field="name" label="Name" />
-                  </TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
-                    <SortHeader field="namespace" label="Namespace" />
-                  </TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
-                    <SortHeader field="state" label="State" />
-                  </TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
-                    <SortHeader field="metric" label="Metric" />
-                  </TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-[0.8px] text-text-muted font-medium">
-                    <SortHeader field="createdAt" label="Created" />
-                  </TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginated.map((capp) => (
-                  <TableRow
-                    key={`${capp.namespace}/${capp.name}`}
-                    className="group border-b border-border/50 hover:bg-primary/[0.06] cursor-pointer transition-colors"
-                    onClick={() =>
-                      navigate(`/capps/${capp.namespace}/${capp.name}`)
-                    }
-                  >
-                    <TableCell className="w-2 p-0" />
-                    <TableCell className="font-semibold text-text text-sm">
-                      <Link
-                        to={`/capps/${capp.namespace}/${capp.name}`}
-                        className="font-mono font-medium text-sm text-text hover:text-primary transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {capp.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-text-muted">
-                      {capp.namespace}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          capp.state === "disabled" ? "default" : "success"
-                        }
-                      >
-                        {capp.state ?? "enabled"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={capp.scaleSpec?.metric ? "info" : "default"}>
-                        {capp.scaleSpec?.metric ?? "concurrency"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-text-muted">
-                      {relativeTime(capp.createdAt)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                        <Link
-                          to={`/capps/${capp.namespace}/${capp.name}/edit`}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-primary/10 hover:text-primary transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <PencilSimple size={13} />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget(capp);
-                            setDeleteError(null);
-                          }}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
-                        >
-                          <Trash size={13} />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setPage(page - 1)}
-                  className={
-                    page === 1
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <span className="px-3 text-sm text-text-muted">
-                  Page {page} of {totalPages}
-                </span>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => setPage(page + 1)}
-                  className={
-                    page === totalPages
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
       )}
 
       <AlertDialog
@@ -387,8 +362,7 @@ export const CappListPage: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Capp</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;?
-              This action cannot be undone.
+              Delete &quot;{deleteTarget?.name}&quot;? This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError && (
@@ -398,17 +372,12 @@ export const CappListPage: React.FC = () => {
             </Alert>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteTarget(null)}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setDeleteTarget(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleDelete()}
               className="bg-danger hover:bg-danger/90 text-white"
               disabled={isDeleting}
             >
-              {isDeleting ? (
-                <CircleNotch className="h-4 w-4 animate-spin" />
-              ) : null}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

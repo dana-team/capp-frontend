@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EyeIcon, WarningCircleIcon, CircleNotchIcon, EyeSlashIcon } from '@phosphor-icons/react'
 import { useAuthStore } from '@/store/auth'
+import { useThemeStore } from '@/store/theme'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -23,6 +24,7 @@ export const LoginPage: React.FC = () => {
   const [authorizeUrl, setAuthorizeUrl] = useState('')
 
   const { setCredentials } = useAuthStore()
+  const { dark } = useThemeStore()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -207,9 +209,19 @@ export const LoginPage: React.FC = () => {
     }
   }
 
+  const sky0   = dark ? 'hsl(220 18% 11%)' : 'hsl(38 57% 87%)'
+  const sky1   = dark ? 'hsl(220 16% 9%)'  : 'hsl(41 50% 82%)'
+  const w1a    = dark ? 'hsl(19 50% 20%)'  : 'hsl(19 61% 49%)'
+  const w1b    = dark ? 'hsl(19 55% 12%)'  : 'hsl(19 65% 30%)'
+  const w2a    = dark ? 'hsl(22 45% 17%)'  : 'hsl(22 60% 42%)'
+  const w2b    = dark ? 'hsl(22 50% 9%)'   : 'hsl(22 62% 24%)'
+  const w3a    = dark ? 'hsl(15 40% 14%)'  : 'hsl(15 58% 38%)'
+  const w3b    = dark ? 'hsl(15 45% 7%)'   : 'hsl(15 60% 22%)'
+  const floor  = dark ? 'hsl(220 18% 14%)' : 'hsl(19 55% 28%)'
+
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden"
-         style={{ background: 'hsl(41 45% 80%)' }}>
+         style={{ background: sky1 }}>
       {/* Canyon silhouette SVG background */}
       <svg
         className="absolute inset-0 w-full h-full"
@@ -220,20 +232,20 @@ export const LoginPage: React.FC = () => {
       >
         <defs>
           <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(38 57% 87%)" />
-            <stop offset="100%" stopColor="hsl(41 50% 82%)" />
+            <stop offset="0%" stopColor={sky0} />
+            <stop offset="100%" stopColor={sky1} />
           </linearGradient>
           <linearGradient id="wall1" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(19 61% 49%)" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="hsl(19 65% 30%)" stopOpacity="0.7" />
+            <stop offset="0%" stopColor={w1a} stopOpacity="0.55" />
+            <stop offset="100%" stopColor={w1b} stopOpacity="0.7" />
           </linearGradient>
           <linearGradient id="wall2" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(22 60% 42%)" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="hsl(22 62% 24%)" stopOpacity="0.6" />
+            <stop offset="0%" stopColor={w2a} stopOpacity="0.4" />
+            <stop offset="100%" stopColor={w2b} stopOpacity="0.6" />
           </linearGradient>
           <linearGradient id="wall3" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(15 58% 38%)" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="hsl(15 60% 22%)" stopOpacity="0.5" />
+            <stop offset="0%" stopColor={w3a} stopOpacity="0.3" />
+            <stop offset="100%" stopColor={w3b} stopOpacity="0.5" />
           </linearGradient>
         </defs>
         <rect width="1200" height="800" fill="url(#sky)" />
@@ -244,7 +256,7 @@ export const LoginPage: React.FC = () => {
         {/* Closer right wall */}
         <path d="M1020,0 L1200,0 L1200,800 L1080,800 L1050,570 L1100,400 L1060,220 L1020,0 Z" fill="url(#wall2)" />
         {/* Floor hint */}
-        <path d="M0,740 Q300,720 600,730 Q900,740 1200,725 L1200,800 L0,800 Z" fill="hsl(19 55% 28%)" opacity="0.25" />
+        <path d="M0,740 Q300,720 600,730 Q900,740 1200,725 L1200,800 L0,800 Z" fill={floor} opacity="0.25" />
       </svg>
 
       {/* Login card */}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import {
   BrowserRouter,
   Routes,
@@ -13,6 +13,7 @@ import { CreateCappPage } from '@/pages/CreateCappPage';
 import { EditCappPage } from '@/pages/EditCappPage';
 import { CappDetailPage } from '@/pages/CappDetailPage';
 import { useAuthStore } from '@/store/auth';
+import { useThemeStore } from '@/store/theme';
 import { ConfigMapListPage } from '@/pages/ConfigMapListPage';
 import { ConfigMapDetailPage } from '@/pages/ConfigMapDetailPage';
 import { CreateConfigMapPage } from '@/pages/CreateConfigMapPage';
@@ -37,6 +38,12 @@ const ProtectedLayout: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const dark = useThemeStore((s) => s.dark);
+
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+  }, [dark]);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -56,7 +63,6 @@ const App: React.FC = () => {
           <Route path="/secrets/:namespace/:name" element={<SecretDetailPage />} />
           <Route path="/secrets/:namespace/:name/edit" element={<EditSecretPage />} />
         </Route>
-        {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
