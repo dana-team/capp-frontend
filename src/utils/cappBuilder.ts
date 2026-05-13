@@ -13,7 +13,15 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
     image: values.image,
   };
 
-  if (values.scaleMetric) req.scaleMetric = values.scaleMetric as ScaleMetric;
+  const hasScaleSpec = values.scaleMetric || values.minReplicas !== undefined || values.scaleDelaySeconds !== undefined;
+  if (hasScaleSpec) {
+    req.scaleSpec = {
+      ...(values.scaleMetric ? { metric: values.scaleMetric as ScaleMetric } : {}),
+      ...(values.minReplicas !== undefined ? { minReplicas: values.minReplicas } : {}),
+      ...(values.scaleDelaySeconds !== undefined ? { scaleDelaySeconds: values.scaleDelaySeconds } : {}),
+    };
+  }
+
   if (values.state) req.state = values.state;
   if (values.containerName) req.containerName = values.containerName;
 
@@ -67,7 +75,9 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
 
   return {
     name: capp.name,
-    scaleMetric: capp.scaleMetric ?? '',
+    scaleMetric: (capp.scaleSpec?.metric as ScaleMetric) ?? '',
+    minReplicas: capp.scaleSpec?.minReplicas,
+    scaleDelaySeconds: capp.scaleSpec?.scaleDelaySeconds,
     state: capp.state ?? 'enabled',
     image: capp.image,
     containerName: capp.containerName ?? '',
@@ -90,7 +100,6 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
         capacityUnit: unit as 'Mi' | 'Gi' | 'Ti',
       };
     }),
-    kafkaSources: [],
   };
 }
 
@@ -117,7 +126,15 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
     },
   };
 
-  if (values.scaleMetric) spec.scaleMetric = values.scaleMetric as ScaleMetric;
+  const hasScaleSpec = values.scaleMetric || values.minReplicas !== undefined || values.scaleDelaySeconds !== undefined;
+  if (hasScaleSpec) {
+    spec.scaleSpec = {
+      ...(values.scaleMetric ? { metric: values.scaleMetric as ScaleMetric } : {}),
+      ...(values.minReplicas !== undefined ? { minReplicas: values.minReplicas } : {}),
+      ...(values.scaleDelaySeconds !== undefined ? { scaleDelaySeconds: values.scaleDelaySeconds } : {}),
+    };
+  }
+
   if (values.state) spec.state = values.state as CappState;
 
   const hasRoute = values.hostname || values.tlsEnabled !== undefined || values.routeTimeoutSeconds !== undefined;
@@ -154,15 +171,6 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
     };
   }
 
-  if (values.kafkaSources.length > 0) {
-    spec.sources = values.kafkaSources.map((s) => ({
-      name: s.name,
-      type: 'kafka' as const,
-      bootstrapServers: s.bootstrapServers,
-      topic: s.topics,
-    }));
-  }
-
   return {
     apiVersion: 'rcs.dana.io/v1alpha1',
     kind: 'Capp',
@@ -177,11 +185,12 @@ export function cappToYaml(capp: LegacyCapp): string {
 
 export function yamlToCappFormValues(yamlStr: string): CappFormValues {
   const capp = yaml.load(yamlStr) as LegacyCapp;
-  // Convert through a CappResponse-like intermediate for the shared path
   const container = capp.spec.configurationSpec.template.spec.containers[0] ?? { image: '' };
   return {
     name: capp.metadata.name,
-    scaleMetric: capp.spec.scaleMetric ?? '',
+    scaleMetric: (capp.spec.scaleSpec?.metric as ScaleMetric) ?? '',
+    minReplicas: capp.spec.scaleSpec?.minReplicas,
+    scaleDelaySeconds: capp.spec.scaleSpec?.scaleDelaySeconds,
     state: capp.spec.state ?? 'enabled',
     image: container.image,
     containerName: container.name ?? '',
@@ -204,10 +213,5 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
         capacityUnit: (match ? match[2] : 'Gi') as 'Mi' | 'Gi' | 'Ti',
       };
     }),
-    kafkaSources: (capp.spec.sources ?? []).map((s) => ({
-      name: s.name,
-      bootstrapServers: s.bootstrapServers,
-      topics: s.topic,
-    })),
   };
 }
