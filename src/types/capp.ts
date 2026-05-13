@@ -111,6 +111,19 @@ export interface CappListResponse {
   total: number;
 }
 
+// ── Sync to Git ────────────────────────────────────────────────────────────
+
+export interface SyncToGitResponse {
+  commitSha: string;
+  path: string;
+}
+
+export const LABEL_BACKUP_TO_GIT = 'rcs.dana.io/backup-to-git';
+
+export function hasBackupLabel(labels?: Record<string, string>): boolean {
+  return labels != null && labels[LABEL_BACKUP_TO_GIT] === 'true';
+}
+
 // ── Cluster ────────────────────────────────────────────────────────────────
 
 export interface ClusterMeta {

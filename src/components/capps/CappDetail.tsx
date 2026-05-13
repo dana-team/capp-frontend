@@ -1,18 +1,22 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { PencilSimple, Trash, Globe, ShieldCheck, Pulse, Clock, Cube, CircleNotch, ArrowSquareOut, HardDrives } from '@phosphor-icons/react'
+import { PencilSimple, Trash, Globe, ShieldCheck, Pulse, Clock, Cube, CircleNotch, ArrowSquareOut, HardDrives, GitBranch, CheckCircle } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ConditionsTable } from './ConditionsTable'
-import { CappResponse } from '@/types/capp'
+import { CappResponse, hasBackupLabel, SyncToGitResponse } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
 
 interface CappDetailProps {
   capp: CappResponse
   onDelete?: () => void
   isDeleting?: boolean
+  onSync?: () => void
+  isSyncing?: boolean
+  syncResult?: SyncToGitResponse | null
+  syncError?: string | null
 }
 
 const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode }> = ({
@@ -27,8 +31,11 @@ const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: React.Rea
   </div>
 )
 
-export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleting }) => {
+export const CappDetail: React.FC<CappDetailProps> = ({
+  capp, onDelete, isDeleting, onSync, isSyncing, syncResult, syncError,
+}) => {
   const namespace = capp.namespace
+  const isSynced = hasBackupLabel(capp.labels)
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,6 +47,11 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
             <Badge variant={capp.state === 'disabled' ? 'default' : 'success'}>
               {capp.state ?? 'enabled'}
             </Badge>
+            {isSynced && (
+              <Badge variant="info" className="gap-1">
+                <GitBranch size={12} /> Synced to Git
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="namespace">{namespace}</Badge>
@@ -51,6 +63,15 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {onSync && (
+            <Button variant="secondary" size="sm" onClick={onSync} disabled={isSyncing}>
+              {isSyncing
+                ? <CircleNotch size={14} className="mr-1.5 animate-spin" />
+                : <GitBranch size={14} className="mr-1.5" />
+              }
+              {isSynced ? 'Re-sync to Git' : 'Sync to Git'}
+            </Button>
+          )}
           <Link to={`/capps/${namespace}/${capp.name}/edit`}>
             <Button variant="secondary" size="sm">
               <PencilSimple size={14} className="mr-1.5" /> Edit
@@ -67,6 +88,24 @@ export const CappDetail: React.FC<CappDetailProps> = ({ capp, onDelete, isDeleti
           )}
         </div>
       </div>
+
+      {/* Sync result banner */}
+      {syncResult && (
+        <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-4 py-3 text-sm text-success">
+          <CheckCircle size={16} weight="fill" />
+          <span>
+            Synced to <span className="font-mono">{syncResult.path}</span>
+            {' '}— commit{' '}
+            <span className="font-mono">{syncResult.commitSha.slice(0, 7)}</span>
+          </span>
+        </div>
+      )}
+
+      {syncError && (
+        <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+          <span>Sync failed: {syncError}</span>
+        </div>
+      )}
 
       {/* 2-column card grid */}
       <div className="grid grid-cols-2 gap-4">

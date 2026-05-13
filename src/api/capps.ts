@@ -1,5 +1,5 @@
 import { backendClient, clusterBase } from './client';
-import { CappRequest, CappResponse, CappListResponse } from '@/types/capp';
+import { CappRequest, CappResponse, CappListResponse, SyncToGitResponse } from '@/types/capp';
 
 
 /** List all Capps across all namespaces in the selected cluster. */
@@ -42,5 +42,12 @@ export function deleteCapp(namespace: string, name: string): Promise<void> {
   return backendClient<void>(
     `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}`,
     { method: 'DELETE' }
+  );
+}
+
+export function syncCappToGit(namespace: string, name: string): Promise<SyncToGitResponse> {
+  return backendClient<SyncToGitResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/sync`,
+    { method: 'POST' }
   );
 }
