@@ -24,6 +24,8 @@ COPY Caddyfile /etc/caddy/Caddyfile
 ENV XDG_DATA_HOME=/data \
     XDG_CONFIG_HOME=/config
 
+RUN setcap -r /usr/bin/caddy 2>/dev/null || true
+
 # Make Caddy's runtime dirs writable by any group member (group 0) so the
 # container runs under an arbitrary UID assigned by OpenShift's restricted SCC.
 RUN mkdir -p /data/caddy /config/caddy && \
