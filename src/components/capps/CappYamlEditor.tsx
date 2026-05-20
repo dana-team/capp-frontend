@@ -1,8 +1,7 @@
 import React from "react";
 import { WarningCircle } from "@phosphor-icons/react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import CodeEditor from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
+import CodeEditor, { type Monaco } from "@monaco-editor/react";
 
 interface CappYamlEditorProps {
   handleYamlChange: (value: string) => void;
@@ -17,7 +16,7 @@ export const CappYamlEditor: React.FC<CappYamlEditorProps> = ({
 }) => {
   const lineCount = yamlContent.split("\n").length;
 
-  const handleEditorWillMount = (monacoInstance: typeof monaco) => {
+  const handleEditorWillMount = (monacoInstance: Monaco) => {
     monacoInstance.editor.defineTheme("myTheme", {
       base: "vs",
       inherit: true,
