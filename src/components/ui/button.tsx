@@ -34,7 +34,7 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ComponentProps<"button">,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
   loading?: boolean
@@ -42,25 +42,34 @@ export interface ButtonProps
   iconPosition?: 'left' | 'right'
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading, icon, iconPosition = 'left', disabled, children, ...props }, ref) => {
-    const isDisabled = disabled || loading
-    const Comp = asChild ? Slot : "button"
-    return (
-      <Comp
-        ref={ref}
-        disabled={isDisabled}
-        className={cn(buttonVariants({ variant, size, className }))}
-        {...props}
-      >
-        {loading && <CircleNotch className="h-4 w-4 animate-spin" />}
-        {!loading && icon && iconPosition !== 'right' && <span className="shrink-0">{icon}</span>}
-        {children}
-        {!loading && icon && iconPosition === 'right' && <span className="shrink-0">{icon}</span>}
-      </Comp>
-    )
-  }
-)
-Button.displayName = "Button"
+const Button = ({
+  className,
+  variant,
+  size,
+  asChild = false,
+  loading,
+  icon,
+  iconPosition = 'left',
+  disabled,
+  children,
+  ref,
+  ...props
+}: ButtonProps) => {
+  const isDisabled = disabled || loading
+  const Comp = asChild ? Slot : "button"
+  return (
+    <Comp
+      ref={ref as React.Ref<HTMLButtonElement>}
+      disabled={isDisabled}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    >
+      {loading && <CircleNotch className="h-4 w-4 animate-spin" />}
+      {!loading && icon && iconPosition !== 'right' && <span className="shrink-0">{icon}</span>}
+      {children}
+      {!loading && icon && iconPosition === 'right' && <span className="shrink-0">{icon}</span>}
+    </Comp>
+  )
+}
 
 export { Button, buttonVariants }
