@@ -60,10 +60,17 @@ export const LoginPage: React.FC = () => {
          if (!authRes.ok) {
             throw new Error('Failed to get OpenShift authorize URL')
           }
-          const data = await authRes.json() as { authorizeUrl: string }
+          const data = await authRes.json() as { authorizeUrl: string; state?: string }
           if (!data.authorizeUrl) {
             throw new Error('OpenShift authorize URL is missing')
           }
+          try {
+            if (data.state) {
+              sessionStorage.setItem('openshift_oauth_state', data.state)
+            } else {
+              sessionStorage.removeItem('openshift_oauth_state')
+            }
+          } catch { /* sessionStorage unavailable (private mode) — proceed without CSRF state */ }
           setAuthorizeUrl(data.authorizeUrl)
           setAuthMode('openshift')
           return
@@ -94,10 +101,15 @@ export const LoginPage: React.FC = () => {
     setError('')
     ;(async () => {
       try {
+        let storedState = ''
+        try { storedState = sessionStorage.getItem('openshift_oauth_state') ?? '' } catch { /* unavailable */ }
+        const urlState = searchParams.get('state') ?? ''
+        const state = storedState || urlState
+
         const res = await fetch(`${base}/api/v1/auth/openshift/callback`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...devHeaders },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, state }),
         })
         if (!res.ok) {
           let message = 'OAuth authentication failed'
@@ -111,8 +123,10 @@ export const LoginPage: React.FC = () => {
           accessToken: string
           refreshToken: string
         }
+        try { sessionStorage.removeItem('openshift_oauth_state') } catch { /* unavailable */ }
         await finishLogin(accessToken, refreshToken)
       } catch (err) {
+        try { sessionStorage.removeItem('openshift_oauth_state') } catch { /* unavailable */ }
         setError(err instanceof Error ? err.message : 'Authentication failed')
         setIsLoading(false)
         // Clear the code from the URL so the user can retry
