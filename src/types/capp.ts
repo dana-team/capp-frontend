@@ -8,7 +8,11 @@ export type CappState = 'enabled' | 'disabled';
 
 export interface EnvVar {
   name: string;
-  value: string;
+  value?: string;
+  valueFrom?: {
+    secretKeyRef?: { name: string; key: string };
+    configMapKeyRef?: { name: string; key: string };
+  };
 }
 
 export interface VolumeMount {
@@ -37,6 +41,18 @@ export interface NFSVolume {
   capacity: string; // e.g. "10Gi"
 }
 
+export interface SecretVolume {
+  name: string;
+  secretName: string;
+  mountPath: string;
+}
+
+export interface ConfigMapVolume {
+  name: string;
+  configMapName: string;
+  mountPath: string;
+}
+
 export interface ScaleSpec {
   metric?: ScaleMetric | '';
   minReplicas?: number;
@@ -57,6 +73,8 @@ export interface CappRequest {
   routeSpec?: RouteSpec;
   logSpec?: LogSpec;
   nfsVolumes?: NFSVolume[];
+  secretVolumes?: SecretVolume[];
+  configMapVolumes?: ConfigMapVolume[];
 }
 
 // ── Response types ─────────────────────────────────────────────────────────
@@ -103,6 +121,8 @@ export interface CappResponse {
   routeSpec?: RouteSpec;
   logSpec?: LogSpec;
   nfsVolumes?: NFSVolume[];
+  secretVolumes?: SecretVolume[];
+  configMapVolumes?: ConfigMapVolume[];
   status: CappStatusResponse;
 }
 
@@ -164,6 +184,8 @@ export interface LegacyCappSpec {
       path: string;
       capacity: { storage: string };
     }>;
+    secretVolumes?: Array<{ name: string; secretName: string; mountPath: string }>;
+    configMapVolumes?: Array<{ name: string; configMapName: string; mountPath: string }>;
   };
 }
 

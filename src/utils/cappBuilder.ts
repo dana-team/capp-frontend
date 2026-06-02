@@ -26,7 +26,15 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
   if (values.containerName) req.containerName = values.containerName;
 
   if (values.envVars.length > 0) {
-    req.env = values.envVars.map((ev) => ({ name: ev.key, value: ev.value }));
+    req.env = values.envVars.map((ev) => {
+      if (ev.source === 'secretKeyRef') {
+        return { name: ev.name, valueFrom: { secretKeyRef: { name: ev.refName, key: ev.refKey } } };
+      }
+      if (ev.source === 'configMapKeyRef') {
+        return { name: ev.name, valueFrom: { configMapKeyRef: { name: ev.refName, key: ev.refKey } } };
+      }
+      return { name: ev.name, value: ev.value ?? '' };
+    });
   }
 
   const hasRoute = values.hostname || values.tlsEnabled !== undefined || values.routeTimeoutSeconds !== undefined;
@@ -61,6 +69,22 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
     }));
   }
 
+  if (values.secretVolumes.length > 0) {
+    req.secretVolumes = values.secretVolumes.map((v) => ({
+      name: v.volumeName,
+      secretName: v.secretName,
+      mountPath: v.mountPath,
+    }));
+  }
+
+  if (values.configMapVolumes.length > 0) {
+    req.configMapVolumes = values.configMapVolumes.map((v) => ({
+      name: v.volumeName,
+      configMapName: v.configMapName,
+      mountPath: v.mountPath,
+    }));
+  }
+
   return req;
 }
 
@@ -81,7 +105,15 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     state: capp.state ?? 'enabled',
     image: capp.image,
     containerName: capp.containerName ?? '',
-    envVars: (capp.env ?? []).map((e) => ({ key: e.name, value: e.value })),
+    envVars: (capp.env ?? []).map((e) => {
+      if (e.valueFrom?.secretKeyRef) {
+        return { name: e.name, source: 'secretKeyRef' as const, value: '', refName: e.valueFrom.secretKeyRef.name, refKey: e.valueFrom.secretKeyRef.key };
+      }
+      if (e.valueFrom?.configMapKeyRef) {
+        return { name: e.name, source: 'configMapKeyRef' as const, value: '', refName: e.valueFrom.configMapKeyRef.name, refKey: e.valueFrom.configMapKeyRef.key };
+      }
+      return { name: e.name, source: 'literal' as const, value: e.value ?? '', refName: '', refKey: '' };
+    }),
     hostname: capp.routeSpec?.hostname ?? '',
     tlsEnabled: capp.routeSpec?.tlsEnabled,
     routeTimeoutSeconds: capp.routeSpec?.routeTimeoutSeconds ?? undefined,
@@ -100,6 +132,16 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
         capacityUnit: unit as 'Mi' | 'Gi' | 'Ti',
       };
     }),
+    secretVolumes: (capp.secretVolumes ?? []).map((v) => ({
+      volumeName: v.name,
+      secretName: v.secretName,
+      mountPath: v.mountPath,
+    })),
+    configMapVolumes: (capp.configMapVolumes ?? []).map((v) => ({
+      volumeName: v.name,
+      configMapName: v.configMapName,
+      mountPath: v.mountPath,
+    })),
   };
 }
 
@@ -117,7 +159,15 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
               ...(values.containerName ? { name: values.containerName } : {}),
               image: values.image,
               ...(values.envVars.length > 0
-                ? { env: values.envVars.map((ev) => ({ name: ev.key, value: ev.value })) }
+                ? { env: values.envVars.map((ev) => {
+                  if (ev.source === 'secretKeyRef') {
+                    return { name: ev.name, valueFrom: { secretKeyRef: { name: ev.refName, key: ev.refKey } } };
+                  }
+                  if (ev.source === 'configMapKeyRef') {
+                    return { name: ev.name, valueFrom: { configMapKeyRef: { name: ev.refName, key: ev.refKey } } };
+                  }
+                  return { name: ev.name, value: ev.value ?? '' };
+                }) }
                 : {}),
             },
           ],
@@ -160,14 +210,31 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
     }
   }
 
-  if (values.nfsVolumes.length > 0) {
+  const hasVolumes = values.nfsVolumes.length > 0 || values.secretVolumes.length > 0 || values.configMapVolumes.length > 0;
+  if (hasVolumes) {
     spec.volumesSpec = {
-      nfsVolumes: values.nfsVolumes.map((v) => ({
-        name: v.name,
-        server: v.server,
-        path: v.path,
-        capacity: { storage: `${v.capacityValue}${v.capacityUnit}` },
-      })),
+      ...(values.nfsVolumes.length > 0 ? {
+        nfsVolumes: values.nfsVolumes.map((v) => ({
+          name: v.name,
+          server: v.server,
+          path: v.path,
+          capacity: { storage: `${v.capacityValue}${v.capacityUnit}` },
+        })),
+      } : {}),
+      ...(values.secretVolumes.length > 0 ? {
+        secretVolumes: values.secretVolumes.map((v) => ({
+          name: v.volumeName,
+          secretName: v.secretName,
+          mountPath: v.mountPath,
+        })),
+      } : {}),
+      ...(values.configMapVolumes.length > 0 ? {
+        configMapVolumes: values.configMapVolumes.map((v) => ({
+          name: v.volumeName,
+          configMapName: v.configMapName,
+          mountPath: v.mountPath,
+        })),
+      } : {}),
     };
   }
 
@@ -194,7 +261,15 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     state: capp.spec.state ?? 'enabled',
     image: container.image,
     containerName: container.name ?? '',
-    envVars: (container.env ?? []).map((e) => ({ key: e.name, value: e.value })),
+    envVars: (container.env ?? []).map((e) => {
+      if (e.valueFrom?.secretKeyRef) {
+        return { name: e.name, source: 'secretKeyRef' as const, value: '', refName: e.valueFrom.secretKeyRef.name, refKey: e.valueFrom.secretKeyRef.key };
+      }
+      if (e.valueFrom?.configMapKeyRef) {
+        return { name: e.name, source: 'configMapKeyRef' as const, value: '', refName: e.valueFrom.configMapKeyRef.name, refKey: e.valueFrom.configMapKeyRef.key };
+      }
+      return { name: e.name, source: 'literal' as const, value: e.value ?? '', refName: '', refKey: '' };
+    }),
     hostname: capp.spec.routeSpec?.hostname ?? '',
     tlsEnabled: capp.spec.routeSpec?.tlsEnabled,
     routeTimeoutSeconds: capp.spec.routeSpec?.routeTimeoutSeconds,
@@ -213,5 +288,15 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
         capacityUnit: (match ? match[2] : 'Gi') as 'Mi' | 'Gi' | 'Ti',
       };
     }),
+    secretVolumes: (capp.spec.volumesSpec?.secretVolumes ?? []).map((v) => ({
+      volumeName: v.name,
+      secretName: v.secretName,
+      mountPath: v.mountPath,
+    })),
+    configMapVolumes: (capp.spec.volumesSpec?.configMapVolumes ?? []).map((v) => ({
+      volumeName: v.name,
+      configMapName: v.configMapName,
+      mountPath: v.mountPath,
+    })),
   };
 }

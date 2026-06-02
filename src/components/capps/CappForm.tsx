@@ -15,7 +15,6 @@ import { RouteSection } from "./sections/RouteSection";
 import { LogSection } from "./sections/LogSection";
 import { VolumesSection } from "./sections/VolumesSection";
 import { buildCappResource, cappToYaml } from "@/utils/cappBuilder";
-import type { KeyValuePair } from "@/components/ui/KeyValueList";
 import { ScaleMetric, CappState } from "@/types/capp";
 import { CappYamlEditor } from "./CappYamlEditor";
 
@@ -25,6 +24,28 @@ export interface NFSVolumeFormValue {
   path: string;
   capacityValue: string;
   capacityUnit: "Mi" | "Gi" | "Ti";
+}
+
+export type EnvVarSource = 'literal' | 'secretKeyRef' | 'configMapKeyRef';
+
+export interface EnvVarFormEntry {
+  name: string;
+  source: EnvVarSource;
+  value: string;       // used when source === 'literal'
+  refName: string;     // secret or configmap name
+  refKey: string;      // key within that secret/configmap
+}
+
+export interface SecretVolumeFormValue {
+  volumeName: string;
+  secretName: string;
+  mountPath: string;
+}
+
+export interface ConfigMapVolumeFormValue {
+  volumeName: string;
+  configMapName: string;
+  mountPath: string;
 }
 
 export type LogType = "elastic" | "elastic-datastream";
@@ -37,7 +58,7 @@ export interface CappFormValues {
   state: CappState;
   image: string;
   containerName: string;
-  envVars: KeyValuePair[];
+  envVars: EnvVarFormEntry[];
   hostname: string;
   tlsEnabled?: boolean;
   routeTimeoutSeconds?: number;
@@ -47,6 +68,8 @@ export interface CappFormValues {
   logUser: string;
   logPasswordSecret: string;
   nfsVolumes: NFSVolumeFormValue[];
+  secretVolumes: SecretVolumeFormValue[];
+  configMapVolumes: ConfigMapVolumeFormValue[];
 }
 
 const k8sNameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
@@ -66,9 +89,22 @@ const schema = z.object({
   state: z.enum(["enabled", "disabled"]).default("enabled"),
   image: z.string().min(1, "Container image is required"),
   containerName: z.string().optional(),
-  envVars: z
-    .array(z.object({ key: z.string(), value: z.string() }))
-    .default([]),
+  envVars: z.array(z.object({
+    name: z.string().min(1, 'Name is required'),
+    source: z.enum(['literal', 'secretKeyRef', 'configMapKeyRef']),
+    value: z.string(),
+    refName: z.string(),
+    refKey: z.string(),
+  }).superRefine((row, ctx) => {
+    if (row.source !== 'literal') {
+      if (!row.refName) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Select a resource', path: ['refName'] });
+      }
+      if (!row.refKey) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Select a key', path: ['refKey'] });
+      }
+    }
+  })).default([]),
   hostname: z.string().optional(),
   tlsEnabled: z.boolean().optional(),
   routeTimeoutSeconds: z.number().optional(),
@@ -88,6 +124,16 @@ const schema = z.object({
       }),
     )
     .default([]),
+  secretVolumes: z.array(z.object({
+    volumeName: z.string(),
+    secretName: z.string(),
+    mountPath: z.string(),
+  })).default([]),
+  configMapVolumes: z.array(z.object({
+    volumeName: z.string(),
+    configMapName: z.string(),
+    mountPath: z.string(),
+  })).default([]),
 });
 
 const defaultValues: CappFormValues = {
@@ -108,6 +154,8 @@ const defaultValues: CappFormValues = {
   logUser: "",
   logPasswordSecret: "",
   nfsVolumes: [],
+  secretVolumes: [],
+  configMapVolumes: [],
 };
 
 interface CappFormProps {
@@ -213,8 +261,20 @@ export const CappForm: React.FC<CappFormProps> = ({
             image: (container.image as string) ?? "",
             containerName: (container.name as string) ?? "",
             envVars: (
-              (container.env as Array<{ name: string; value: string }>) ?? []
-            ).map((e) => ({ key: e.name, value: e.value })),
+              (container.env as Array<{
+                name: string;
+                value?: string;
+                valueFrom?: { secretKeyRef?: { name: string; key: string }; configMapKeyRef?: { name: string; key: string } };
+              }>) ?? []
+            ).map((e): EnvVarFormEntry => {
+              if (e.valueFrom?.secretKeyRef) {
+                return { name: e.name, source: 'secretKeyRef', value: '', refName: e.valueFrom.secretKeyRef.name, refKey: e.valueFrom.secretKeyRef.key };
+              }
+              if (e.valueFrom?.configMapKeyRef) {
+                return { name: e.name, source: 'configMapKeyRef', value: '', refName: e.valueFrom.configMapKeyRef.name, refKey: e.valueFrom.configMapKeyRef.key };
+              }
+              return { name: e.name, source: 'literal', value: e.value ?? '', refName: '', refKey: '' };
+            }),
             hostname: (route?.hostname as string) ?? "",
             tlsEnabled: route?.tlsEnabled as boolean | undefined,
             routeTimeoutSeconds: route?.routeTimeoutSeconds as
@@ -242,6 +302,20 @@ export const CappForm: React.FC<CappFormProps> = ({
                 capacityUnit: (match ? match[2] : "Gi") as "Mi" | "Gi" | "Ti",
               };
             }),
+            secretVolumes: (
+              (volumes?.secretVolumes as Array<{ name: string; secretName: string; mountPath: string }>) ?? []
+            ).map((v): SecretVolumeFormValue => ({
+              volumeName: v.name,
+              secretName: v.secretName,
+              mountPath: v.mountPath,
+            })),
+            configMapVolumes: (
+              (volumes?.configMapVolumes as Array<{ name: string; configMapName: string; mountPath: string }>) ?? []
+            ).map((v): ConfigMapVolumeFormValue => ({
+              volumeName: v.name,
+              configMapName: v.configMapName,
+              mountPath: v.mountPath,
+            })),
           });
         }
         setYamlError("");
@@ -322,7 +396,9 @@ export const CappForm: React.FC<CappFormProps> = ({
               <ConfigurationSection
                 control={control}
                 errors={errors}
+                namespace={namespace}
                 watch={watch as (name: keyof CappFormValues) => unknown}
+                setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
               />
               <RouteSection
                 control={control}
@@ -331,14 +407,9 @@ export const CappForm: React.FC<CappFormProps> = ({
               <LogSection control={control} />
               <VolumesSection
                 control={control}
-                errors={errors}
                 watch={watch as (name: keyof CappFormValues) => unknown}
-                setValue={
-                  setValue as (
-                    name: keyof CappFormValues,
-                    value: unknown,
-                  ) => void
-                }
+                setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
+                namespace={namespace}
               />
             </Accordion>
           </div>
