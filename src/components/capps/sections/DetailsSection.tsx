@@ -100,6 +100,32 @@ export const DetailsSection: React.FC<DetailsSectionProps> = ({ control }) => {
             )}
           />
         </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Controller
+            name="size"
+            control={control}
+            render={({ field }) => (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-text-secondary">Size</label>
+                <Select
+                  value={field.value === '' || field.value == null ? '__none__' : field.value as string}
+                  onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
+                >
+                  <SelectTrigger className="w-full bg-card border-border">
+                    <SelectValue placeholder="None (no preset)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None (no preset)</SelectItem>
+                    <SelectItem value="small">Small</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="large">Large</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-text-muted">Container resource preset (CPU + memory requests/limits)</p>
+              </div>
+            )}
+          />
+        </div>
       </div>
     </SectionAccordion>
   );

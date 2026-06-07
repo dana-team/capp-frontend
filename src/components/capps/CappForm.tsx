@@ -15,7 +15,7 @@ import { RouteSection } from "./sections/RouteSection";
 import { LogSection } from "./sections/LogSection";
 import { VolumesSection } from "./sections/VolumesSection";
 import { buildCappResource, cappToYaml } from "@/utils/cappBuilder";
-import { ScaleMetric, CappState } from "@/types/capp";
+import { ScaleMetric, CappState, CappSize } from "@/types/capp";
 import { CappYamlEditor } from "./CappYamlEditor";
 
 export interface NFSVolumeFormValue {
@@ -56,6 +56,7 @@ export interface CappFormValues {
   minReplicas?: number;
   scaleDelaySeconds?: number;
   state: CappState;
+  size: CappSize | '';
   image: string;
   containerName: string;
   envVars: EnvVarFormEntry[];
@@ -87,6 +88,7 @@ const schema = z.object({
   minReplicas: z.number().int().min(0).optional(),
   scaleDelaySeconds: z.number().int().min(0).optional(),
   state: z.enum(["enabled", "disabled"]).default("enabled"),
+  size: z.enum(['small', 'medium', 'large', '']).optional(),
   image: z.string().min(1, "Container image is required"),
   containerName: z.string().optional(),
   envVars: z.array(z.object({
@@ -142,6 +144,7 @@ const defaultValues: CappFormValues = {
   minReplicas: undefined,
   scaleDelaySeconds: undefined,
   state: "enabled",
+  size: '',
   image: "",
   containerName: "",
   envVars: [],
@@ -316,6 +319,7 @@ export const CappForm: React.FC<CappFormProps> = ({
               configMapName: v.configMapName,
               mountPath: v.mountPath,
             })),
+            size: (spec.size as CappSize | '') ?? '',
           });
         }
         setYamlError("");
