@@ -1,3 +1,4 @@
+@import "tailwindcss";
 @import './styles/theme.css';
 @import '@fontsource/outfit/400.css';
 @import '@fontsource/outfit/500.css';
@@ -5,10 +6,6 @@
 @import '@fontsource/outfit/700.css';
 @import '@fontsource/dm-mono/400.css';
 @import '@fontsource/dm-mono/500.css';
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 @layer base {
   * {
