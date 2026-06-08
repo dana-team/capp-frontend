@@ -7,9 +7,9 @@ metadata:
   labels:
     {{- include "capp-frontend.labels" . | nindent 4 }}
 spec:
-  scaleMetric: {{ .Values.capp.scaleMetric }}
+  scaleSpec:
+    metric: {{ .Values.capp.scaleMetric }}
   state: {{ .Values.capp.state }}
-
   configurationSpec:
     template:
       spec:

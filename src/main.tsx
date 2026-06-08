@@ -9,6 +9,7 @@ import '@fontsource/outfit/700.css';
 import '@fontsource/outfit/800.css';
 import '@fontsource/dm-mono/400.css';
 import '@fontsource/dm-mono/500.css';
+import './lib/monacoSetup';
 import App from './App';
 import './index.css';
 
