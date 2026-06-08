@@ -5,6 +5,7 @@ import type { K8sResource } from './kubernetes';
 
 export type ScaleMetric = 'concurrency' | 'cpu' | 'memory' | 'rps';
 export type CappState = 'enabled' | 'disabled';
+export type CappSize = 'small' | 'medium' | 'large';
 
 export interface EnvVar {
   name: string;
@@ -68,6 +69,7 @@ export interface CappRequest {
   state?: CappState;
   image: string;
   containerName?: string;
+  size?: CappSize;
   env?: EnvVar[];
   volumeMounts?: VolumeMount[];
   routeSpec?: RouteSpec;
@@ -116,6 +118,7 @@ export interface CappResponse {
   state?: CappState;
   image: string;
   containerName?: string;
+  size?: CappSize;
   env?: EnvVar[];
   volumeMounts?: VolumeMount[];
   routeSpec?: RouteSpec;
@@ -159,6 +162,7 @@ export interface ClusterMeta {
 export interface LegacyCappSpec {
   scaleSpec?: ScaleSpec;
   state?: CappState;
+  size?: CappSize;
   configurationSpec: {
     template: {
       spec: {

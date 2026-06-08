@@ -1,5 +1,5 @@
 import yaml from 'js-yaml';
-import { CappRequest, CappResponse, LegacyCapp, LegacyCappSpec, ScaleMetric, CappState } from '@/types/capp';
+import { CappRequest, CappResponse, LegacyCapp, LegacyCappSpec, ScaleMetric, CappState, CappSize } from '@/types/capp';
 import { CappFormValues } from '@/components/capps/CappForm';
 
 // ── Backend request builder ────────────────────────────────────────────────
@@ -24,6 +24,7 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
 
   if (values.state) req.state = values.state;
   if (values.containerName) req.containerName = values.containerName;
+  if (values.size) req.size = values.size as CappSize;
 
   if (values.envVars.length > 0) {
     req.env = values.envVars.map((ev) => {
@@ -105,6 +106,7 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     state: capp.state ?? 'enabled',
     image: capp.image,
     containerName: capp.containerName ?? '',
+    size: (capp.size ?? '') as CappSize | '',
     envVars: (capp.env ?? []).map((e) => {
       if (e.valueFrom?.secretKeyRef) {
         return { name: e.name, source: 'secretKeyRef' as const, value: '', refName: e.valueFrom.secretKeyRef.name, refKey: e.valueFrom.secretKeyRef.key };
@@ -186,6 +188,7 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
   }
 
   if (values.state) spec.state = values.state as CappState;
+  if (values.size) spec.size = values.size as CappSize;
 
   const hasRoute = values.hostname || values.tlsEnabled !== undefined || values.routeTimeoutSeconds !== undefined;
   if (hasRoute) {
@@ -261,6 +264,7 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     state: capp.spec.state ?? 'enabled',
     image: container.image,
     containerName: container.name ?? '',
+    size: (capp.spec.size ?? '') as CappSize | '',
     envVars: (container.env ?? []).map((e) => {
       if (e.valueFrom?.secretKeyRef) {
         return { name: e.name, source: 'secretKeyRef' as const, value: '', refName: e.valueFrom.secretKeyRef.name, refKey: e.valueFrom.secretKeyRef.key };
