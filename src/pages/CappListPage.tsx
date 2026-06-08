@@ -12,6 +12,7 @@ import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { SizeBadge } from "@/components/ui/SizeBadge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -48,6 +49,7 @@ import { CappResponse } from "@/types/capp";
 import { relativeTime } from "@/utils/time";
 
 type SortField = "name" | "namespace" | "state" | "metric" | "createdAt";
+
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 15;
@@ -230,6 +232,7 @@ export const CappListPage: React.FC = () => {
                   <TableHead><SortHeader field="name" label="Name" /></TableHead>
                   <TableHead><SortHeader field="namespace" label="Namespace" /></TableHead>
                   <TableHead><SortHeader field="state" label="State" /></TableHead>
+                  <TableHead className="text-xs font-medium uppercase tracking-wide text-text-muted">Size</TableHead>
                   <TableHead><SortHeader field="metric" label="Metric" /></TableHead>
                   <TableHead><SortHeader field="createdAt" label="Created" /></TableHead>
                   <TableHead className="w-24" />
@@ -269,6 +272,9 @@ export const CappListPage: React.FC = () => {
                           <Badge variant={capp.state === "disabled" ? "default" : "success"}>
                             {capp.state ?? "enabled"}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="py-2.5">
+                          <SizeBadge size={capp.size} />
                         </TableCell>
                         <TableCell className="py-2.5">
                           {capp.scaleSpec?.metric ? (

@@ -8,6 +8,7 @@ import { CopyButton } from '@/components/ui/CopyButton'
 import { ConditionsTable } from './ConditionsTable'
 import { CappResponse, hasBackupLabel, SyncToGitResponse } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
+import { SizeBadge } from '@/components/ui/SizeBadge'
 
 interface CappDetailProps {
   capp: CappResponse
@@ -133,6 +134,13 @@ export const CappDetail: React.FC<CappDetailProps> = ({
                   : <span className="text-text-muted">concurrency (default)</span>
               }
             />
+            {capp.size && (
+              <InfoRow
+                icon={<Cube size={14} />}
+                label="Size"
+                value={<SizeBadge size={capp.size} />}
+              />
+            )}
             {capp.scaleSpec?.minReplicas !== undefined && (
               <InfoRow
                 icon={<Pulse size={14} />}
