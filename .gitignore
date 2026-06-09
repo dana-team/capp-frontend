@@ -28,4 +28,6 @@ docs/.superpowers/*
 
 .superpowers/*
 
+docs/superpowers/*
+
 .env
