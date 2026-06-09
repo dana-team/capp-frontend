@@ -1,6 +1,17 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { PencilSimple, Trash, Globe, ShieldCheck, Pulse, Clock, Cube, CircleNotch, ArrowSquareOut, HardDrives, GitBranch, CheckCircle } from '@phosphor-icons/react'
+import { PencilSimpleIcon,
+  TrashIcon, 
+  GlobeIcon, 
+  ShieldCheckIcon, 
+  PulseIcon, 
+  ClockIcon, 
+  CubeIcon, 
+  CircleNotchIcon, 
+  ArrowSquareOutIcon, 
+  HardDrivesIcon, 
+  GitBranchIcon, 
+  CheckCircleIcon } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -50,7 +61,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
             </Badge>
             {isSynced && (
               <Badge variant="info" className="gap-1">
-                <GitBranch size={12} /> Synced to Git
+                <GitBranchIcon size={12} /> Synced to Git
               </Badge>
             )}
           </div>
@@ -58,7 +69,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
             <Badge variant="namespace">{namespace}</Badge>
             {capp.uid && (
               <span className="text-xs text-text-muted font-mono">
-                {capp.uid.slice(0, 8)}…
+                {capp.uid}
               </span>
             )}
           </div>
@@ -67,22 +78,22 @@ export const CappDetail: React.FC<CappDetailProps> = ({
           {onSync && (
             <Button variant="secondary" size="sm" onClick={onSync} disabled={isSyncing}>
               {isSyncing
-                ? <CircleNotch size={14} className="mr-1.5 animate-spin" />
-                : <GitBranch size={14} className="mr-1.5" />
+                ? <CircleNotchIcon size={14} className="mr-1.5 animate-spin" />
+                : <GitBranchIcon size={14} className="mr-1.5" />
               }
               {isSynced ? 'Re-sync to Git' : 'Sync to Git'}
             </Button>
           )}
           <Link to={`/capps/${namespace}/${capp.name}/edit`}>
             <Button variant="secondary" size="sm">
-              <PencilSimple size={14} className="mr-1.5" /> Edit
+              <PencilSimpleIcon size={14} className="mr-1.5" /> Edit
             </Button>
           </Link>
           {onDelete && (
             <Button variant="danger" size="sm" onClick={onDelete} disabled={isDeleting}>
               {isDeleting
-                ? <CircleNotch size={14} className="mr-1.5 animate-spin" />
-                : <Trash size={14} className="mr-1.5" />
+                ? <CircleNotchIcon size={14} className="mr-1.5 animate-spin" />
+                : <TrashIcon size={14} className="mr-1.5" />
               }
               Delete
             </Button>
@@ -93,7 +104,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
       {/* Sync result banner */}
       {syncResult && (
         <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-4 py-3 text-sm text-success">
-          <CheckCircle size={16} weight="fill" />
+          <CheckCircleIcon size={16} weight="fill" />
           <span>
             Synced to <span className="font-mono">{syncResult.path}</span>
             {' '}— commit{' '}
@@ -117,7 +128,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
           </CardHeader>
           <CardContent className="grid gap-3">
             <InfoRow
-              icon={<Clock size={14} />}
+              icon={<ClockIcon size={14} />}
               label="Created"
               value={
                 <span title={formatTimestamp(capp.createdAt)}>
@@ -126,7 +137,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
               }
             />
             <InfoRow
-              icon={<Pulse size={14} />}
+              icon={<PulseIcon size={14} />}
               label="Scale Metric"
               value={
                 capp.scaleSpec?.metric
@@ -136,28 +147,28 @@ export const CappDetail: React.FC<CappDetailProps> = ({
             />
             {capp.size && (
               <InfoRow
-                icon={<Cube size={14} />}
+                icon={<CubeIcon size={14} />}
                 label="Size"
                 value={<SizeBadge size={capp.size} />}
               />
             )}
             {capp.scaleSpec?.minReplicas !== undefined && (
               <InfoRow
-                icon={<Pulse size={14} />}
+                icon={<PulseIcon size={14} />}
                 label="Min Replicas"
                 value={<span className="font-mono">{capp.scaleSpec.minReplicas}</span>}
               />
             )}
             {capp.scaleSpec?.scaleDelaySeconds !== undefined && capp.scaleSpec.scaleDelaySeconds > 0 && (
               <InfoRow
-                icon={<Clock size={14} />}
+                icon={<ClockIcon size={14} />}
                 label="Scale Delay"
                 value={<span className="font-mono">{capp.scaleSpec.scaleDelaySeconds}s</span>}
               />
             )}
             {capp.routeSpec?.hostname && (
               <InfoRow
-                icon={<Globe size={14} />}
+                icon={<GlobeIcon size={14} />}
                 label="Hostname"
                 value={
                   <a
@@ -173,7 +184,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
             )}
             {capp.routeSpec && (
               <InfoRow
-                icon={<ShieldCheck size={14} />}
+                icon={<ShieldCheckIcon size={14} />}
                 label="TLS"
                 value={
                   capp.routeSpec.tlsEnabled
@@ -183,11 +194,11 @@ export const CappDetail: React.FC<CappDetailProps> = ({
               />
             )}
             {capp.logSpec && (
-              <InfoRow icon={<HardDrives size={14} />} label="Log Host" value={capp.logSpec.host} />
+              <InfoRow icon={<HardDrivesIcon size={14} />} label="Log Host" value={capp.logSpec.host} />
             )}
             {capp.status?.applicationLinks?.site && (
               <InfoRow
-                icon={<ArrowSquareOut size={14} />}
+                icon={<ArrowSquareOutIcon size={14} />}
                 label="Site"
                 value={
                   <a
@@ -211,11 +222,11 @@ export const CappDetail: React.FC<CappDetailProps> = ({
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="flex items-start gap-3">
-              <Cube size={14} weight="duotone" className="mt-0.5 text-text-muted shrink-0" />
+              <CubeIcon size={14} weight="duotone" className="mt-0.5 text-text-muted shrink-0" />
               <div>
                 <p className="text-xs text-text-muted">Image</p>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-sm font-mono text-text">{capp.image}</span>
+                  <span className="text-sm font-mono text-text overflow-auto">{capp.image}</span>
                   <CopyButton text={capp.image ?? ''} />
                 </div>
               </div>
@@ -227,18 +238,18 @@ export const CappDetail: React.FC<CappDetailProps> = ({
                   Environment Variables ({capp.env.length})
                 </p>
                 <div className="overflow-hidden rounded-lg border border-border">
-                  <table className="w-full">
+                  <table className="w-full table-fixed">
                     <thead>
                       <tr className="border-b border-border bg-card">
-                        <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Name</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-text-muted max-w-1/2 ">Name</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Value</th>
                       </tr>
                     </thead>
                     <tbody>
                       {capp.env.map((env, i) => (
                         <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-surface/50">
-                          <td className="px-3 py-2 text-sm font-mono text-text">{env.name}</td>
-                          <td className="px-3 py-2 text-sm text-text-secondary font-mono">{env.value}</td>
+                          <td className="px-3 py-2 text-sm font-mono text-text max-w-1/2 overflow-x-scroll">{env.name}</td>
+                          <td className="px-3 py-2 text-sm text-text-secondary font-mono overflow-scroll">{env.value}</td>
                         </tr>
                       ))}
                     </tbody>

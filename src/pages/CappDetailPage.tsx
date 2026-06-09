@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { CaretRight, CircleNotch, WarningCircle } from '@phosphor-icons/react'
+import { CaretRightIcon, CircleNotchIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { CappDetail } from '@/components/capps/CappDetail'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -45,25 +45,25 @@ export const CappDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-full mx-auto">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm mb-6">
         <Link to="/capps" className="text-text-muted hover:text-text transition-colors">
           Capps
         </Link>
-        <CaretRight size={14} className="text-text-muted" />
+        <CaretRightIcon size={14} className="text-text-muted" />
         <span className="text-text">{name}</span>
       </nav>
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <CircleNotch className="animate-spin h-8 w-8 text-text-muted" />
+          <CircleNotchIcon className="animate-spin h-8 w-8 text-text-muted" />
         </div>
       )}
 
       {error && (
         <Alert variant="destructive">
-          <WarningCircle className="h-4 w-4" />
+          <WarningCircleIcon className="h-4 w-4" />
           <AlertDescription>{(error as Error).message ?? 'Failed to load Capp'}</AlertDescription>
         </Alert>
       )}
@@ -96,7 +96,7 @@ export const CappDetailPage: React.FC = () => {
               </AlertDialogHeader>
               {deleteError && (
                 <Alert variant="destructive">
-                  <WarningCircle className="h-4 w-4" />
+                  <WarningCircleIcon className="h-4 w-4" />
                   <AlertDescription>{deleteError}</AlertDescription>
                 </Alert>
               )}
@@ -107,7 +107,7 @@ export const CappDetailPage: React.FC = () => {
                   className="bg-danger hover:bg-danger/90 text-white"
                   disabled={isDeleting}
                 >
-                  {isDeleting && <CircleNotch className="h-4 w-4 animate-spin" />}
+                  {isDeleting && <CircleNotchIcon className="h-4 w-4 animate-spin" />}
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
