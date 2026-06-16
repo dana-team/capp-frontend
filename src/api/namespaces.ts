@@ -11,6 +11,27 @@ export interface NamespaceListResponse {
     canCreate: boolean;
 }
 
+export interface NamespaceQuota {
+    cpu?: string;
+    memory?: string;
+    pods?: number;
+}
+
+export interface CreateNamespaceRequest {
+    name: string;
+    users?: string[];
+    quota?: NamespaceQuota;
+}
+
+export interface UpdateNamespaceRequest {
+    users?: string[];
+    quota?: NamespaceQuota;
+}
+
+export interface PatchNamespaceRequest {
+    users?: string[];
+}
+
 export function listNamespaces(): Promise<NamespaceListResponse> {
     const { cluster } = useAuthStore.getState();
     return backendClient<NamespaceListResponse>(
@@ -18,13 +39,35 @@ export function listNamespaces(): Promise<NamespaceListResponse> {
     );
 }
 
-export function createNamespace(name: string): Promise<NamespaceItem> {
+export function createNamespace(req: CreateNamespaceRequest): Promise<NamespaceItem> {
     const { cluster } = useAuthStore.getState();
     return backendClient<NamespaceItem>(
         `/api/v1/clusters/${encodeURIComponent(cluster)}/namespaces`,
         {
             method: 'POST',
-            body: JSON.stringify({ name }),
+            body: JSON.stringify(req),
+        }
+    );
+}
+
+export function updateNamespace(name: string, req: UpdateNamespaceRequest): Promise<NamespaceItem> {
+    const { cluster } = useAuthStore.getState();
+    return backendClient<NamespaceItem>(
+        `/api/v1/clusters/${encodeURIComponent(cluster)}/namespaces/${encodeURIComponent(name)}`,
+        {
+            method: 'PUT',
+            body: JSON.stringify(req),
+        }
+    );
+}
+
+export function patchNamespace(name: string, req: PatchNamespaceRequest): Promise<NamespaceItem> {
+    const { cluster } = useAuthStore.getState();
+    return backendClient<NamespaceItem>(
+        `/api/v1/clusters/${encodeURIComponent(cluster)}/namespaces/${encodeURIComponent(name)}`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify(req),
         }
     );
 }

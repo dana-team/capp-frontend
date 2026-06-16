@@ -14,6 +14,7 @@ import { ConfigurationSection } from "./sections/ConfigurationSection";
 import { RouteSection } from "./sections/RouteSection";
 import { LogSection } from "./sections/LogSection";
 import { VolumesSection } from "./sections/VolumesSection";
+import { EventSourcesSection } from "./sections/EventSourcesSection";
 import { buildCappResource, cappToYaml } from "@/utils/cappBuilder";
 import { ScaleMetric, CappState, CappSize } from "@/types/capp";
 import { CappYamlEditor } from "./CappYamlEditor";
@@ -50,6 +51,21 @@ export interface ConfigMapVolumeFormValue {
 
 export type LogType = "elastic" | "elastic-datastream";
 
+export type EventSourceType = 'ping' | 'kafka';
+
+export interface EventSourceFormEntry {
+  name: string;
+  uri: string;
+  sourceType: EventSourceType;
+  pingSchedule: string;
+  pingData: string;
+  kafkaBootstrapServers: string;
+  kafkaTopics: string;
+  kafkaConsumerGroup: string;
+  kafkaConsumers?: number;
+  kafkaSecretRef: string;
+}
+
 export interface CappFormValues {
   name: string;
   scaleMetric: ScaleMetric | "";
@@ -71,6 +87,7 @@ export interface CappFormValues {
   nfsVolumes: NFSVolumeFormValue[];
   secretVolumes: SecretVolumeFormValue[];
   configMapVolumes: ConfigMapVolumeFormValue[];
+  eventSources: EventSourceFormEntry[];
 }
 
 const k8sNameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
@@ -136,6 +153,33 @@ const schema = z.object({
     configMapName: z.string(),
     mountPath: z.string(),
   })).default([]),
+  eventSources: z.array(z.object({
+    name: z.string().min(1, 'Name is required'),
+    uri: z.string(),
+    sourceType: z.enum(['ping', 'kafka']),
+    pingSchedule: z.string(),
+    pingData: z.string(),
+    kafkaBootstrapServers: z.string(),
+    kafkaTopics: z.string(),
+    kafkaConsumerGroup: z.string(),
+    kafkaConsumers: z.number().int().min(1).optional(),
+    kafkaSecretRef: z.string(),
+  }).superRefine((row, ctx) => {
+    if (row.sourceType === 'ping' && !row.pingSchedule) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Schedule is required', path: ['pingSchedule'] });
+    }
+    if (row.sourceType === 'kafka') {
+      if (!row.kafkaBootstrapServers) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bootstrap servers required', path: ['kafkaBootstrapServers'] });
+      }
+      if (!row.kafkaTopics) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Topics required', path: ['kafkaTopics'] });
+      }
+      if (!row.kafkaSecretRef) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Secret ref required', path: ['kafkaSecretRef'] });
+      }
+    }
+  })).default([]),
 });
 
 const defaultValues: CappFormValues = {
@@ -159,6 +203,7 @@ const defaultValues: CappFormValues = {
   nfsVolumes: [],
   secretVolumes: [],
   configMapVolumes: [],
+  eventSources: [],
 };
 
 interface CappFormProps {
@@ -320,6 +365,7 @@ export const CappForm: React.FC<CappFormProps> = ({
               mountPath: v.mountPath,
             })),
             size: (spec.size as CappSize | '') ?? '',
+            eventSources: [],
           });
         }
         setYamlError("");
@@ -410,6 +456,12 @@ export const CappForm: React.FC<CappFormProps> = ({
               />
               <LogSection control={control} />
               <VolumesSection
+                control={control}
+                watch={watch as (name: keyof CappFormValues) => unknown}
+                setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
+                namespace={namespace}
+              />
+              <EventSourcesSection
                 control={control}
                 watch={watch as (name: keyof CappFormValues) => unknown}
                 setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}

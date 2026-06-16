@@ -44,7 +44,7 @@ export const Sidebar: React.FC = () => {
   const handleCreateNamespace = async () => {
     if (!newNamespace.trim()) return
     try {
-      await createNamespaceMutation.mutateAsync(newNamespace)
+      await createNamespaceMutation.mutateAsync({ name: newNamespace })
       setNewNamespace('')
       setIsCreatingNs(false)
       setSelectedNamespace(newNamespace)
