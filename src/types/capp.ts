@@ -1,7 +1,7 @@
 import type { K8sResource } from './kubernetes';
 
 // ── Backend DTO types (capp-backend REST API) ─────────────────────────────────
-// These mirror the Go types in capp-backend/internal/resources/capps/types.go
+// These mirror the OpenAPI spec in capp-backend/api/openapi.yaml
 
 export type ScaleMetric = 'concurrency' | 'cpu' | 'memory' | 'rps';
 export type CappState = 'enabled' | 'disabled';
@@ -60,6 +60,44 @@ export interface ScaleSpec {
   scaleDelaySeconds?: number;
 }
 
+// ── Event sources ──────────────────────────────────────────────────────────
+
+export interface PingSourceConfig {
+  schedule: string;
+  data?: string;
+}
+
+export interface KafkaSourceConfig {
+  bootstrapServers: string[];
+  topics: string[];
+  consumerGroup?: string;
+  consumers?: number;
+  secretRef: string;
+}
+
+export interface SourceConfig {
+  name: string;
+  uri?: string;
+  pingSourceConfiguration?: PingSourceConfig;
+  kafkaSourceConfiguration?: KafkaSourceConfig;
+}
+
+export interface EventSourcesSpec {
+  sources?: SourceConfig[];
+}
+
+export interface EventSourceStatusResponse {
+  name: string;
+  type: string;
+  status: 'True' | 'False' | 'Unknown';
+  reason?: string;
+  message?: string;
+}
+
+export interface EventingStatusResponse {
+  eventSources?: EventSourceStatusResponse[];
+}
+
 // ── Request body for create / update ──────────────────────────────────────
 
 export interface CappRequest {
@@ -77,6 +115,7 @@ export interface CappRequest {
   nfsVolumes?: NFSVolume[];
   secretVolumes?: SecretVolume[];
   configMapVolumes?: ConfigMapVolume[];
+  eventSourcesSpec?: EventSourcesSpec;
 }
 
 // ── Response types ─────────────────────────────────────────────────────────
@@ -90,11 +129,6 @@ export interface ConditionResponse {
   message?: string;
 }
 
-export interface ApplicationLinksResponse {
-  site?: string;
-  consoleLink?: string;
-}
-
 export interface StateStatusResponse {
   state?: string;
   lastChange?: string;
@@ -102,7 +136,7 @@ export interface StateStatusResponse {
 
 export interface CappStatusResponse {
   conditions: ConditionResponse[];
-  applicationLinks: ApplicationLinksResponse;
+  eventingStatus?: EventingStatusResponse;
   stateStatus: StateStatusResponse;
 }
 
@@ -126,6 +160,7 @@ export interface CappResponse {
   nfsVolumes?: NFSVolume[];
   secretVolumes?: SecretVolume[];
   configMapVolumes?: ConfigMapVolume[];
+  eventSourcesSpec?: EventSourcesSpec;
   status: CappStatusResponse;
 }
 
@@ -153,6 +188,9 @@ export interface ClusterMeta {
   name: string;
   displayName: string;
   healthy: boolean;
+  isOpenShift?: boolean;
+  gitOpsPath?: string;
+  allowedNamespaces?: string[];
 }
 
 // ── Legacy K8s types (for YAML preview only) ──────────────────────────────

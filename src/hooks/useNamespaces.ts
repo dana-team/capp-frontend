@@ -1,5 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listNamespaces, createNamespace } from '@/api/namespaces';
+import {
+    listNamespaces,
+    createNamespace,
+    updateNamespace,
+    patchNamespace,
+    CreateNamespaceRequest,
+    UpdateNamespaceRequest,
+    PatchNamespaceRequest,
+} from '@/api/namespaces';
 import { useAuthStore } from '@/store/auth';
 import { getBackendUrl } from '@/lib/config';
 
@@ -16,17 +24,35 @@ export function useNamespaces() {
     });
 }
 
-export function useCreateNamespace() {
+function useNamespaceInvalidator() {
     const queryClient = useQueryClient();
     const cluster = useAuthStore((s) => s.cluster);
     const backendUrl = getBackendUrl();
+    return () => queryClient.invalidateQueries({ queryKey: ['namespaces', backendUrl, cluster] });
+}
 
+export function useCreateNamespace() {
+    const invalidate = useNamespaceInvalidator();
     return useMutation({
-        mutationFn: (name: string) => createNamespace(name),
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ['namespaces', backendUrl, cluster],
-            });
-        },
+        mutationFn: (req: CreateNamespaceRequest) => createNamespace(req),
+        onSuccess: invalidate,
+    });
+}
+
+export function useUpdateNamespace() {
+    const invalidate = useNamespaceInvalidator();
+    return useMutation({
+        mutationFn: ({ name, req }: { name: string; req: UpdateNamespaceRequest }) =>
+            updateNamespace(name, req),
+        onSuccess: invalidate,
+    });
+}
+
+export function usePatchNamespace() {
+    const invalidate = useNamespaceInvalidator();
+    return useMutation({
+        mutationFn: ({ name, req }: { name: string; req: PatchNamespaceRequest }) =>
+            patchNamespace(name, req),
+        onSuccess: invalidate,
     });
 }

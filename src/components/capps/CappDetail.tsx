@@ -1,17 +1,17 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { PencilSimpleIcon,
-  TrashIcon, 
-  GlobeIcon, 
-  ShieldCheckIcon, 
-  PulseIcon, 
-  ClockIcon, 
-  CubeIcon, 
-  CircleNotchIcon, 
-  ArrowSquareOutIcon, 
-  HardDrivesIcon, 
-  GitBranchIcon, 
-  CheckCircleIcon } from '@phosphor-icons/react'
+  TrashIcon,
+  GlobeIcon,
+  ShieldCheckIcon,
+  PulseIcon,
+  ClockIcon,
+  CubeIcon,
+  CircleNotchIcon,
+  HardDrivesIcon,
+  GitBranchIcon,
+  CheckCircleIcon,
+  LightningIcon } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -196,22 +196,6 @@ export const CappDetail: React.FC<CappDetailProps> = ({
             {capp.logSpec && (
               <InfoRow icon={<HardDrivesIcon size={14} />} label="Log Host" value={capp.logSpec.host} />
             )}
-            {capp.status?.applicationLinks?.site && (
-              <InfoRow
-                icon={<ArrowSquareOutIcon size={14} />}
-                label="Site"
-                value={
-                  <a
-                    href={capp.status.applicationLinks.site}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:underline truncate"
-                  >
-                    {capp.status.applicationLinks.site}
-                  </a>
-                }
-              />
-            )}
           </CardContent>
         </Card>
 
@@ -292,8 +276,37 @@ export const CappDetail: React.FC<CappDetailProps> = ({
         <CardHeader className="pb-2">
           <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">Status Conditions</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <ConditionsTable capp={capp} />
+          {capp.status?.eventingStatus?.eventSources && capp.status.eventingStatus.eventSources.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs text-text-muted uppercase tracking-widest font-mono">Event Source Status</p>
+              <div className="overflow-hidden rounded-lg border border-border">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-card">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Name</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Status</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {capp.status.eventingStatus.eventSources.map((src, i) => (
+                      <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-surface/50">
+                        <td className="px-3 py-2 text-sm font-mono text-text">{src.name}</td>
+                        <td className="px-3 py-2">
+                          <Badge variant={src.status === 'True' ? 'success' : src.status === 'False' ? 'danger' : 'default'}>
+                            {src.status}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 text-sm text-text-secondary">{src.reason ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -313,6 +326,47 @@ export const CappDetail: React.FC<CappDetailProps> = ({
                   </p>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Event Sources */}
+      {capp.eventSourcesSpec?.sources && capp.eventSourcesSpec.sources.length > 0 && (
+        <Card className="bg-surface border-border border-l-2 border-l-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted flex items-center gap-2">
+              <LightningIcon size={12} /> Event Sources
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-2">
+              {capp.eventSourcesSpec.sources.map((src) => {
+                const isPing = Boolean(src.pingSourceConfiguration);
+                return (
+                  <div key={src.name} className="rounded-lg border border-border bg-card p-3 flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm text-text">{src.name}</span>
+                      <Badge variant="info">{isPing ? 'Ping' : 'Kafka'}</Badge>
+                    </div>
+                    {src.uri && (
+                      <p className="text-xs text-text-muted font-mono">URI: {src.uri}</p>
+                    )}
+                    {isPing && src.pingSourceConfiguration && (
+                      <p className="text-xs text-text-muted font-mono">
+                        Schedule: {src.pingSourceConfiguration.schedule}
+                        {src.pingSourceConfiguration.data && ` · data: ${src.pingSourceConfiguration.data}`}
+                      </p>
+                    )}
+                    {!isPing && src.kafkaSourceConfiguration && (
+                      <p className="text-xs text-text-muted font-mono">
+                        Brokers: {src.kafkaSourceConfiguration.bootstrapServers.join(', ')}
+                        {' · '}Topics: {src.kafkaSourceConfiguration.topics.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
