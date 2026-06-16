@@ -18,7 +18,7 @@ export const AppShell: React.FC = () => {
   const location = useLocation()
 
   return (
-    <div className="flex min-h-[100dvh] overflow-hidden bg-background">
+    <div className="flex h-[100dvh] overflow-hidden bg-background">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <AnimatePresence mode="wait" initial={false}>
