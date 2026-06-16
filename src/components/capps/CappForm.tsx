@@ -3,7 +3,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import yaml from "js-yaml";
-import { WarningCircle, FileText, Code } from "@phosphor-icons/react";
+import { WarningCircleIcon, FileTextIcon, CodeIcon } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -337,10 +337,10 @@ export const CappForm: React.FC<CappFormProps> = ({
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-4 overflow-y-scroll"
     >
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-surface border border-border p-1 w-fit">
+      <div className="flex gap-1 rounded-lg bg-surface border border-border p-1 w-fit overflow-y-scroll">
         {(["form", "yaml"] as Tab[]).map((tab) => (
           <button
             key={tab}
@@ -353,7 +353,7 @@ export const CappForm: React.FC<CappFormProps> = ({
                 : "text-text-muted hover:text-text",
             )}
           >
-            {tab === "form" ? <FileText size={14} /> : <Code size={14} />}
+            {tab === "form" ? <FileTextIcon size={14} /> : <CodeIcon size={14} />}
             {tab === "form" ? "Form" : "YAML"}
           </button>
         ))}
@@ -361,7 +361,7 @@ export const CappForm: React.FC<CappFormProps> = ({
 
       {error && (
         <Alert variant="destructive">
-          <WarningCircle className="h-4 w-4" />
+          <WarningCircleIcon className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}

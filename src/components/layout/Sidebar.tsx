@@ -59,7 +59,7 @@ export const Sidebar: React.FC = () => {
   }
 
   return (
-    <aside className="flex flex-col flex-shrink-0 w-[200px] h-screen bg-surface border-r border-border overflow-y-auto transition-colors duration-200">
+    <aside className="flex flex-col flex-shrink-0 w-[200px] h-full bg-surface border-r border-border transition-colors duration-200">
 
       {/* Branding */}
       <div className="px-4 py-4 border-b border-border">
@@ -82,7 +82,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Nav */}
-      <nav className="flex flex-col py-2 gap-0.5 px-2">
+      <nav className="flex flex-col py-2 gap-0.5 px-2 flex-1 min-h-0 overflow-y-auto">
         {navItems.map(({ to, label, Icon }) => (
           <NavLink
             key={to}
@@ -117,7 +117,7 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Bottom */}
-      <div className="mt-auto flex flex-col gap-3 px-3 py-4 border-t border-border">
+      <div className="flex-shrink-0 flex flex-col gap-3 px-3 py-4 border-t border-border overflow-y-auto">
 
         {/* Namespace */}
         <div className="flex flex-col gap-1">

@@ -24,7 +24,7 @@ export const CreateSecretPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-full mx-auto">
       <nav className="flex items-center gap-1 text-sm mb-6">
         <Link to="/secrets" className="text-text-muted hover:text-text transition-colors">
           Secrets
