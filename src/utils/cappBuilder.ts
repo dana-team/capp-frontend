@@ -13,11 +13,12 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
     image: values.image,
   };
 
-  const hasScaleSpec = values.scaleMetric || values.minReplicas !== undefined || values.scaleDelaySeconds !== undefined;
+  const hasScaleSpec = values.scaleMetric || values.minReplicas !== undefined || values.maxReplicas !== undefined || values.scaleDelaySeconds !== undefined;
   if (hasScaleSpec) {
     req.scaleSpec = {
       ...(values.scaleMetric ? { metric: values.scaleMetric as ScaleMetric } : {}),
       ...(values.minReplicas !== undefined ? { minReplicas: values.minReplicas } : {}),
+      ...(values.maxReplicas !== undefined ? { maxReplicas: values.maxReplicas } : {}),
       ...(values.scaleDelaySeconds !== undefined ? { scaleDelaySeconds: values.scaleDelaySeconds } : {}),
     };
   }
@@ -86,6 +87,13 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
     }));
   }
 
+  if (values.volumeMounts.length > 0) {
+    req.volumeMounts = values.volumeMounts.map((v) => ({
+      name: v.volumeName,
+      mountPath: v.mountPath,
+    }));
+  }
+
   if (values.eventSources && values.eventSources.length > 0) {
     req.eventSourcesSpec = {
       sources: values.eventSources.map((s: EventSourceFormEntry) => ({
@@ -127,6 +135,7 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     name: capp.name,
     scaleMetric: (capp.scaleSpec?.metric as ScaleMetric) ?? '',
     minReplicas: capp.scaleSpec?.minReplicas,
+    maxReplicas: capp.scaleSpec?.maxReplicas,
     scaleDelaySeconds: capp.scaleSpec?.scaleDelaySeconds,
     state: capp.state ?? 'enabled',
     image: capp.image,
@@ -169,6 +178,17 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
       configMapName: v.configMapName,
       mountPath: v.mountPath,
     })),
+    // The backend echoes secret/configMap volume mounts back in volumeMounts too;
+    // filter those out so only standalone mounts appear (avoids duplicate rows).
+    volumeMounts: (() => {
+      const ownedNames = new Set([
+        ...(capp.secretVolumes ?? []).map((v) => v.name),
+        ...(capp.configMapVolumes ?? []).map((v) => v.name),
+      ]);
+      return (capp.volumeMounts ?? [])
+        .filter((v) => !ownedNames.has(v.name))
+        .map((v) => ({ volumeName: v.name, mountPath: v.mountPath }));
+    })(),
     eventSources: (capp.eventSourcesSpec?.sources ?? []).map((s): EventSourceFormEntry => {
       if (s.pingSourceConfiguration) {
         return {
@@ -225,6 +245,9 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
                   return { name: ev.name, value: ev.value ?? '' };
                 }) }
                 : {}),
+              ...(values.volumeMounts.length > 0
+                ? { volumeMounts: values.volumeMounts.map((v) => ({ name: v.volumeName, mountPath: v.mountPath })) }
+                : {}),
             },
           ],
         },
@@ -232,11 +255,12 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
     },
   };
 
-  const hasScaleSpec = values.scaleMetric || values.minReplicas !== undefined || values.scaleDelaySeconds !== undefined;
+  const hasScaleSpec = values.scaleMetric || values.minReplicas !== undefined || values.maxReplicas !== undefined || values.scaleDelaySeconds !== undefined;
   if (hasScaleSpec) {
     spec.scaleSpec = {
       ...(values.scaleMetric ? { metric: values.scaleMetric as ScaleMetric } : {}),
       ...(values.minReplicas !== undefined ? { minReplicas: values.minReplicas } : {}),
+      ...(values.maxReplicas !== undefined ? { maxReplicas: values.maxReplicas } : {}),
       ...(values.scaleDelaySeconds !== undefined ? { scaleDelaySeconds: values.scaleDelaySeconds } : {}),
     };
   }
@@ -314,6 +338,7 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     name: capp.metadata.name,
     scaleMetric: (capp.spec.scaleSpec?.metric as ScaleMetric) ?? '',
     minReplicas: capp.spec.scaleSpec?.minReplicas,
+    maxReplicas: capp.spec.scaleSpec?.maxReplicas,
     scaleDelaySeconds: capp.spec.scaleSpec?.scaleDelaySeconds,
     state: capp.spec.state ?? 'enabled',
     image: container.image,
@@ -354,6 +379,10 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     configMapVolumes: (capp.spec.volumesSpec?.configMapVolumes ?? []).map((v) => ({
       volumeName: v.name,
       configMapName: v.configMapName,
+      mountPath: v.mountPath,
+    })),
+    volumeMounts: (container.volumeMounts ?? []).map((v) => ({
+      volumeName: v.name,
       mountPath: v.mountPath,
     })),
     eventSources: [],

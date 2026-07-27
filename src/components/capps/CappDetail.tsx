@@ -159,6 +159,13 @@ export const CappDetail: React.FC<CappDetailProps> = ({
                 value={<span className="font-mono">{capp.scaleSpec.minReplicas}</span>}
               />
             )}
+            {capp.scaleSpec?.maxReplicas !== undefined && (
+              <InfoRow
+                icon={<PulseIcon size={14} />}
+                label="Max Replicas"
+                value={<span className="font-mono">{capp.scaleSpec.maxReplicas}</span>}
+              />
+            )}
             {capp.scaleSpec?.scaleDelaySeconds !== undefined && capp.scaleSpec.scaleDelaySeconds > 0 && (
               <InfoRow
                 icon={<ClockIcon size={14} />}
