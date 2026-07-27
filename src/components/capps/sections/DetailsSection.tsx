@@ -85,6 +85,21 @@ export const DetailsSection: React.FC<DetailsSectionProps> = ({ control }) => {
             )}
           />
           <Controller
+            name="maxReplicas"
+            control={control}
+            render={({ field }) => (
+              <Input
+                label="Max Replicas"
+                type="number"
+                min={1}
+                placeholder="Unlimited"
+                hint="Maximum number of replicas"
+                value={field.value ?? ''}
+                onChange={(e) => { const n = Number(e.target.value); field.onChange(e.target.value === '' || isNaN(n) ? undefined : n); }}
+              />
+            )}
+          />
+          <Controller
             name="scaleDelaySeconds"
             control={control}
             render={({ field }) => (

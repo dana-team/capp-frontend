@@ -43,6 +43,11 @@ export interface SecretVolumeFormValue {
   mountPath: string;
 }
 
+export interface VolumeMountFormValue {
+  volumeName: string;
+  mountPath: string;
+}
+
 export interface ConfigMapVolumeFormValue {
   volumeName: string;
   configMapName: string;
@@ -70,6 +75,7 @@ export interface CappFormValues {
   name: string;
   scaleMetric: ScaleMetric | "";
   minReplicas?: number;
+  maxReplicas?: number;
   scaleDelaySeconds?: number;
   state: CappState;
   size: CappSize | '';
@@ -87,6 +93,7 @@ export interface CappFormValues {
   nfsVolumes: NFSVolumeFormValue[];
   secretVolumes: SecretVolumeFormValue[];
   configMapVolumes: ConfigMapVolumeFormValue[];
+  volumeMounts: VolumeMountFormValue[];
   eventSources: EventSourceFormEntry[];
 }
 
@@ -103,6 +110,7 @@ const schema = z.object({
     ),
   scaleMetric: z.enum(['concurrency', 'cpu', 'memory', 'rps', '']).optional(),
   minReplicas: z.number().int().min(0).optional(),
+  maxReplicas: z.number().int().min(1).optional(),
   scaleDelaySeconds: z.number().int().min(0).optional(),
   state: z.enum(["enabled", "disabled"]).default("enabled"),
   size: z.enum(['small', 'medium', 'large', '']).optional(),
@@ -135,23 +143,27 @@ const schema = z.object({
   nfsVolumes: z
     .array(
       z.object({
-        name: z.string(),
-        server: z.string(),
-        path: z.string(),
-        capacityValue: z.string(),
+        name: z.string().min(1, "Name is required"),
+        server: z.string().min(1, "Server is required"),
+        path: z.string().min(1, "Path is required").regex(/^\//, "Path must start with /"),
+        capacityValue: z.string().regex(/^\d+$/, "Capacity must be a number"),
         capacityUnit: z.enum(["Mi", "Gi", "Ti"]),
       }),
     )
     .default([]),
   secretVolumes: z.array(z.object({
-    volumeName: z.string(),
-    secretName: z.string(),
-    mountPath: z.string(),
+    volumeName: z.string().min(1, "Name is required"),
+    secretName: z.string().min(1, "Secret is required"),
+    mountPath: z.string().min(1, "Mount path is required"),
   })).default([]),
   configMapVolumes: z.array(z.object({
-    volumeName: z.string(),
-    configMapName: z.string(),
-    mountPath: z.string(),
+    volumeName: z.string().min(1, "Name is required"),
+    configMapName: z.string().min(1, "ConfigMap is required"),
+    mountPath: z.string().min(1, "Mount path is required"),
+  })).default([]),
+  volumeMounts: z.array(z.object({
+    volumeName: z.string().min(1, "Name is required"),
+    mountPath: z.string().min(1, "Mount path is required"),
   })).default([]),
   eventSources: z.array(z.object({
     name: z.string().min(1, 'Name is required'),
@@ -180,12 +192,42 @@ const schema = z.object({
       }
     }
   })).default([]),
+}).superRefine((values, ctx) => {
+  if (values.tlsEnabled && !values.hostname) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Hostname required when TLS enabled', path: ['hostname'] });
+  }
+  if (values.logType) {
+    if (!values.logHost) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Host is required', path: ['logHost'] });
+    }
+    if (!values.logUser) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'User is required', path: ['logUser'] });
+    }
+    if (!values.logPasswordSecret) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Password secret is required', path: ['logPasswordSecret'] });
+    }
+    if (values.logType === 'elastic' && !values.logIndex) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Index is required for elastic', path: ['logIndex'] });
+    }
+  }
+  // Operator webhook requires every NFS volume to be mounted by a volumeMount.
+  const mountedNames = new Set(values.volumeMounts.map((m) => m.volumeName));
+  values.nfsVolumes.forEach((v, i) => {
+    if (v.name && !mountedNames.has(v.name)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `NFS volume "${v.name}" must be mounted (add a Volume Mount)`,
+        path: ['nfsVolumes', i, 'name'],
+      });
+    }
+  });
 });
 
 const defaultValues: CappFormValues = {
   name: "",
   scaleMetric: "",
   minReplicas: undefined,
+  maxReplicas: undefined,
   scaleDelaySeconds: undefined,
   state: "enabled",
   size: '',
@@ -203,6 +245,7 @@ const defaultValues: CappFormValues = {
   nfsVolumes: [],
   secretVolumes: [],
   configMapVolumes: [],
+  volumeMounts: [],
   eventSources: [],
 };
 
@@ -304,6 +347,7 @@ export const CappForm: React.FC<CappFormProps> = ({
             name: (meta?.name as string) ?? "",
             scaleMetric: (scaleSpec?.metric as ScaleMetric) ?? "",
             minReplicas: scaleSpec?.minReplicas as number | undefined,
+            maxReplicas: scaleSpec?.maxReplicas as number | undefined,
             scaleDelaySeconds: scaleSpec?.scaleDelaySeconds as number | undefined,
             state: (spec.state as CappState) ?? "enabled",
             image: (container.image as string) ?? "",
@@ -362,6 +406,12 @@ export const CappForm: React.FC<CappFormProps> = ({
             ).map((v): ConfigMapVolumeFormValue => ({
               volumeName: v.name,
               configMapName: v.configMapName,
+              mountPath: v.mountPath,
+            })),
+            volumeMounts: (
+              (container.volumeMounts as Array<{ name: string; mountPath: string }>) ?? []
+            ).map((v): VolumeMountFormValue => ({
+              volumeName: v.name,
               mountPath: v.mountPath,
             })),
             size: (spec.size as CappSize | '') ?? '',

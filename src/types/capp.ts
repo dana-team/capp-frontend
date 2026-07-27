@@ -57,6 +57,7 @@ export interface ConfigMapVolume {
 export interface ScaleSpec {
   metric?: ScaleMetric | '';
   minReplicas?: number;
+  maxReplicas?: number;
   scaleDelaySeconds?: number;
 }
 
@@ -89,7 +90,7 @@ export interface EventSourcesSpec {
 export interface EventSourceStatusResponse {
   name: string;
   type: string;
-  status: 'True' | 'False' | 'Unknown';
+  status: string;
   reason?: string;
   message?: string;
 }
