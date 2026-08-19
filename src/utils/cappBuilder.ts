@@ -1,5 +1,5 @@
 import yaml from 'js-yaml';
-import { CappRequest, CappResponse, LegacyCapp, LegacyCappSpec, ScaleMetric, CappState, CappSize } from '@/types/capp';
+import { CappRequest, CappResponse, LegacyCapp, LegacyCappSpec, ScaleMetric, CappState, CappSize, ResourceSpec, ResourceQuantities } from '@/types/capp';
 import { CappFormValues, EventSourceFormEntry } from '@/components/capps/CappForm';
 
 // ── Backend request builder ────────────────────────────────────────────────
@@ -25,7 +25,13 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
 
   if (values.state) req.state = values.state;
   if (values.containerName) req.containerName = values.containerName;
-  if (values.size) req.size = values.size as CappSize;
+
+  if (values.sizingMode === 'custom') {
+    const customResources = buildCustomResources(values.cpuRequest, values.cpuLimit, values.memoryRequest, values.memoryLimit);
+    if (customResources) req.customResources = customResources;
+  } else if (values.size) {
+    req.size = values.size as CappSize;
+  }
 
   if (values.envVars.length > 0) {
     req.env = values.envVars.map((ev) => {
@@ -122,6 +128,24 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
   return req;
 }
 
+function buildCustomResources(cpuReq: string, cpuLim: string, memReq: string, memLim: string): ResourceSpec | undefined {
+  const requests: ResourceQuantities = {};
+  const limits: ResourceQuantities = {};
+  if (cpuReq) requests.cpu = cpuReq;
+  if (memReq) requests.memory = memReq;
+  if (cpuLim) limits.cpu = cpuLim;
+  if (memLim) limits.memory = memLim;
+
+  const hasRequests = Object.keys(requests).length > 0;
+  const hasLimits = Object.keys(limits).length > 0;
+  if (!hasRequests && !hasLimits) return undefined;
+
+  return {
+    ...(hasRequests ? { requests } : {}),
+    ...(hasLimits ? { limits } : {}),
+  };
+}
+
 // ── Form value converter for CappResponse (flat backend DTO) ──────────────
 
 export function cappToFormValues(capp: CappResponse): CappFormValues {
@@ -130,6 +154,8 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     if (match) return { value: match[1], unit: match[2] };
     return { value: storage, unit: 'Gi' };
   };
+
+  const hasPresetSize = Boolean(capp.size);
 
   return {
     name: capp.name,
@@ -140,7 +166,12 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     state: capp.state ?? 'enabled',
     image: capp.image,
     containerName: capp.containerName ?? '',
+    sizingMode: hasPresetSize ? 'preset' : (capp.resources ? 'custom' : 'preset'),
     size: (capp.size ?? '') as CappSize | '',
+    cpuRequest: capp.resources?.requests?.cpu ?? '',
+    cpuLimit: capp.resources?.limits?.cpu ?? '',
+    memoryRequest: capp.resources?.requests?.memory ?? '',
+    memoryLimit: capp.resources?.limits?.memory ?? '',
     envVars: (capp.env ?? []).map((e) => {
       if (e.valueFrom?.secretKeyRef) {
         return { name: e.name, source: 'secretKeyRef' as const, value: '', refName: e.valueFrom.secretKeyRef.name, refKey: e.valueFrom.secretKeyRef.key };
@@ -343,7 +374,12 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     state: capp.spec.state ?? 'enabled',
     image: container.image,
     containerName: container.name ?? '',
+    sizingMode: capp.spec.size ? 'preset' : 'preset',
     size: (capp.spec.size ?? '') as CappSize | '',
+    cpuRequest: '',
+    cpuLimit: '',
+    memoryRequest: '',
+    memoryLimit: '',
     envVars: (container.env ?? []).map((e) => {
       if (e.valueFrom?.secretKeyRef) {
         return { name: e.name, source: 'secretKeyRef' as const, value: '', refName: e.valueFrom.secretKeyRef.name, refKey: e.valueFrom.secretKeyRef.key };
