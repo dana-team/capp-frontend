@@ -7,6 +7,16 @@ export type ScaleMetric = 'concurrency' | 'cpu' | 'memory' | 'rps';
 export type CappState = 'enabled' | 'disabled';
 export type CappSize = 'small' | 'medium' | 'large';
 
+export interface ResourceQuantities {
+  cpu?: string;
+  memory?: string;
+}
+
+export interface ResourceSpec {
+  requests?: ResourceQuantities;
+  limits?: ResourceQuantities;
+}
+
 export interface EnvVar {
   name: string;
   value?: string;
@@ -109,6 +119,7 @@ export interface CappRequest {
   image: string;
   containerName?: string;
   size?: CappSize;
+  customResources?: ResourceSpec;
   env?: EnvVar[];
   volumeMounts?: VolumeMount[];
   routeSpec?: RouteSpec;
@@ -154,6 +165,7 @@ export interface CappResponse {
   image: string;
   containerName?: string;
   size?: CappSize;
+  resources?: ResourceSpec;
   env?: EnvVar[];
   volumeMounts?: VolumeMount[];
   routeSpec?: RouteSpec;
@@ -168,6 +180,19 @@ export interface CappResponse {
 export interface CappListResponse {
   items: CappResponse[];
   total: number;
+}
+
+// ── Size definitions (GET /api/v1/sizes) ──────────────────────────────────
+
+export interface ResourceSize {
+  requests: ResourceQuantities;
+  limits: ResourceQuantities;
+}
+
+export interface CappSizesResponse {
+  small: ResourceSize;
+  medium: ResourceSize;
+  large: ResourceSize;
 }
 
 // ── Sync to Git ────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import {
   updateCapp,
   deleteCapp,
   syncCappToGit,
+  fetchSizes,
 } from "@/api/capps";
 import { CappRequest } from "@/types/capp";
 import { useAuthStore } from "@/store/auth";
@@ -126,5 +127,13 @@ export function useDeleteCapp() {
         ],
       });
     },
+  });
+}
+
+export function useSizes() {
+  return useQuery({
+    queryKey: ["sizes", getBackendUrl()],
+    queryFn: fetchSizes,
+    staleTime: Infinity,
   });
 }

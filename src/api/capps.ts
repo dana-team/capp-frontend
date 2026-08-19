@@ -1,6 +1,10 @@
 import { backendClient, clusterBase } from './client';
-import { CappRequest, CappResponse, CappListResponse, SyncToGitResponse } from '@/types/capp';
+import { CappRequest, CappResponse, CappListResponse, CappSizesResponse, SyncToGitResponse } from '@/types/capp';
 
+/** Fetch the configured t-shirt size definitions (no auth required). */
+export function fetchSizes(): Promise<CappSizesResponse> {
+  return backendClient<CappSizesResponse>('/api/v1/sizes');
+}
 
 /** List all Capps across all namespaces in the selected cluster. */
 export function listCapps(): Promise<CappListResponse> {
