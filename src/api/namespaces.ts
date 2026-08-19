@@ -1,9 +1,20 @@
 import { backendClient } from './client';
 import { useAuthStore } from '@/store/auth';
 
+export interface UsedQuotaInfo {
+    cpu?: string;
+    memory?: string;
+    pods?: number | null;
+}
+
+export interface QuotaInfo extends UsedQuotaInfo {
+    used?: UsedQuotaInfo;
+}
+
 export interface NamespaceItem {
     name: string;
     status: string;
+    quota?: QuotaInfo;
 }
 
 export interface NamespaceListResponse {
