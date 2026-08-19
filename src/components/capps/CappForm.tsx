@@ -71,6 +71,8 @@ export interface EventSourceFormEntry {
   kafkaSecretRef: string;
 }
 
+export type SizingMode = 'preset' | 'custom';
+
 export interface CappFormValues {
   name: string;
   scaleMetric: ScaleMetric | "";
@@ -78,7 +80,12 @@ export interface CappFormValues {
   maxReplicas?: number;
   scaleDelaySeconds?: number;
   state: CappState;
+  sizingMode: SizingMode;
   size: CappSize | '';
+  cpuRequest: string;
+  cpuLimit: string;
+  memoryRequest: string;
+  memoryLimit: string;
   image: string;
   containerName: string;
   envVars: EnvVarFormEntry[];
@@ -113,7 +120,12 @@ const schema = z.object({
   maxReplicas: z.number().int().min(1).optional(),
   scaleDelaySeconds: z.number().int().min(0).optional(),
   state: z.enum(["enabled", "disabled"]).default("enabled"),
+  sizingMode: z.enum(['preset', 'custom']).default('preset'),
   size: z.enum(['small', 'medium', 'large', '']).optional(),
+  cpuRequest: z.string().optional().default(''),
+  cpuLimit: z.string().optional().default(''),
+  memoryRequest: z.string().optional().default(''),
+  memoryLimit: z.string().optional().default(''),
   image: z.string().min(1, "Container image is required"),
   containerName: z.string().optional(),
   envVars: z.array(z.object({
@@ -230,7 +242,12 @@ const defaultValues: CappFormValues = {
   maxReplicas: undefined,
   scaleDelaySeconds: undefined,
   state: "enabled",
+  sizingMode: 'preset',
   size: '',
+  cpuRequest: '',
+  cpuLimit: '',
+  memoryRequest: '',
+  memoryLimit: '',
   image: "",
   containerName: "",
   envVars: [],
@@ -414,7 +431,12 @@ export const CappForm: React.FC<CappFormProps> = ({
               volumeName: v.name,
               mountPath: v.mountPath,
             })),
+            sizingMode: spec.size ? 'preset' : 'preset',
             size: (spec.size as CappSize | '') ?? '',
+            cpuRequest: '',
+            cpuLimit: '',
+            memoryRequest: '',
+            memoryLimit: '',
             eventSources: [],
           });
         }
