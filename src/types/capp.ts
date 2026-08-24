@@ -235,6 +235,7 @@ export interface LegacyCappSpec {
           image: string;
           env?: EnvVar[];
           volumeMounts?: VolumeMount[];
+          resources?: ResourceSpec;
         }>;
       };
     };
