@@ -71,8 +71,6 @@ export interface EventSourceFormEntry {
   kafkaSecretRef: string;
 }
 
-export type SizingMode = 'preset' | 'custom';
-
 export interface CappFormValues {
   name: string;
   scaleMetric: ScaleMetric | "";
@@ -80,12 +78,7 @@ export interface CappFormValues {
   maxReplicas?: number;
   scaleDelaySeconds?: number;
   state: CappState;
-  sizingMode: SizingMode;
   size: CappSize | '';
-  cpuRequest: string;
-  cpuLimit: string;
-  memoryRequest: string;
-  memoryLimit: string;
   image: string;
   containerName: string;
   envVars: EnvVarFormEntry[];
@@ -120,12 +113,7 @@ const schema = z.object({
   maxReplicas: z.number().int().min(1).optional(),
   scaleDelaySeconds: z.number().int().min(0).optional(),
   state: z.enum(["enabled", "disabled"]).default("enabled"),
-  sizingMode: z.enum(['preset', 'custom']).default('preset'),
   size: z.enum(['small', 'medium', 'large', '']).optional(),
-  cpuRequest: z.string().optional().default(''),
-  cpuLimit: z.string().optional().default(''),
-  memoryRequest: z.string().optional().default(''),
-  memoryLimit: z.string().optional().default(''),
   image: z.string().min(1, "Container image is required"),
   containerName: z.string().optional(),
   envVars: z.array(z.object({
@@ -205,11 +193,6 @@ const schema = z.object({
     }
   })).default([]),
 }).superRefine((values, ctx) => {
-  if (values.sizingMode === 'custom') {
-    if (!values.cpuRequest && !values.cpuLimit && !values.memoryRequest && !values.memoryLimit) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'At least one resource field is required', path: ['cpuRequest'] });
-    }
-  }
   if (values.tlsEnabled && !values.hostname) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Hostname required when TLS enabled', path: ['hostname'] });
   }
@@ -247,12 +230,7 @@ const defaultValues: CappFormValues = {
   maxReplicas: undefined,
   scaleDelaySeconds: undefined,
   state: "enabled",
-  sizingMode: 'preset',
   size: '',
-  cpuRequest: '',
-  cpuLimit: '',
-  memoryRequest: '',
-  memoryLimit: '',
   image: "",
   containerName: "",
   envVars: [],
@@ -436,12 +414,7 @@ export const CappForm: React.FC<CappFormProps> = ({
               volumeName: v.name,
               mountPath: v.mountPath,
             })),
-            sizingMode: spec.size ? 'preset' : (container.resources ? 'custom' : 'preset'),
             size: (spec.size as CappSize | '') ?? '',
-            cpuRequest: ((container.resources as Record<string, Record<string, string>> | undefined)?.requests?.cpu) ?? '',
-            cpuLimit: ((container.resources as Record<string, Record<string, string>> | undefined)?.limits?.cpu) ?? '',
-            memoryRequest: ((container.resources as Record<string, Record<string, string>> | undefined)?.requests?.memory) ?? '',
-            memoryLimit: ((container.resources as Record<string, Record<string, string>> | undefined)?.limits?.memory) ?? '',
             eventSources: [],
           });
         }

@@ -1,11 +1,9 @@
 import React from 'react';
-import { Control, Controller, useWatch } from 'react-hook-form';
+import { Control, Controller } from 'react-hook-form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { SectionAccordion } from './SectionAccordion';
-import { CappFormValues, SizingMode } from '../CappForm';
-import { useSizes } from '@/hooks/useCapps';
-import { cn } from '@/lib/utils';
+import { CappFormValues } from '../CappForm';
 
 interface DetailsSectionProps {
   control: Control<CappFormValues>;
@@ -17,18 +15,7 @@ const stateOptions = [
   { value: 'disabled', label: 'Disabled' },
 ];
 
-function sizeDescription(sizes: ReturnType<typeof useSizes>['data'], size: string): string | undefined {
-  if (!sizes || !size) return undefined;
-  const s = sizes[size as keyof typeof sizes];
-  if (!s) return undefined;
-  return `CPU: ${s.requests.cpu} / ${s.limits.cpu} — Memory: ${s.requests.memory} / ${s.limits.memory}`;
-}
-
 export const DetailsSection: React.FC<DetailsSectionProps> = ({ control }) => {
-  const sizingMode = useWatch({ control, name: 'sizingMode' }) as SizingMode;
-  const selectedSize = useWatch({ control, name: 'size' }) as string;
-  const { data: sizes } = useSizes();
-
   return (
     <SectionAccordion value="details" title="Details">
       <div className="flex flex-col gap-4">
@@ -128,97 +115,31 @@ export const DetailsSection: React.FC<DetailsSectionProps> = ({ control }) => {
             )}
           />
         </div>
-
-        {/* Resource sizing — preset or custom */}
-        <div className="flex flex-col gap-3">
-          <label className="text-sm font-medium text-text-secondary">Resources</label>
+        <div className="grid grid-cols-2 gap-4">
           <Controller
-            name="sizingMode"
+            name="size"
             control={control}
             render={({ field }) => (
-              <div className="flex gap-1 rounded-lg bg-surface border border-border p-1 w-fit">
-                {([
-                  { value: 'preset', label: 'Preset size' },
-                  { value: 'custom', label: 'Custom' },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => field.onChange(opt.value)}
-                    className={cn(
-                      'rounded-md px-4 py-1.5 text-sm font-medium transition-all',
-                      field.value === opt.value
-                        ? 'bg-card text-text shadow-sm'
-                        : 'text-text-muted hover:text-text',
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-text-secondary">Size</label>
+                <Select
+                  value={field.value === '' || field.value == null ? '__none__' : field.value as string}
+                  onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
+                >
+                  <SelectTrigger className="w-full bg-card border-border">
+                    <SelectValue placeholder="None (no preset)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None (no preset)</SelectItem>
+                    <SelectItem value="small">Small</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="large">Large</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-text-muted">Container resource preset (CPU + memory requests/limits)</p>
               </div>
             )}
           />
-
-          {sizingMode === 'preset' ? (
-            <div className="grid grid-cols-2 gap-4">
-              <Controller
-                name="size"
-                control={control}
-                render={({ field }) => (
-                  <div className="flex flex-col gap-1.5">
-                    <Select
-                      value={field.value === '' || field.value == null ? '__none__' : field.value as string}
-                      onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
-                    >
-                      <SelectTrigger className="w-full bg-card border-border">
-                        <SelectValue placeholder="None (no preset)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">None (no preset)</SelectItem>
-                        <SelectItem value="small">Small</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="large">Large</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-text-muted">
-                      {sizeDescription(sizes, selectedSize) ?? 'Container resource preset (CPU + memory requests/limits)'}
-                    </p>
-                  </div>
-                )}
-              />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <Controller
-                name="cpuRequest"
-                control={control}
-                render={({ field }) => (
-                  <Input label="CPU Request" placeholder="e.g. 100m" hint="Minimum CPU allocation" {...field} />
-                )}
-              />
-              <Controller
-                name="cpuLimit"
-                control={control}
-                render={({ field }) => (
-                  <Input label="CPU Limit" placeholder="e.g. 500m" hint="Maximum CPU allocation" {...field} />
-                )}
-              />
-              <Controller
-                name="memoryRequest"
-                control={control}
-                render={({ field }) => (
-                  <Input label="Memory Request" placeholder="e.g. 128Mi" hint="Minimum memory allocation" {...field} />
-                )}
-              />
-              <Controller
-                name="memoryLimit"
-                control={control}
-                render={({ field }) => (
-                  <Input label="Memory Limit" placeholder="e.g. 512Mi" hint="Maximum memory allocation" {...field} />
-                )}
-              />
-            </div>
-          )}
         </div>
       </div>
     </SectionAccordion>
