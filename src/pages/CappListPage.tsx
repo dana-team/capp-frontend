@@ -44,6 +44,7 @@ import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { useCapps, useDeleteCapp } from "@/hooks/useCapps";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useNamespaces } from "@/hooks/useNamespaces";
 import { useNamespaceContext } from "@/context/NamespaceContext";
 import { CappResponse } from "@/types/capp";
 import { relativeTime } from "@/utils/time";
@@ -58,6 +59,10 @@ export const CappListPage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedNamespace } = useNamespaceContext();
   const { data: capps, isLoading, error } = useCapps(selectedNamespace);
+  const { data: namespacesData } = useNamespaces();
+  const selectedNsQuota = selectedNamespace
+    ? namespacesData?.items?.find((ns) => ns.name === selectedNamespace)?.quota
+    : undefined;
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
@@ -195,6 +200,35 @@ export const CappListPage: React.FC = () => {
             <span className="font-semibold tabular-nums text-text">{namespaceCount}</span>
             <span className="text-text-muted ml-1.5">{namespaceCount === 1 ? "namespace" : "namespaces"}</span>
           </span>
+          {selectedNsQuota && (selectedNsQuota.cpu || selectedNsQuota.memory || selectedNsQuota.pods != null) && (
+            <>
+              <span className="text-border">·</span>
+              <span className="text-text-muted text-xs" title="Based on resource requests × max pods, not actual runtime usage">
+                Allocated:
+                {selectedNsQuota.cpu && (
+                  <span className="ml-1.5">
+                    CPU <span className="font-mono text-text">{selectedNsQuota.used?.cpu ?? '0'}</span>
+                    <span className="text-text-muted">/</span>
+                    <span className="font-mono text-text">{selectedNsQuota.cpu}</span>
+                  </span>
+                )}
+                {selectedNsQuota.memory && (
+                  <span className="ml-1.5">
+                    Mem <span className="font-mono text-text">{selectedNsQuota.used?.memory ?? '0'}</span>
+                    <span className="text-text-muted">/</span>
+                    <span className="font-mono text-text">{selectedNsQuota.memory}</span>
+                  </span>
+                )}
+                {selectedNsQuota.pods != null && (
+                  <span className="ml-1.5">
+                    Pods <span className="font-mono text-text">{selectedNsQuota.used?.pods ?? 0}</span>
+                    <span className="text-text-muted">/</span>
+                    <span className="font-mono text-text">{selectedNsQuota.pods}</span>
+                  </span>
+                )}
+              </span>
+            </>
+          )}
         </motion.div>
       )}
 

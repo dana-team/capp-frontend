@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch, Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import yaml from "js-yaml";
@@ -18,6 +18,8 @@ import { EventSourcesSection } from "./sections/EventSourcesSection";
 import { buildCappResource, cappToYaml } from "@/utils/cappBuilder";
 import { ScaleMetric, CappState, CappSize } from "@/types/capp";
 import { CappYamlEditor } from "./CappYamlEditor";
+import { useSizes } from "@/hooks/useCapps";
+import { parseResource } from "@/components/layout/NamespaceQuotaBar";
 
 export interface NFSVolumeFormValue {
   name: string;
@@ -280,9 +282,95 @@ interface CappFormProps {
   isEdit?: boolean;
   namespace?: string;
   onCancel?: () => void;
+  quota?: import('@/api/namespaces').QuotaInfo;
 }
 
 export type Tab = "form" | "yaml";
+
+function computeImpactPct(value: string | undefined, quotaLimit: string | undefined): number | null {
+  const v = parseResource(value);
+  const q = parseResource(quotaLimit);
+  if (v === null || q === null || q === 0) return null;
+  return Math.round((v / q) * 100);
+}
+
+const QuotaBanner: React.FC<{ quota?: import('@/api/namespaces').QuotaInfo; control: Control<CappFormValues> }> = ({ quota, control }) => {
+  const sizingMode = useWatch({ control, name: 'sizingMode' }) as SizingMode;
+  const selectedSize = useWatch({ control, name: 'size' }) as string;
+  const cpuLimit = useWatch({ control, name: 'cpuLimit' }) as string;
+  const memoryLimit = useWatch({ control, name: 'memoryLimit' }) as string;
+  const { data: sizes } = useSizes();
+
+  if (!quota || (!quota.cpu && !quota.memory && quota.pods == null)) return null;
+
+  let cpuPct: number | null = null;
+  let memPct: number | null = null;
+
+  if (sizingMode === 'preset' && selectedSize && sizes) {
+    const s = sizes[selectedSize as keyof typeof sizes];
+    if (s) {
+      cpuPct = computeImpactPct(s.limits.cpu, quota.cpu);
+      memPct = computeImpactPct(s.limits.memory, quota.memory);
+    }
+  } else if (sizingMode === 'custom') {
+    cpuPct = computeImpactPct(cpuLimit, quota.cpu);
+    memPct = computeImpactPct(memoryLimit, quota.memory);
+  }
+
+  const hasImpact = cpuPct !== null || memPct !== null;
+
+  return (
+    <div className="flex items-center gap-4 text-xs text-text-muted rounded-lg border border-border bg-surface px-3 py-2" title="Based on resource requests × max pods, not actual runtime usage">
+      <span className="font-medium text-text-secondary">Allocated:</span>
+      {quota.cpu && (
+        <span>
+          CPU{' '}
+          <span className="font-mono text-text">{quota.used?.cpu ?? '0'}</span>
+          <span className="text-text-muted"> / </span>
+          <span className="font-mono text-text">{quota.cpu}</span>
+        </span>
+      )}
+      {quota.memory && (
+        <span>
+          Memory{' '}
+          <span className="font-mono text-text">{quota.used?.memory ?? '0'}</span>
+          <span className="text-text-muted"> / </span>
+          <span className="font-mono text-text">{quota.memory}</span>
+        </span>
+      )}
+      {quota.pods != null && (
+        <span>
+          Pods{' '}
+          <span className="font-mono text-text">{quota.used?.pods ?? 0}</span>
+          <span className="text-text-muted"> / </span>
+          <span className="font-mono text-text">{quota.pods}</span>
+        </span>
+      )}
+      {hasImpact && (
+        <>
+          <span className="text-border">|</span>
+          <span className="font-medium text-text-secondary">This Capp:</span>
+          {cpuPct !== null && (
+            <span>
+              CPU{' '}
+              <span className={cn('font-mono font-medium', cpuPct >= 80 ? 'text-danger' : cpuPct >= 50 ? 'text-warning' : 'text-text')}>
+                ~{cpuPct}%
+              </span>
+            </span>
+          )}
+          {memPct !== null && (
+            <span>
+              Memory{' '}
+              <span className={cn('font-mono font-medium', memPct >= 80 ? 'text-danger' : memPct >= 50 ? 'text-warning' : 'text-text')}>
+                ~{memPct}%
+              </span>
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
 
 export const CappForm: React.FC<CappFormProps> = ({
   initialValues,
@@ -293,6 +381,7 @@ export const CappForm: React.FC<CappFormProps> = ({
   isEdit = false,
   namespace = "default",
   onCancel,
+  quota,
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>("form");
   const [yamlContent, setYamlContent] = useState("");
@@ -489,6 +578,8 @@ export const CappForm: React.FC<CappFormProps> = ({
         </Alert>
       )}
 
+      <QuotaBanner quota={quota} control={control} />
+
       {activeTab === "form" ? (
         <>
           <div className="flex flex-col gap-3">
@@ -519,6 +610,7 @@ export const CappForm: React.FC<CappFormProps> = ({
               <DetailsSection
                 control={control}
                 watch={watch as (name: keyof CappFormValues) => unknown}
+                quota={quota}
               />
               <ConfigurationSection
                 control={control}

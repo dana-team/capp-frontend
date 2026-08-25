@@ -13,6 +13,7 @@ import { useNamespaceContext } from '@/context/NamespaceContext'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { NamespaceQuotaBar } from './NamespaceQuotaBar'
 
 const navItems = [
   { to: '/capps',      label: 'Capps',      Icon: ShippingContainerIcon },
@@ -179,6 +180,10 @@ export const Sidebar: React.FC = () => {
           {createNamespaceMutation.isError && (
             <span className="text-xs text-danger mt-1">Failed to create namespace</span>
           )}
+          {selectedNamespace && (() => {
+            const nsItem = namespaces?.items?.find((ns) => ns.name === selectedNamespace)
+            return nsItem?.quota ? <NamespaceQuotaBar quota={nsItem.quota} /> : null
+          })()}
         </div>
 
         {/* Cluster */}

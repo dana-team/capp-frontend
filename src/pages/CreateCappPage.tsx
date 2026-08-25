@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { CaretRight } from '@phosphor-icons/react';
 import { CappForm, CappFormValues } from '@/components/capps/CappForm';
 import { useCreateCapp } from '@/hooks/useCapps';
+import { useNamespaces } from '@/hooks/useNamespaces';
 import { useNamespaceContext } from '@/context/NamespaceContext';
 import { buildCappRequest } from '@/utils/cappBuilder';
 
@@ -11,6 +12,8 @@ export const CreateCappPage: React.FC = () => {
   const { selectedNamespace } = useNamespaceContext();
   const namespace = selectedNamespace ?? 'default';
   const { mutateAsync: createCapp, isPending, error } = useCreateCapp();
+  const { data: namespacesData } = useNamespaces();
+  const nsQuota = namespacesData?.items?.find((ns) => ns.name === namespace)?.quota;
 
   const handleSubmit = async (values: CappFormValues) => {
     const req = buildCappRequest(namespace, values);
@@ -43,6 +46,7 @@ export const CreateCappPage: React.FC = () => {
         submitLabel="Create Capp"
         namespace={namespace}
         onCancel={() => navigate('/capps')}
+        quota={nsQuota}
       />
     </div>
   );

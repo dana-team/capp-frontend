@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CaretRightIcon, CircleNotchIcon, WarningCircleIcon } from '@phosphor-icons/react';
 import { CappForm, CappFormValues } from '@/components/capps/CappForm';
 import { useCapp, useUpdateCapp } from '@/hooks/useCapps';
+import { useNamespaces } from '@/hooks/useNamespaces';
 import { buildCappRequest, cappToFormValues } from '@/utils/cappBuilder';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -12,6 +13,8 @@ export const EditCappPage: React.FC = () => {
 
   const { data: capp, isLoading, error: loadError } = useCapp(namespace, name);
   const { mutateAsync: updateCapp, isPending, error: updateError } = useUpdateCapp();
+  const { data: namespacesData } = useNamespaces();
+  const nsQuota = namespacesData?.items?.find((ns) => ns.name === namespace)?.quota;
 
   const handleSubmit = async (values: CappFormValues) => {
     if (!capp) return;
@@ -74,6 +77,7 @@ export const EditCappPage: React.FC = () => {
         isEdit
         namespace={namespace}
         onCancel={() => navigate(`/capps/${namespace}/${name}`)}
+        quota={nsQuota}
       />
     </div>
   );
