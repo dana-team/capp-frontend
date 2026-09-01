@@ -99,6 +99,7 @@ export interface CappFormValues {
   logIndex: string;
   logUser: string;
   logPasswordSecret: string;
+  logPasswordKey: string;
   nfsVolumes: NFSVolumeFormValue[];
   secretVolumes: SecretVolumeFormValue[];
   configMapVolumes: ConfigMapVolumeFormValue[];
@@ -154,6 +155,7 @@ const schema = z.object({
   logIndex: z.string().optional(),
   logUser: z.string().optional(),
   logPasswordSecret: z.string().optional(),
+  logPasswordKey: z.string().optional(),
   nfsVolumes: z
     .array(
       z.object({
@@ -225,6 +227,9 @@ const schema = z.object({
     if (!values.logPasswordSecret) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Password secret is required', path: ['logPasswordSecret'] });
     }
+    if (!values.logPasswordKey) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Password secret key is required', path: ['logPasswordKey'] });
+    }
     if (values.logType === 'elastic' && !values.logIndex) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Index is required for elastic', path: ['logIndex'] });
     }
@@ -266,6 +271,7 @@ const defaultValues: CappFormValues = {
   logIndex: "",
   logUser: "",
   logPasswordSecret: "",
+  logPasswordKey: "",
   nfsVolumes: [],
   secretVolumes: [],
   configMapVolumes: [],
@@ -491,6 +497,7 @@ export const CappForm: React.FC<CappFormProps> = ({
             logIndex: (log?.index as string) ?? "",
             logUser: (log?.user as string) ?? "",
             logPasswordSecret: (log?.passwordSecret as string) ?? "",
+            logPasswordKey: (log?.passwordKey as string) ?? "",
             nfsVolumes: (
               (volumes?.nfsVolumes as Array<Record<string, unknown>>) ?? []
             ).map((v) => {

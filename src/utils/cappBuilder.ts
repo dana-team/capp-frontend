@@ -54,7 +54,7 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
     };
   }
 
-  if (values.logType && values.logHost && values.logUser && values.logPasswordSecret) {
+  if (values.logType && values.logHost && values.logUser && values.logPasswordSecret && values.logPasswordKey) {
     const logType = values.logType;
     const isDataStream = logType === 'elastic-datastream';
     if (isDataStream || values.logIndex) {
@@ -63,6 +63,7 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
         host: values.logHost,
         user: values.logUser,
         passwordSecret: values.logPasswordSecret,
+        passwordKey: values.logPasswordKey,
         ...(!isDataStream && values.logIndex ? { index: values.logIndex } : {}),
       };
     }
@@ -189,6 +190,7 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     logIndex: capp.logSpec?.index ?? '',
     logUser: capp.logSpec?.user ?? '',
     logPasswordSecret: capp.logSpec?.passwordSecret ?? '',
+    logPasswordKey: capp.logSpec?.passwordKey ?? '',
     nfsVolumes: (capp.nfsVolumes ?? []).map((v) => {
       const { value, unit } = parseCapacity(v.capacity);
       return {
@@ -313,7 +315,7 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
     };
   }
 
-  if (values.logType && values.logHost && values.logUser && values.logPasswordSecret) {
+  if (values.logType && values.logHost && values.logUser && values.logPasswordSecret && values.logPasswordKey) {
     const logType = values.logType;
     const isDataStream = logType === 'elastic-datastream';
     if (isDataStream || values.logIndex) {
@@ -322,6 +324,7 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
         host: values.logHost,
         user: values.logUser,
         passwordSecret: values.logPasswordSecret,
+        passwordKey: values.logPasswordKey,
         ...(!isDataStream && values.logIndex ? { index: values.logIndex } : {}),
       };
     }
@@ -402,6 +405,7 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     logIndex: capp.spec.logSpec?.index ?? '',
     logUser: capp.spec.logSpec?.user ?? '',
     logPasswordSecret: capp.spec.logSpec?.passwordSecret ?? '',
+    logPasswordKey: capp.spec.logSpec?.passwordKey ?? '',
     nfsVolumes: (capp.spec.volumesSpec?.nfsVolumes ?? []).map((v) => {
       const match = v.capacity.storage.match(/^(\d+)(Mi|Gi|Ti)$/);
       return {

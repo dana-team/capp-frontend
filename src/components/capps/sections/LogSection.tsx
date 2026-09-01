@@ -92,6 +92,20 @@ export const LogSection: React.FC<LogSectionProps> = ({ control }) => {
             )}
           />
         </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Controller
+            name="logPasswordKey"
+            control={control}
+            render={({ field }) => (
+              <Input
+                label="Password Secret Key"
+                placeholder="password"
+                hint="Key within the Secret holding the password"
+                {...field}
+              />
+            )}
+          />
+        </div>
       </div>
     </SectionAccordion>
   );
