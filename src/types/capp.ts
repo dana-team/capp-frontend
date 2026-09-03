@@ -43,6 +43,7 @@ export interface LogSpec {
   index?: string;
   user: string;
   passwordSecret: string;
+  passwordKey: string;
 }
 
 export interface NFSVolume {

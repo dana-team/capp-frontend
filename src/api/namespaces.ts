@@ -16,7 +16,7 @@ export interface NamespaceItem {
     status: string;
     quota?: QuotaInfo;
     users?: string[];
-    canEdit?: boolean;
+    canEdit: boolean;
 }
 
 export interface NamespaceListResponse {
