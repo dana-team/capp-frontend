@@ -3,17 +3,20 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   SignOutIcon, ShippingContainerIcon, CactusIcon,
   BookOpenTextIcon, KeyIcon, SunIcon, MoonIcon,
+  GearSixIcon,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import { useThemeStore } from '@/store/theme'
-import { useNamespaces, useCreateNamespace } from '@/hooks/useNamespaces'
+import { useNamespaces } from '@/hooks/useNamespaces'
 import { useClusters } from '@/hooks/useClusters'
 import { useNamespaceContext } from '@/context/NamespaceContext'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { NamespaceQuotaBar } from './NamespaceQuotaBar'
+import { CreateNamespaceDialog } from '@/components/namespace/CreateNamespaceDialog'
+import { NamespaceSettingsDialog } from '@/components/namespace/NamespaceSettingsDialog'
 
 const navItems = [
   { to: '/capps',      label: 'Capps',      Icon: ShippingContainerIcon },
@@ -29,34 +32,18 @@ export const Sidebar: React.FC = () => {
 
   const { data: namespaces } = useNamespaces()
   const { data: clusters } = useClusters()
-  const createNamespaceMutation = useCreateNamespace()
 
-  const [isCreatingNs, setIsCreatingNs] = useState(false)
-  const [newNamespace, setNewNamespace] = useState('')
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
 
   const canCreate = namespaces?.canCreate ?? false
   const currentCluster = clusters?.find((c) => c.name === cluster)
+  const selectedNsItem = namespaces?.items?.find((ns) => ns.name === selectedNamespace)
 
   const handleLogout = () => { logout(); navigate('/login') }
   const handleClusterChange = (name: string) => {
     setCredentials(name, token, refreshToken)
     setSelectedNamespace(undefined)
-  }
-  const handleCreateNamespace = async () => {
-    if (!newNamespace.trim()) return
-    try {
-      await createNamespaceMutation.mutateAsync({ name: newNamespace })
-      setNewNamespace('')
-      setIsCreatingNs(false)
-      setSelectedNamespace(newNamespace)
-    } catch (e) {
-      console.error('Failed to create namespace', e)
-    }
-  }
-  const handleCancelCreate = () => {
-    setIsCreatingNs(false)
-    setNewNamespace('')
-    createNamespaceMutation.reset()
   }
 
   return (
@@ -122,13 +109,24 @@ export const Sidebar: React.FC = () => {
 
         {/* Namespace */}
         <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-medium text-text-muted uppercase tracking-[0.8px]">
-            Namespace
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-medium text-text-muted uppercase tracking-[0.8px]">
+              Namespace
+            </span>
+            {selectedNsItem?.canEdit && (
+              <button
+                onClick={() => setSettingsDialogOpen(true)}
+                aria-label="Namespace settings"
+                className="h-5 w-5 flex items-center justify-center rounded text-text-muted hover:text-primary hover:bg-primary/10 transition-all duration-150"
+              >
+                <GearSixIcon size={12} weight="bold" />
+              </button>
+            )}
+          </div>
           <Select
             value={selectedNamespace ?? '__all__'}
             onValueChange={(v) => {
-              if (v === '__create__') { setIsCreatingNs(true); return }
+              if (v === '__create__') { setCreateDialogOpen(true); return }
               setSelectedNamespace(v === '__all__' ? undefined : v)
             }}
           >
@@ -146,45 +144,20 @@ export const Sidebar: React.FC = () => {
             </SelectContent>
           </Select>
 
-          {isCreatingNs && (
-            <div className="flex flex-col gap-1 w-full mt-1">
-              <input
-                autoFocus
-                aria-label="New namespace name"
-                className="h-7 w-full px-2 text-xs font-mono bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="namespace-name"
-                value={newNamespace}
-                onChange={(e) => setNewNamespace(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreateNamespace()
-                  if (e.key === 'Escape') handleCancelCreate()
-                }}
-              />
-              <div className="flex gap-1 w-full">
-                <button
-                  className="flex-1 h-7 text-xs bg-primary text-primary-foreground rounded transition-all active:scale-95 disabled:opacity-50"
-                  onClick={handleCreateNamespace}
-                  disabled={createNamespaceMutation.isPending || !newNamespace.trim()}
-                >
-                  {createNamespaceMutation.isPending ? '…' : 'Add'}
-                </button>
-                <button
-                  className="flex-1 h-7 text-xs border border-border text-text-muted rounded hover:bg-surface transition-all active:scale-95"
-                  onClick={handleCancelCreate}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-          {createNamespaceMutation.isError && (
-            <span className="text-xs text-danger mt-1">Failed to create namespace</span>
-          )}
-          {selectedNamespace && (() => {
-            const nsItem = namespaces?.items?.find((ns) => ns.name === selectedNamespace)
-            return nsItem?.quota ? <NamespaceQuotaBar quota={nsItem.quota} /> : null
-          })()}
+          {selectedNsItem?.quota && <NamespaceQuotaBar quota={selectedNsItem.quota} />}
         </div>
+
+        <CreateNamespaceDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onCreated={(name) => setSelectedNamespace(name)}
+        />
+        <NamespaceSettingsDialog
+          namespace={selectedNsItem ?? null}
+          open={settingsDialogOpen}
+          onOpenChange={setSettingsDialogOpen}
+          isAdmin={canCreate}
+        />
 
         {/* Cluster */}
         <div className="flex flex-col gap-1">
