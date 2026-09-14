@@ -39,8 +39,10 @@ export interface RouteSpec {
 
 export interface LogSpec {
   type: 'elastic' | 'elastic-datastream';
+  /** Hostname of the logs destination, without scheme, port or path. */
   host: string;
-  index?: string;
+  /** Index name when type is 'elastic', data stream name when 'elastic-datastream'. */
+  target: string;
   user: string;
   passwordSecret: string;
   passwordKey: string;

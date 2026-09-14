@@ -54,19 +54,15 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
     };
   }
 
-  if (values.logType && values.logHost && values.logUser && values.logPasswordSecret && values.logPasswordKey) {
-    const logType = values.logType;
-    const isDataStream = logType === 'elastic-datastream';
-    if (isDataStream || values.logIndex) {
-      req.logSpec = {
-        type: logType,
-        host: values.logHost,
-        user: values.logUser,
-        passwordSecret: values.logPasswordSecret,
-        passwordKey: values.logPasswordKey,
-        ...(!isDataStream && values.logIndex ? { index: values.logIndex } : {}),
-      };
-    }
+  if (values.logType && values.logHost && values.logTarget && values.logUser && values.logPasswordSecret && values.logPasswordKey) {
+    req.logSpec = {
+      type: values.logType,
+      host: values.logHost,
+      target: values.logTarget,
+      user: values.logUser,
+      passwordSecret: values.logPasswordSecret,
+      passwordKey: values.logPasswordKey,
+    };
   }
 
   if (values.nfsVolumes.length > 0) {
@@ -187,7 +183,7 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     routeTimeoutSeconds: capp.routeSpec?.routeTimeoutSeconds ?? undefined,
     logType: capp.logSpec?.type ?? '',
     logHost: capp.logSpec?.host ?? '',
-    logIndex: capp.logSpec?.index ?? '',
+    logTarget: capp.logSpec?.target ?? '',
     logUser: capp.logSpec?.user ?? '',
     logPasswordSecret: capp.logSpec?.passwordSecret ?? '',
     logPasswordKey: capp.logSpec?.passwordKey ?? '',
@@ -315,19 +311,15 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
     };
   }
 
-  if (values.logType && values.logHost && values.logUser && values.logPasswordSecret && values.logPasswordKey) {
-    const logType = values.logType;
-    const isDataStream = logType === 'elastic-datastream';
-    if (isDataStream || values.logIndex) {
-      spec.logSpec = {
-        type: logType,
-        host: values.logHost,
-        user: values.logUser,
-        passwordSecret: values.logPasswordSecret,
-        passwordKey: values.logPasswordKey,
-        ...(!isDataStream && values.logIndex ? { index: values.logIndex } : {}),
-      };
-    }
+  if (values.logType && values.logHost && values.logTarget && values.logUser && values.logPasswordSecret && values.logPasswordKey) {
+    spec.logSpec = {
+      type: values.logType,
+      host: values.logHost,
+      target: values.logTarget,
+      user: values.logUser,
+      passwordSecret: values.logPasswordSecret,
+      passwordKey: values.logPasswordKey,
+    };
   }
 
   const hasVolumes = values.nfsVolumes.length > 0 || values.secretVolumes.length > 0 || values.configMapVolumes.length > 0;
@@ -402,7 +394,7 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     routeTimeoutSeconds: capp.spec.routeSpec?.routeTimeoutSeconds,
     logType: capp.spec.logSpec?.type ?? '',
     logHost: capp.spec.logSpec?.host ?? '',
-    logIndex: capp.spec.logSpec?.index ?? '',
+    logTarget: capp.spec.logSpec?.target ?? '',
     logUser: capp.spec.logSpec?.user ?? '',
     logPasswordSecret: capp.spec.logSpec?.passwordSecret ?? '',
     logPasswordKey: capp.spec.logSpec?.passwordKey ?? '',
