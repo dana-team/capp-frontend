@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useForm, Controller, useWatch, Control } from "react-hook-form";
+import { useForm, Controller, useWatch, Control, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import yaml from "js-yaml";
@@ -402,7 +402,7 @@ export const CappForm: React.FC<CappFormProps> = ({
     reset,
     formState: { errors },
   } = useForm<CappFormValues>({
-    resolver: zodResolver(schema) as ReturnType<typeof zodResolver>,
+    resolver: zodResolver(schema) as Resolver<CappFormValues>,
     defaultValues: { ...defaultValues, ...initialValues },
   });
 
