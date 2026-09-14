@@ -48,24 +48,28 @@ export const LogSection: React.FC<LogSectionProps> = ({ control }) => {
             render={({ field }) => (
               <Input
                 label="Host"
-                placeholder="https://elastic.example.com:9200"
+                placeholder="elastic.example.com"
+                hint="Hostname only, without scheme or port"
                 {...field}
               />
             )}
           />
-          {logType === 'elastic' && (
-            <Controller
-              name="logIndex"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  label="Index"
-                  placeholder="app-logs"
-                  {...field}
-                />
-              )}
-            />
-          )}
+          <Controller
+            name="logTarget"
+            control={control}
+            render={({ field }) => (
+              <Input
+                label="Target"
+                placeholder="app-logs"
+                hint={
+                  logType === 'elastic-datastream'
+                    ? 'Name of the data stream to write logs to'
+                    : 'Name of the index to write logs to'
+                }
+                {...field}
+              />
+            )}
+          />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Controller

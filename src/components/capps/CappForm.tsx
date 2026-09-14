@@ -96,7 +96,7 @@ export interface CappFormValues {
   routeTimeoutSeconds?: number;
   logType: LogType | "";
   logHost: string;
-  logIndex: string;
+  logTarget: string;
   logUser: string;
   logPasswordSecret: string;
   logPasswordKey: string;
@@ -108,6 +108,7 @@ export interface CappFormValues {
 }
 
 const k8sNameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
+const logHostRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$/;
 
 const schema = z.object({
   name: z
@@ -152,7 +153,7 @@ const schema = z.object({
   routeTimeoutSeconds: z.number().optional(),
   logType: z.enum(["", "elastic", "elastic-datastream"]).optional(),
   logHost: z.string().optional(),
-  logIndex: z.string().optional(),
+  logTarget: z.string().optional(),
   logUser: z.string().optional(),
   logPasswordSecret: z.string().optional(),
   logPasswordKey: z.string().optional(),
@@ -220,6 +221,8 @@ const schema = z.object({
   if (values.logType) {
     if (!values.logHost) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Host is required', path: ['logHost'] });
+    } else if (values.logHost.length > 253 || !logHostRegex.test(values.logHost)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Host must be a lowercase hostname without scheme, port or path', path: ['logHost'] });
     }
     if (!values.logUser) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'User is required', path: ['logUser'] });
@@ -230,8 +233,8 @@ const schema = z.object({
     if (!values.logPasswordKey) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Password secret key is required', path: ['logPasswordKey'] });
     }
-    if (values.logType === 'elastic' && !values.logIndex) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Index is required for elastic', path: ['logIndex'] });
+    if (!values.logTarget) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Target is required', path: ['logTarget'] });
     }
   }
   // Operator webhook requires every NFS volume to be mounted by a volumeMount.
@@ -268,7 +271,7 @@ const defaultValues: CappFormValues = {
   routeTimeoutSeconds: undefined,
   logType: "",
   logHost: "",
-  logIndex: "",
+  logTarget: "",
   logUser: "",
   logPasswordSecret: "",
   logPasswordKey: "",
@@ -494,7 +497,7 @@ export const CappForm: React.FC<CappFormProps> = ({
                 ? log.type
                 : "",
             logHost: (log?.host as string) ?? "",
-            logIndex: (log?.index as string) ?? "",
+            logTarget: (log?.target as string) ?? "",
             logUser: (log?.user as string) ?? "",
             logPasswordSecret: (log?.passwordSecret as string) ?? "",
             logPasswordKey: (log?.passwordKey as string) ?? "",

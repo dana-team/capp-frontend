@@ -203,6 +203,9 @@ export const CappDetail: React.FC<CappDetailProps> = ({
             {capp.logSpec && (
               <InfoRow icon={<HardDrivesIcon size={14} />} label="Log Host" value={capp.logSpec.host} />
             )}
+            {capp.logSpec?.target && (
+              <InfoRow icon={<HardDrivesIcon size={14} />} label="Log Target" value={capp.logSpec.target} />
+            )}
           </CardContent>
         </Card>
 
