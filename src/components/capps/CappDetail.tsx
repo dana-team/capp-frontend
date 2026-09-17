@@ -26,6 +26,7 @@ interface CappDetailProps {
   onDelete?: () => void
   isDeleting?: boolean
   onSync?: () => void
+  onDisableSync?: () => void
   isSyncing?: boolean
   syncResult?: SyncToGitResponse | null
   syncError?: string | null
@@ -44,7 +45,7 @@ const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: React.Rea
 )
 
 export const CappDetail: React.FC<CappDetailProps> = ({
-  capp, onDelete, isDeleting, onSync, isSyncing, syncResult, syncError,
+  capp, onDelete, isDeleting, onSync, onDisableSync, isSyncing, syncResult, syncError,
 }) => {
   const namespace = capp.namespace
   const isSynced = hasBackupLabel(capp.labels)
@@ -61,7 +62,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
             </Badge>
             {isSynced && (
               <Badge variant="info" className="gap-1">
-                <GitBranchIcon size={12} /> Synced to Git
+                <GitBranchIcon size={12} /> Git sync on
               </Badge>
             )}
           </div>
@@ -81,7 +82,12 @@ export const CappDetail: React.FC<CappDetailProps> = ({
                 ? <CircleNotchIcon size={14} className="mr-1.5 animate-spin" />
                 : <GitBranchIcon size={14} className="mr-1.5" />
               }
-              {isSynced ? 'Re-sync to Git' : 'Sync to Git'}
+              {isSynced ? 'Re-sync' : 'Enable Git sync'}
+            </Button>
+          )}
+          {isSynced && onDisableSync && (
+            <Button variant="danger" size="sm" onClick={onDisableSync} disabled={isSyncing}>
+              Disable Git sync
             </Button>
           )}
           <Link to={`/capps/${namespace}/${capp.name}/edit`}>
@@ -105,17 +111,27 @@ export const CappDetail: React.FC<CappDetailProps> = ({
       {syncResult && (
         <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-4 py-3 text-sm text-success">
           <CheckCircleIcon size={16} weight="fill" />
-          <span>
-            Synced to <span className="font-mono">{syncResult.path}</span>
-            {' '}— commit{' '}
-            <span className="font-mono">{syncResult.commitSha.slice(0, 7)}</span>
-          </span>
+          {syncResult.enabled ? (
+            <span>
+              Synced to <span className="font-mono">{syncResult.path}</span>
+              {syncResult.commitSha && (
+                <>
+                  {' '}— commit{' '}
+                  <span className="font-mono">{syncResult.commitSha.slice(0, 7)}</span>
+                </>
+              )}
+            </span>
+          ) : (
+            <span>
+              Git sync disabled — removed <span className="font-mono">{syncResult.path}</span>
+            </span>
+          )}
         </div>
       )}
 
       {syncError && (
         <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
-          <span>Sync failed: {syncError}</span>
+          <span>Git sync failed: {syncError}</span>
         </div>
       )}
 

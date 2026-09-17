@@ -6,6 +6,7 @@ import { useCapp, useUpdateCapp } from '@/hooks/useCapps';
 import { useNamespaces } from '@/hooks/useNamespaces';
 import { buildCappRequest, cappToFormValues } from '@/utils/cappBuilder';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { hasBackupLabel } from '@/types/capp';
 
 export const EditCappPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>();
@@ -66,6 +67,9 @@ export const EditCappPage: React.FC = () => {
         <p className="mt-1 text-sm text-text-muted">
           Namespace: <span className="text-primary font-medium">{namespace}</span>
         </p>
+        {hasBackupLabel(capp?.labels) && (
+          <p className="mt-1 text-sm text-text-muted">Changes will be committed to Git.</p>
+        )}
       </div>
 
       <CappForm
