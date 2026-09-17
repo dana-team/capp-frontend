@@ -1,5 +1,5 @@
 import { backendClient, clusterBase } from './client';
-import { CappRequest, CappResponse, CappListResponse, CappSizesResponse, SyncToGitResponse } from '@/types/capp';
+import { CappRequest, CappResponse, CappListResponse, CappSizesResponse, SyncToGitResponse, DeleteCappResponse } from '@/types/capp';
 
 /** Fetch the configured t-shirt size definitions (no auth required). */
 export function fetchSizes(): Promise<CappSizesResponse> {
@@ -42,8 +42,12 @@ export function updateCapp(
   );
 }
 
-export function deleteCapp(namespace: string, name: string): Promise<void> {
-  return backendClient<void>(
+/** Resolves to undefined on a clean delete (204), or the warnings body (200). */
+export function deleteCapp(
+  namespace: string,
+  name: string
+): Promise<DeleteCappResponse | undefined> {
+  return backendClient<DeleteCappResponse | undefined>(
     `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}`,
     { method: 'DELETE' }
   );

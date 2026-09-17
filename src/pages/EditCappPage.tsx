@@ -6,7 +6,7 @@ import { useCapp, useUpdateCapp } from '@/hooks/useCapps';
 import { useNamespaces } from '@/hooks/useNamespaces';
 import { buildCappRequest, cappToFormValues } from '@/utils/cappBuilder';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { hasBackupLabel } from '@/types/capp';
+import { hasBackupLabel, WarningNavState } from '@/types/capp';
 
 export const EditCappPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>();
@@ -20,8 +20,14 @@ export const EditCappPage: React.FC = () => {
   const handleSubmit = async (values: CappFormValues) => {
     if (!capp) return;
     const req = buildCappRequest(namespace, values);
-    await updateCapp({ namespace, name, req });
-    navigate(`/capps/${namespace}/${name}`);
+    // The save succeeded; warnings mean the Git backup is stale, which the
+    // detail page reports once we land there.
+    const updated = await updateCapp({ namespace, name, req });
+    navigate(`/capps/${namespace}/${name}`, {
+      state: updated?.warnings?.length
+        ? ({ warnings: updated.warnings } satisfies WarningNavState)
+        : undefined,
+    });
   };
 
   if (isLoading) {
