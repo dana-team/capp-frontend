@@ -55,3 +55,10 @@ export function syncCappToGit(namespace: string, name: string): Promise<SyncToGi
     { method: 'POST' }
   );
 }
+
+export function disableCappGitSync(namespace: string, name: string): Promise<SyncToGitResponse> {
+  return backendClient<SyncToGitResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/sync`,
+    { method: 'DELETE' }
+  );
+}

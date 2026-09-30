@@ -201,7 +201,8 @@ export interface CappSizesResponse {
 // ── Sync to Git ────────────────────────────────────────────────────────────
 
 export interface SyncToGitResponse {
-  commitSha: string;
+  enabled: boolean;
+  commitSha?: string;
   path: string;
 }
 

@@ -7,9 +7,10 @@ import {
   updateCapp,
   deleteCapp,
   syncCappToGit,
+  disableCappGitSync,
   fetchSizes,
 } from "@/api/capps";
-import { CappRequest } from "@/types/capp";
+import { CappRequest, SyncToGitResponse } from "@/types/capp";
 import { useAuthStore } from "@/store/auth";
 import { getBackendUrl } from "@/lib/config";
 
@@ -85,14 +86,19 @@ export function useUpdateCapp() {
   });
 }
 
-export function useSyncCappToGit() {
+function useGitSyncMutation(
+  mutate: (namespace: string, name: string) => Promise<SyncToGitResponse>,
+) {
   const queryClient = useQueryClient();
   const cluster = useAuthStore((s) => s.cluster);
 
   return useMutation({
     mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
-      syncCappToGit(namespace, name),
+      mutate(namespace, name),
     onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["capps", getBackendUrl(), cluster],
+      });
       queryClient.invalidateQueries({
         queryKey: [
           "capp",
@@ -104,6 +110,14 @@ export function useSyncCappToGit() {
       });
     },
   });
+}
+
+export function useSyncCappToGit() {
+  return useGitSyncMutation(syncCappToGit);
+}
+
+export function useDisableCappGitSync() {
+  return useGitSyncMutation(disableCappGitSync);
 }
 
 export function useDeleteCapp() {

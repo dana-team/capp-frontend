@@ -8,8 +8,8 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useCapp, useDeleteCapp, useSyncCappToGit } from '@/hooks/useCapps'
-import { SyncToGitResponse } from '@/types/capp'
+import { useCapp, useDeleteCapp, useDisableCappGitSync, useSyncCappToGit } from '@/hooks/useCapps'
+import { hasBackupLabel, SyncToGitResponse } from '@/types/capp'
 
 export const CappDetailPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>()
@@ -18,11 +18,15 @@ export const CappDetailPage: React.FC = () => {
   const { data: capp, isLoading, error } = useCapp(namespace, name)
   const { mutateAsync: deleteCapp, isPending: isDeleting } = useDeleteCapp()
   const { mutateAsync: syncToGit, isPending: isSyncing } = useSyncCappToGit()
+  const { mutateAsync: disableGitSync, isPending: isDisabling } = useDisableCappGitSync()
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [syncResult, setSyncResult] = useState<SyncToGitResponse | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
+
+  const isGitSynced = hasBackupLabel(capp?.labels)
 
   const handleDelete = async () => {
     try {
@@ -33,15 +37,19 @@ export const CappDetailPage: React.FC = () => {
     }
   }
 
-  const handleSync = async () => {
+  const runGitSync = async (action: typeof syncToGit) => {
     setSyncResult(null)
     setSyncError(null)
     try {
-      const result = await syncToGit({ namespace, name })
-      setSyncResult(result)
+      setSyncResult(await action({ namespace, name }))
     } catch (e) {
-      setSyncError((e as Error).message ?? 'Failed to sync to Git')
+      setSyncError((e as Error).message ?? 'Git sync failed')
     }
+  }
+
+  const handleDisableSync = async () => {
+    setShowDisableConfirm(false)
+    await runGitSync(disableGitSync)
   }
 
   return (
@@ -74,8 +82,9 @@ export const CappDetailPage: React.FC = () => {
             capp={capp}
             onDelete={() => setShowDeleteConfirm(true)}
             isDeleting={isDeleting}
-            onSync={handleSync}
-            isSyncing={isSyncing}
+            onSync={() => runGitSync(syncToGit)}
+            onDisableSync={() => setShowDisableConfirm(true)}
+            isSyncing={isSyncing || isDisabling}
             syncResult={syncResult}
             syncError={syncError}
           />
@@ -92,6 +101,7 @@ export const CappDetailPage: React.FC = () => {
                 <AlertDialogTitle>Delete Capp</AlertDialogTitle>
                 <AlertDialogDescription>
                   Are you sure you want to delete &quot;{name}&quot;? This action cannot be undone.
+                  {isGitSynced && ' Its values file will also be removed from Git.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               {deleteError && (
@@ -109,6 +119,26 @@ export const CappDetailPage: React.FC = () => {
                 >
                   {isDeleting && <CircleNotchIcon className="h-4 w-4 animate-spin" />}
                   Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Disable Git sync</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Disable Git sync for &quot;{name}&quot;?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => handleDisableSync()}
+                  className="bg-danger hover:bg-danger/90 text-white"
+                >
+                  Disable
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
