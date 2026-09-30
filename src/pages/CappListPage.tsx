@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Plus,
   MagnifyingGlass,
@@ -42,7 +42,9 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
+import { WarningBanner } from "@/components/capps/WarningBanner";
 import { useCapps, useDeleteCapp } from "@/hooks/useCapps";
+import { Warning, WarningNavState } from "@/types/capp";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useNamespaces } from "@/hooks/useNamespaces";
 import { useNamespaceContext } from "@/context/NamespaceContext";
@@ -72,6 +74,11 @@ export const CappListPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<CappResponse | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { mutateAsync: deleteCapp, isPending: isDeleting } = useDeleteCapp();
+  // Seeded by a delete performed on the detail page, then replaced by any
+  // delete done from this page.
+  const [warnings, setWarnings] = useState<Warning[] | undefined>(
+    (useLocation().state as WarningNavState | null)?.warnings,
+  );
 
   const totalCapps = capps?.length ?? 0;
   const enabledCapps =
@@ -132,10 +139,11 @@ export const CappListPage: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await deleteCapp({
+      const result = await deleteCapp({
         namespace: deleteTarget.namespace ?? "",
         name: deleteTarget.name,
       });
+      setWarnings(result?.warnings);
       setDeleteTarget(null);
     } catch (e) {
       setDeleteError((e as Error).message ?? "Failed to delete Capp");
@@ -164,6 +172,8 @@ export const CappListPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-5">
+      <WarningBanner warnings={warnings} />
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

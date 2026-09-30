@@ -178,6 +178,24 @@ export interface CappResponse {
   configMapVolumes?: ConfigMapVolume[];
   eventSourcesSpec?: EventSourcesSpec;
   status: CappStatusResponse;
+  /** Side effects that failed while the cluster write itself succeeded. */
+  warnings?: Warning[];
+}
+
+/** A non-fatal problem attached to an otherwise successful response. */
+export interface Warning {
+  code: string;
+  message: string;
+}
+
+/** DELETE /capps/:name answers 204 with no body, or 200 with warnings. */
+export interface DeleteCappResponse {
+  warnings?: Warning[];
+}
+
+/** Router state used to carry warnings across a redirect. */
+export interface WarningNavState {
+  warnings?: Warning[];
 }
 
 export interface CappListResponse {

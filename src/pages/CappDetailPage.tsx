@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { CaretRightIcon, CircleNotchIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { CappDetail } from '@/components/capps/CappDetail'
 import {
@@ -8,12 +8,15 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { WarningBanner } from '@/components/capps/WarningBanner'
 import { useCapp, useDeleteCapp, useDisableCappGitSync, useSyncCappToGit } from '@/hooks/useCapps'
-import { hasBackupLabel, SyncToGitResponse } from '@/types/capp'
+import { hasBackupLabel, SyncToGitResponse, WarningNavState } from '@/types/capp'
 
 export const CappDetailPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>()
   const navigate = useNavigate()
+  // Warnings handed over by EditCappPage after a save whose backup failed.
+  const carriedWarnings = (useLocation().state as WarningNavState | null)?.warnings
 
   const { data: capp, isLoading, error } = useCapp(namespace, name)
   const { mutateAsync: deleteCapp, isPending: isDeleting } = useDeleteCapp()
@@ -30,8 +33,12 @@ export const CappDetailPage: React.FC = () => {
 
   const handleDelete = async () => {
     try {
-      await deleteCapp({ namespace, name })
-      navigate('/capps')
+      // The Capp is gone either way; a 200 body means its backup is now stale,
+      // so carry that over to the list page rather than dropping it.
+      const result = await deleteCapp({ namespace, name })
+      navigate('/capps', {
+        state: result?.warnings?.length ? ({ warnings: result.warnings } satisfies WarningNavState) : undefined,
+      })
     } catch (e) {
       setDeleteError((e as Error).message ?? 'Failed to delete Capp')
     }
@@ -77,7 +84,9 @@ export const CappDetailPage: React.FC = () => {
       )}
 
       {capp && (
-        <div>
+        <div className="flex flex-col gap-6">
+          <WarningBanner warnings={carriedWarnings} />
+
           <CappDetail
             capp={capp}
             onDelete={() => setShowDeleteConfirm(true)}
