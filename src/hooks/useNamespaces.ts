@@ -15,12 +15,21 @@ export function useNamespaces() {
     const cluster = useAuthStore((s) => s.cluster);
     return useQuery({
         queryKey: ["namespaces", getBackendUrl(), cluster],
-        queryFn: listNamespaces,
+        queryFn: () => listNamespaces(),
         enabled: Boolean(cluster),
         refetchInterval: 8000,
         refetchIntervalInBackground: true,
         refetchOnWindowFocus: true,
         staleTime: 3000,
+    });
+}
+
+export function useNamespacesForCluster(cluster: string) {
+    return useQuery({
+        queryKey: ["namespacesForCluster", getBackendUrl(), cluster],
+        queryFn: () => listNamespaces(cluster),
+        select: (data) => data.items,
+        enabled: Boolean(cluster),
     });
 }
 

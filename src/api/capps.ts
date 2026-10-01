@@ -1,5 +1,5 @@
 import { backendClient, clusterBase } from './client';
-import { CappRequest, CappResponse, CappListResponse, CappSizesResponse, SyncToGitResponse, DeleteCappResponse } from '@/types/capp';
+import { CappRequest, CappResponse, CappListResponse, CappSizesResponse, SyncToGitResponse, DeleteCappResponse, MigrateRequest, MigrateResponse } from '@/types/capp';
 
 /** Fetch the configured t-shirt size definitions (no auth required). */
 export function fetchSizes(): Promise<CappSizesResponse> {
@@ -64,5 +64,16 @@ export function disableCappGitSync(namespace: string, name: string): Promise<Syn
   return backendClient<SyncToGitResponse>(
     `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/sync`,
     { method: 'DELETE' }
+  );
+}
+
+export function migrateCapp(
+  namespace: string,
+  name: string,
+  req: MigrateRequest
+): Promise<MigrateResponse> {
+  return backendClient<MigrateResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/migrate`,
+    { method: 'POST', body: JSON.stringify(req) }
   );
 }
