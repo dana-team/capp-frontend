@@ -138,7 +138,10 @@ export const CappDetailPage: React.FC = () => {
               <AlertDialogHeader>
                 <AlertDialogTitle>Disable Git sync</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Disable Git sync for &quot;{name}&quot;?
+                  Disable Git sync for &quot;{name}&quot;? Its existing backup will be
+                  deleted, and future changes to this Capp will no longer be backed
+                  up. You can turn Git sync back on later, but the current backup
+                  cannot be recovered from here.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

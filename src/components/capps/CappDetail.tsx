@@ -107,25 +107,12 @@ export const CappDetail: React.FC<CappDetailProps> = ({
         </div>
       </div>
 
-      {/* Sync result banner */}
+      {/* Sync result banner. Deliberately says nothing about the values file
+          path or the commit — those are Git internals the user does not act on. */}
       {syncResult && (
         <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-4 py-3 text-sm text-success">
           <CheckCircleIcon size={16} weight="fill" />
-          {syncResult.enabled ? (
-            <span>
-              Synced to <span className="font-mono">{syncResult.path}</span>
-              {syncResult.commitSha && (
-                <>
-                  {' '}— commit{' '}
-                  <span className="font-mono">{syncResult.commitSha.slice(0, 7)}</span>
-                </>
-              )}
-            </span>
-          ) : (
-            <span>
-              Git sync disabled — removed <span className="font-mono">{syncResult.path}</span>
-            </span>
-          )}
+          <span>Git sync is {syncResult.enabled ? 'on' : 'off'}.</span>
         </div>
       )}
 
