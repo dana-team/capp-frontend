@@ -45,8 +45,8 @@ export interface PatchNamespaceRequest {
     users?: string[];
 }
 
-export function listNamespaces(): Promise<NamespaceListResponse> {
-    const { cluster } = useAuthStore.getState();
+export function listNamespaces(cluster?: string): Promise<NamespaceListResponse> {
+    cluster ??= useAuthStore.getState().cluster;
     return backendClient<NamespaceListResponse>(
         `/api/v1/clusters/${encodeURIComponent(cluster)}/namespaces`
     );

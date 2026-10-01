@@ -11,6 +11,7 @@ import { PencilSimpleIcon,
   HardDrivesIcon,
   GitBranchIcon,
   CheckCircleIcon,
+  ArrowsLeftRightIcon,
   LightningIcon } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ interface CappDetailProps {
   isSyncing?: boolean
   syncResult?: SyncToGitResponse | null
   syncError?: string | null
+  onMigrate?: () => void
 }
 
 const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode }> = ({
@@ -45,7 +47,7 @@ const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: React.Rea
 )
 
 export const CappDetail: React.FC<CappDetailProps> = ({
-  capp, onDelete, isDeleting, onSync, onDisableSync, isSyncing, syncResult, syncError,
+  capp, onDelete, isDeleting, onSync, onDisableSync, isSyncing, syncResult, syncError, onMigrate,
 }) => {
   const namespace = capp.namespace
   const isSynced = hasBackupLabel(capp.labels)
@@ -88,6 +90,11 @@ export const CappDetail: React.FC<CappDetailProps> = ({
           {isSynced && onDisableSync && (
             <Button variant="danger" size="sm" onClick={onDisableSync} disabled={isSyncing}>
               Disable Git sync
+            </Button>
+          )}
+          {onMigrate && (
+            <Button variant="secondary" size="sm" onClick={onMigrate}>
+              <ArrowsLeftRightIcon size={14} className="mr-1.5" /> Migrate
             </Button>
           )}
           <Link to={`/capps/${namespace}/${capp.name}/edit`}>

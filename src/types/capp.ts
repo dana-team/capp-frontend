@@ -230,6 +230,25 @@ export function hasBackupLabel(labels?: Record<string, string>): boolean {
   return labels != null && labels[LABEL_BACKUP_TO_GIT] === 'true';
 }
 
+// ── Migration ──────────────────────────────────────────────────────────────
+
+export interface MigrateRequest {
+  targetCluster: string;
+  targetNamespace: string;
+  deleteSource: boolean;
+}
+
+export interface MigrateResponse {
+  name: string;
+  sourceCluster: string;
+  sourceNamespace: string;
+  targetCluster: string;
+  targetNamespace: string;
+  sourceDeleted: boolean;
+  copiedSecrets?: string[];
+  copiedConfigMaps?: string[];
+}
+
 // ── Cluster ────────────────────────────────────────────────────────────────
 
 export interface ClusterMeta {

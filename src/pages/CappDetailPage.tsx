@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { WarningBanner } from '@/components/capps/WarningBanner'
 import { useCapp, useDeleteCapp, useDisableCappGitSync, useSyncCappToGit } from '@/hooks/useCapps'
 import { hasBackupLabel, SyncToGitResponse, WarningNavState } from '@/types/capp'
+import { MigrateDialog } from '@/components/capps/MigrateDialog'
 
 export const CappDetailPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>()
@@ -25,6 +26,7 @@ export const CappDetailPage: React.FC = () => {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showDisableConfirm, setShowDisableConfirm] = useState(false)
+  const [showMigrate, setShowMigrate] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [syncResult, setSyncResult] = useState<SyncToGitResponse | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -96,6 +98,7 @@ export const CappDetailPage: React.FC = () => {
             isSyncing={isSyncing || isDisabling}
             syncResult={syncResult}
             syncError={syncError}
+            onMigrate={() => setShowMigrate(true)}
           />
 
           <AlertDialog
@@ -152,6 +155,13 @@ export const CappDetailPage: React.FC = () => {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <MigrateDialog
+            open={showMigrate}
+            onOpenChange={setShowMigrate}
+            cappName={name}
+            cappNamespace={namespace}
+          />
         </div>
       )}
     </div>
