@@ -78,13 +78,13 @@ export const CappDetail: React.FC<CappDetailProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {onSync && (
+          {onSync && !isSynced && (
             <Button variant="secondary" size="sm" onClick={onSync} disabled={isSyncing}>
               {isSyncing
                 ? <CircleNotchIcon size={14} className="mr-1.5 animate-spin" />
                 : <GitBranchIcon size={14} className="mr-1.5" />
               }
-              {isSynced ? 'Re-sync' : 'Enable Git sync'}
+              Enable Git sync
             </Button>
           )}
           {isSynced && onDisableSync && (
