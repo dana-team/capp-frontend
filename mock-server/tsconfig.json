@@ -14,5 +14,5 @@
       "@/*": ["../src/*"]
     }
   },
-  "include": ["./**/*.ts", "../src/types/**/*.ts", "../src/api/namespaces.ts"]
+  "include": ["./**/*.ts", "../src/types/**/*.ts", "../src/api/namespaces.ts", "../src/utils/dockerConfig.ts"]
 }

@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PencilSimple, Trash, Clock, CircleNotch, Eye, EyeSlash } from '@phosphor-icons/react'
+import { PencilSimple, Trash, Clock, CircleNotch, Eye, EyeSlash, Cube, User } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SecretResponse } from '@/types/secret'
 import { formatTimestamp, relativeTime } from '@/utils/time'
+import { DOCKER_CONFIG_JSON_KEY, DOCKER_CONFIG_JSON_TYPE, parseDockerConfigJson } from '@/utils/dockerConfig'
 
 interface SecretDetailProps {
   secret: SecretResponse
@@ -29,6 +30,8 @@ export const SecretDetail: React.FC<SecretDetailProps> = ({ secret, onDelete, is
   const namespace = secret.namespace
   const entries = Object.entries(secret.data ?? {})
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set())
+  const isImagePull = secret.type === DOCKER_CONFIG_JSON_TYPE
+  const registry = isImagePull ? parseDockerConfigJson(secret.data?.[DOCKER_CONFIG_JSON_KEY]) : null
 
   const toggleReveal = (key: string) => {
     setRevealedKeys((prev) => {
@@ -49,7 +52,9 @@ export const SecretDetail: React.FC<SecretDetailProps> = ({ secret, onDelete, is
           <div className="flex items-center gap-2">
             <Badge variant="namespace">{namespace}</Badge>
             {secret.type && (
-              <Badge variant="outline">{secret.type}</Badge>
+              <Badge variant="outline" title={secret.type}>
+                {isImagePull ? 'Image pull secret' : secret.type}
+              </Badge>
             )}
             {secret.uid && (
               <span className="text-xs text-text-muted font-mono">
@@ -90,6 +95,12 @@ export const SecretDetail: React.FC<SecretDetailProps> = ({ secret, onDelete, is
               </span>
             }
           />
+          {registry && (
+            <>
+              <InfoRow icon={<Cube size={14} />} label="Registry" value={<span className="font-mono">{registry.server}</span>} />
+              <InfoRow icon={<User size={14} />} label="Username" value={<span className="font-mono">{registry.username}</span>} />
+            </>
+          )}
         </CardContent>
       </Card>
 

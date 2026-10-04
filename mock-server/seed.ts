@@ -21,6 +21,7 @@ import type { ConfigMapResponse } from '../src/types/configmap';
 import type { SecretResponse } from '../src/types/secret';
 import type { NamespaceItem } from '../src/api/namespaces';
 import { LABEL_BACKUP_TO_GIT } from '../src/types/capp';
+import { buildDockerConfigJson, DOCKER_CONFIG_JSON_KEY, DOCKER_CONFIG_JSON_TYPE } from '../src/utils/dockerConfig';
 import { SIZES, type MockStore } from './store';
 
 const dns = (s: string) =>
@@ -34,7 +35,6 @@ function uniqueName(used: Set<string>, make: () => string): string {
 }
 
 const iso = (now: number, minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString();
-const b64 = (v: string) => Buffer.from(v).toString('base64');
 const semver = () => `${faker.number.int({ min: 0, max: 3 })}.${faker.number.int({ min: 0, max: 20 })}.${faker.number.int({ min: 0, max: 9 })}`;
 
 function genClusters(): ClusterMeta[] {
@@ -59,9 +59,33 @@ function genSecret(ns: string, name: string, rv: string, now: number): SecretRes
     namespace: ns,
     type: 'Opaque',
     data: {
-      username: b64(faker.internet.username()),
-      password: b64(faker.internet.password({ length: 20 })),
-      ...(faker.datatype.boolean() ? { 'api-key': b64(faker.string.alphanumeric(32)) } : {}),
+      username: faker.internet.username(),
+      password: faker.internet.password({ length: 20 }),
+      ...(faker.datatype.boolean() ? { 'api-key': faker.string.alphanumeric(32) } : {}),
+    },
+    createdAt: iso(now, faker.number.int({ min: 60, max: 60 * 24 * 90 })),
+    uid: faker.string.uuid(),
+    resourceVersion: rv,
+  };
+}
+
+const REGISTRIES = ['ghcr.io', 'docker.io', 'quay.io', 'registry.internal.example.com:5000'];
+
+function genPullSecret(ns: string, names: Set<string>, rv: string, now: number): SecretResponse {
+  const server = faker.helpers.arrayElement(REGISTRIES);
+  const name = uniqueName(names, () => `${server.split(/[.:]/)[0]}-pull-secret`);
+  const username = faker.internet.username().toLowerCase();
+  return {
+    name,
+    namespace: ns,
+    type: DOCKER_CONFIG_JSON_TYPE,
+    data: {
+      [DOCKER_CONFIG_JSON_KEY]: buildDockerConfigJson({
+        server,
+        username,
+        password: faker.string.alphanumeric(36),
+        ...(faker.datatype.boolean() ? { email: faker.internet.email().toLowerCase() } : {}),
+      }),
     },
     createdAt: iso(now, faker.number.int({ min: 60, max: 60 * 24 * 90 })),
     uid: faker.string.uuid(),
@@ -293,7 +317,7 @@ export function seedStore(store: MockStore, seed?: number, now: number = Date.no
     if (faker.datatype.boolean({ probability: 0.4 })) meta.allowedNamespaces = nsList.slice(0, Math.max(2, nsCount - 1));
     store.addCluster(meta);
 
-    for (const ns of nsList) {
+    nsList.forEach((ns, nsIndex) => {
       const pods = faker.helpers.arrayElement([20, 50, 100]);
       const item: NamespaceItem = {
         name: ns,
@@ -321,7 +345,12 @@ export function seedStore(store: MockStore, seed?: number, now: number = Date.no
       const configMaps = Array.from({ length: faker.number.int({ min: 1, max: 4 }) }, () =>
         genConfigMap(ns, uniqueName(cmNames, () => `${faker.word.noun()}-${faker.helpers.arrayElement(['config', 'settings', 'env'])}`), store.allocResourceVersion(), now),
       );
-      secrets.forEach((s) => store.putSecret(meta.name, s));
+      // Image pull secrets: always in the first namespace, sometimes elsewhere.
+      // Kept out of `secrets` so capps never reference them via env/volumes.
+      const pullSecrets = nsIndex === 0 || faker.datatype.boolean({ probability: 0.5 })
+        ? [genPullSecret(ns, secretNames, store.allocResourceVersion(), now)]
+        : [];
+      [...secrets, ...pullSecrets].forEach((s) => store.putSecret(meta.name, s));
       configMaps.forEach((m) => store.putConfigMap(meta.name, m));
 
       const cappNames = new Set<string>();
@@ -331,7 +360,7 @@ export function seedStore(store: MockStore, seed?: number, now: number = Date.no
         const name = uniqueName(cappNames, () => `${faker.word.adjective()}-${faker.word.noun()}`);
         store.putCapp(meta.name, genCapp(name, ns, meta.name, { secrets, configMaps }, store.allocResourceVersion(), now, volNames));
       }
-    }
+    });
   }
   return used;
 }
