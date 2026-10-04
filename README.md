@@ -80,6 +80,36 @@ npm run lint
 
 Runs ESLint over all `*.ts` and `*.tsx` files in `src/`.
 
+## Run without a backend (mock server)
+
+A stateful in-memory mock of `capp-backend` lives in `mock-server/`. It generates fresh fake clusters, namespaces, capps, configmaps and secrets on every start, so no cluster is needed.
+
+```bash
+npm run mock        # mock backend on http://localhost:8080 (the default backend URL)
+npm run dev:mock    # mock backend + Vite dev server together
+npm run typecheck:mock
+```
+
+Sign in with any token (default `passthrough` mode) and keep the default backend URL.
+
+| Env var | Default | Purpose |
+|---|---|---|
+| `PORT` | `8080` | Listen port |
+| `MOCK_SEED` | random | Integer seed; the same value gives identical data (the seed in use is logged on boot) |
+| `MOCK_AUTH_MODE` | `passthrough` | `passthrough`, `jwt`, `static`, `dex` or `openshift` |
+| `MOCK_TOKEN_TTL` | `900` | Access-token lifetime in seconds (refresh tokens last 24h); set to `2` to exercise refresh-and-retry |
+| `MOCK_LATENCY_MS` | `0` | Artificial delay per request |
+| `MOCK_FRONTEND_URL` | `http://localhost:3000` | Where the `openshift` authorize URL redirects back to |
+
+Auth modes:
+
+- `passthrough`: no login; any non-empty Bearer token is accepted.
+- `jwt` / `static`: login with `cluster` + any token (unknown cluster gives 400); returns an opaque access/refresh pair.
+- `dex`: login with any username and password, except password `wrong` which returns 401.
+- `openshift`: `/auth/openshift/authorize` redirects straight back to `/login?code=mock-code&state=...`, then `/callback` exchanges it for a token pair.
+
+In non-passthrough modes expired or unknown access tokens get 401, and `/auth/refresh` rotates the pair. One cluster is always unhealthy (503 on its resources). Data and sessions live in memory only and reset on every restart.
+
 ## Project Structure
 
 ```
