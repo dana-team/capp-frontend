@@ -25,6 +25,9 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
 
   if (values.state) req.state = values.state;
   if (values.containerName) req.containerName = values.containerName;
+  // Omitted when empty: the backend replaces the list on update, so this clears it.
+  const pullSecrets = values.imagePullSecrets.filter(Boolean);
+  if (pullSecrets.length > 0) req.imagePullSecrets = pullSecrets;
 
   if (values.sizingMode === 'custom') {
     const customResources = buildCustomResources(values.cpuRequest, values.cpuLimit, values.memoryRequest, values.memoryLimit);
@@ -163,6 +166,7 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     state: capp.state ?? 'enabled',
     image: capp.image,
     containerName: capp.containerName ?? '',
+    imagePullSecrets: capp.imagePullSecrets ?? [],
     sizingMode: hasPresetSize ? 'preset' : (capp.resources ? 'custom' : 'preset'),
     size: (capp.size ?? '') as CappSize | '',
     cpuRequest: capp.resources?.requests?.cpu ?? '',
@@ -258,6 +262,7 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
   const containerResources = values.sizingMode === 'custom'
     ? buildCustomResources(values.cpuRequest, values.cpuLimit, values.memoryRequest, values.memoryLimit)
     : undefined;
+  const pullSecrets = values.imagePullSecrets.filter(Boolean);
 
   const spec: LegacyCappSpec = {
     configurationSpec: {
@@ -284,6 +289,7 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
               ...(containerResources ? { resources: containerResources } : {}),
             },
           ],
+          ...(pullSecrets.length > 0 ? { imagePullSecrets: pullSecrets.map((name) => ({ name })) } : {}),
         },
       },
     },
@@ -374,6 +380,7 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     state: capp.spec.state ?? 'enabled',
     image: container.image,
     containerName: container.name ?? '',
+    imagePullSecrets: (capp.spec.configurationSpec.template.spec.imagePullSecrets ?? []).map((s) => s.name),
     sizingMode: capp.spec.size ? 'preset' : (container.resources ? 'custom' : 'preset'),
     size: (capp.spec.size ?? '') as CappSize | '',
     cpuRequest: container.resources?.requests?.cpu ?? '',

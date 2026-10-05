@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Control, Controller, FieldErrors, useWatch } from 'react-hook-form';
 import { Plus, Trash } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { useSecrets } from '@/hooks/useSecrets';
 import { useConfigmaps } from '@/hooks/useConfigmaps';
 import type { SecretResponse } from '@/types/secret';
 import type { ConfigMapResponse } from '@/types/configmap';
+import { DOCKER_CONFIG_JSON_TYPE } from '@/utils/dockerConfig';
 
 interface ConfigurationSectionProps {
   control: Control<CappFormValues>;
@@ -17,6 +19,74 @@ interface ConfigurationSectionProps {
   watch: (name: keyof CappFormValues) => unknown;
   setValue: (name: keyof CappFormValues, value: unknown) => void;
 }
+
+const NO_PULL_SECRET = '__none__';
+
+const ImagePullSecretField: React.FC<{
+  namespace: string;
+  secrets: SecretResponse[];
+  secretsLoaded: boolean;
+  value: string[];
+  onChange: (value: string[]) => void;
+}> = ({ namespace, secrets, secretsLoaded, value, onChange }) => {
+  const options = useMemo(
+    () => secrets.filter((s) => s.type === DOCKER_CONFIG_JSON_TYPE).map((s) => s.name),
+    [secrets],
+  );
+  // The dropdown edits the first entry; extra entries (e.g. set via kubectl) are kept
+  // unless "None" is chosen, which clears the list.
+  const selected = value[0] ?? '';
+  const extra = value.slice(1);
+  const missing = Boolean(selected) && secretsLoaded && !options.includes(selected);
+
+  // When the namespace changes (create flow), drop references that don't exist there.
+  const prevNamespace = useRef(namespace);
+  useEffect(() => {
+    if (prevNamespace.current === namespace || !secretsLoaded) return;
+    prevNamespace.current = namespace;
+    const kept = value.filter((name) => options.includes(name));
+    if (kept.length !== value.length) onChange(kept);
+  }, [namespace, secretsLoaded, value, options, onChange]);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium text-text-secondary">Image Pull Secret</label>
+      <Select
+        value={selected || NO_PULL_SECRET}
+        onValueChange={(v) => onChange(v === NO_PULL_SECRET ? [] : [v, ...extra])}
+      >
+        <SelectTrigger className={`bg-card border-border${missing ? ' border-danger' : ''}`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NO_PULL_SECRET}>None (public image)</SelectItem>
+          {options.map((name) => (
+            <SelectItem key={name} value={name}>{name}</SelectItem>
+          ))}
+          {selected && !options.includes(selected) && (
+            <SelectItem value={selected}>{selected}{missing ? ' (not found)' : ''}</SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+      {missing ? (
+        <p className="text-xs text-danger">
+          No image pull secret named "{selected}" in {namespace}. Pods will fail to pull the image.
+        </p>
+      ) : (
+        <p className="text-xs text-text-muted">
+          Needed only for private registries.{' '}
+          {secretsLoaded && options.length === 0 && <>No image pull secrets in {namespace}. </>}
+          <Link to="/secrets/new?type=imagePull" target="_blank" className="text-primary hover:underline">
+            Create one
+          </Link>
+        </p>
+      )}
+      {extra.length > 0 && (
+        <p className="text-xs text-text-muted">Also uses: {extra.join(', ')}</p>
+      )}
+    </div>
+  );
+};
 
 const emptyEnvVar = (): EnvVarFormEntry => ({
   name: '',
@@ -177,7 +247,7 @@ export const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({
 }) => {
   const envVars = watch('envVars') as EnvVarFormEntry[];
 
-  const { data: secrets = [] } = useSecrets(namespace);
+  const { data: secrets = [], isSuccess: secretsLoaded } = useSecrets(namespace);
   const { data: configMaps = [] } = useConfigmaps(namespace);
 
   const addEnvVar = () => setValue('envVars', [...envVars, emptyEnvVar()]);
@@ -196,6 +266,19 @@ export const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({
               placeholder="registry.example.com/org/image:tag"
               error={errors.image?.message}
               {...field}
+            />
+          )}
+        />
+        <Controller
+          name="imagePullSecrets"
+          control={control}
+          render={({ field }) => (
+            <ImagePullSecretField
+              namespace={namespace}
+              secrets={secrets}
+              secretsLoaded={secretsLoaded}
+              value={(field.value as string[]) ?? []}
+              onChange={field.onChange}
             />
           )}
         />

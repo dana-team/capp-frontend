@@ -1,13 +1,15 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { CaretRight } from '@phosphor-icons/react';
-import { SecretForm, SecretFormValues, toSecretData } from '@/components/secrets/SecretForm';
+import { SecretForm, SecretFormValues, emptyRegistry, toSecretData } from '@/components/secrets/SecretForm';
 import { DOCKER_CONFIG_JSON_TYPE } from '@/utils/dockerConfig';
 import { useCreateSecret } from '@/hooks/useSecrets';
 import { useNamespaceContext } from '@/context/NamespaceContext';
 
 export const CreateSecretPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialKind = searchParams.get('type') === 'imagePull' ? 'imagePull' : 'generic';
   const { selectedNamespace } = useNamespaceContext();
   const namespace = selectedNamespace ?? 'default';
   const { mutateAsync: createSecret, isPending, error } = useCreateSecret();
@@ -44,6 +46,7 @@ export const CreateSecretPage: React.FC = () => {
       </div>
 
       <SecretForm
+        initialValues={{ name: '', kind: initialKind, data: [], registry: emptyRegistry }}
         onSubmit={handleSubmit}
         isLoading={isPending}
         error={error ? (error as Error).message : undefined}

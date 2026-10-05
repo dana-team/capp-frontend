@@ -137,6 +137,7 @@ function genConditions(now: number): ConditionResponse[] {
 interface NsObjects {
   secrets: SecretResponse[];
   configMaps: ConfigMapResponse[];
+  pullSecrets: SecretResponse[];
 }
 
 function genCapp(
@@ -292,6 +293,10 @@ function genCapp(
     }
   }
 
+  if (objs.pullSecrets.length && faker.datatype.boolean({ probability: 0.5 })) {
+    capp.imagePullSecrets = [faker.helpers.arrayElement(objs.pullSecrets).name];
+  }
+
   return capp;
 }
 
@@ -358,7 +363,7 @@ export function seedStore(store: MockStore, seed?: number, now: number = Date.no
       const cappCount = faker.number.int({ min: 2, max: 8 });
       for (let i = 0; i < cappCount; i++) {
         const name = uniqueName(cappNames, () => `${faker.word.adjective()}-${faker.word.noun()}`);
-        store.putCapp(meta.name, genCapp(name, ns, meta.name, { secrets, configMaps }, store.allocResourceVersion(), now, volNames));
+        store.putCapp(meta.name, genCapp(name, ns, meta.name, { secrets, configMaps, pullSecrets }, store.allocResourceVersion(), now, volNames));
       }
     });
   }

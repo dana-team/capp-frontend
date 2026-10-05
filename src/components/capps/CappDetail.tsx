@@ -12,7 +12,8 @@ import { PencilSimpleIcon,
   GitBranchIcon,
   CheckCircleIcon,
   ArrowsLeftRightIcon,
-  LightningIcon } from '@phosphor-icons/react'
+  LightningIcon,
+  KeyIcon } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -232,6 +233,30 @@ export const CappDetail: React.FC<CappDetailProps> = ({
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className="text-sm font-mono text-text overflow-auto">{capp.image}</span>
                   <CopyButton text={capp.image ?? ''} />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <KeyIcon size={14} weight="duotone" className="mt-0.5 text-text-muted shrink-0" />
+              <div>
+                <p className="text-xs text-text-muted">
+                  {(capp.imagePullSecrets?.length ?? 0) > 1 ? 'Image Pull Secrets' : 'Image Pull Secret'}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+                  {capp.imagePullSecrets?.length ? (
+                    capp.imagePullSecrets.map((secretName) => (
+                      <Link
+                        key={secretName}
+                        to={`/secrets/${namespace}/${secretName}`}
+                        className="text-sm font-mono text-primary hover:underline"
+                      >
+                        {secretName}
+                      </Link>
+                    ))
+                  ) : (
+                    <span className="text-sm text-text-muted">None</span>
+                  )}
                 </div>
               </div>
             </div>

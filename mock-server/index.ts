@@ -21,6 +21,7 @@ const PORT = Number(process.env.PORT) || 8080;
 const LATENCY_MS = Number(process.env.MOCK_LATENCY_MS) || 0;
 const SPEC_PATH = fileURLToPath(new URL('../../capp-backend/api/openapi.yaml', import.meta.url));
 const DNS_1123 = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
+const DNS_1123_SUBDOMAIN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$/;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -148,6 +149,26 @@ function checkCapp(res: ServerResponse, req: Body, requireName: boolean): boolea
   if (typeof req.image !== 'string' || !req.image) {
     badRequest(res, 'image is required');
     return false;
+  }
+  // Mirrors capp-backend: DNS-1123 subdomain names, no duplicates, existence not checked.
+  if (req.imagePullSecrets !== undefined) {
+    const names = req.imagePullSecrets;
+    if (!Array.isArray(names) || names.some((n) => typeof n !== 'string')) {
+      badRequest(res, 'imagePullSecrets must be an array of strings');
+      return false;
+    }
+    const seen = new Set<string>();
+    for (const n of names as string[]) {
+      if (n.length > 253 || !DNS_1123_SUBDOMAIN.test(n)) {
+        badRequest(res, `imagePullSecrets: invalid secret name "${n}"`);
+        return false;
+      }
+      if (seen.has(n)) {
+        badRequest(res, `imagePullSecrets: duplicate secret name "${n}"`);
+        return false;
+      }
+      seen.add(n);
+    }
   }
   return true;
 }

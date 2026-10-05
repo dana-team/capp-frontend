@@ -90,6 +90,7 @@ export interface CappFormValues {
   memoryLimit: string;
   image: string;
   containerName: string;
+  imagePullSecrets: string[];
   envVars: EnvVarFormEntry[];
   hostname: string;
   tlsEnabled?: boolean;
@@ -132,6 +133,7 @@ const schema = z.object({
   memoryLimit: z.string().optional().default(''),
   image: z.string().min(1, "Container image is required"),
   containerName: z.string().optional(),
+  imagePullSecrets: z.array(z.string()).default([]),
   envVars: z.array(z.object({
     name: z.string().min(1, 'Name is required'),
     source: z.enum(['literal', 'secretKeyRef', 'configMapKeyRef']),
@@ -265,6 +267,7 @@ const defaultValues: CappFormValues = {
   memoryLimit: '',
   image: "",
   containerName: "",
+  imagePullSecrets: [],
   envVars: [],
   hostname: "",
   tlsEnabled: undefined,
@@ -446,12 +449,12 @@ export const CappForm: React.FC<CappFormProps> = ({
         // Extract form values from parsed YAML
         const spec = parsed.spec as Record<string, unknown> | undefined;
         if (spec) {
-          const containers = (
+          const podSpec = (
             (spec.configurationSpec as Record<string, unknown>)
               ?.template as Record<string, unknown>
           )?.spec as Record<string, unknown>;
           const containerList =
-            (containers?.containers as Array<Record<string, unknown>>) ?? [];
+            (podSpec?.containers as Array<Record<string, unknown>>) ?? [];
           const container = containerList[0] ?? {};
 
           const route = spec.routeSpec as Record<string, unknown> | undefined;
@@ -472,6 +475,9 @@ export const CappForm: React.FC<CappFormProps> = ({
             state: (spec.state as CappState) ?? "enabled",
             image: (container.image as string) ?? "",
             containerName: (container.name as string) ?? "",
+            imagePullSecrets: (
+              (podSpec?.imagePullSecrets as Array<{ name: string }>) ?? []
+            ).map((s) => s.name),
             envVars: (
               (container.env as Array<{
                 name: string;
