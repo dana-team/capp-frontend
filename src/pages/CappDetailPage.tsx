@@ -164,6 +164,7 @@ export const CappDetailPage: React.FC = () => {
             onOpenChange={setShowMigrate}
             cappName={name}
             cappNamespace={namespace}
+            sourceHostname={capp?.routeSpec?.hostname}
           />
         </div>
       )}

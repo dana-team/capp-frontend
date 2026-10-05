@@ -6,6 +6,7 @@ import {
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { SimpleSelect } from '@/components/ui/select';
 import { useClusters } from '@/hooks/useClusters';
 import { useNamespacesForCluster } from '@/hooks/useNamespaces';
@@ -20,10 +21,11 @@ interface MigrateDialogProps {
   onOpenChange: (open: boolean) => void;
   cappName: string;
   cappNamespace: string;
+  sourceHostname?: string;
 }
 
 export const MigrateDialog: React.FC<MigrateDialogProps> = ({
-  open, onOpenChange, cappName, cappNamespace,
+  open, onOpenChange, cappName, cappNamespace, sourceHostname,
 }) => {
   const navigate = useNavigate();
   const currentCluster = useAuthStore((s) => s.cluster);
@@ -31,6 +33,7 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
 
   const [targetCluster, setTargetCluster] = useState('');
   const [targetNamespace, setTargetNamespace] = useState('');
+  const [targetHostname, setTargetHostname] = useState('');
   const [deleteSource, setDeleteSource] = useState(false);
   const [submittedDeleteSource, setSubmittedDeleteSource] = useState(false);
   const [result, setResult] = useState<MigrateResponse | null>(null);
@@ -48,6 +51,7 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
   const reset = () => {
     setTargetCluster('');
     setTargetNamespace('');
+    setTargetHostname('');
     setDeleteSource(false);
     setSubmittedDeleteSource(false);
     setResult(null);
@@ -78,7 +82,12 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
       const res = await mutateAsync({
         namespace: cappNamespace,
         name: cappName,
-        req: { targetCluster, targetNamespace, deleteSource },
+        req: {
+          targetCluster,
+          targetNamespace,
+          deleteSource,
+          ...(targetHostname ? { targetHostname } : {}),
+        },
       });
       setResult(res);
     } catch (e) {
@@ -91,7 +100,15 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
     handleSubmit();
   };
 
-  const canSubmit = targetCluster !== '' && targetNamespace !== '';
+  const hostnameRequired = Boolean(sourceHostname) && !deleteSource;
+  const hostnameError = sourceHostname && !deleteSource && targetHostname === sourceHostname
+    ? 'Must differ from the current hostname'
+    : undefined;
+  const canSubmit =
+    targetCluster !== '' &&
+    targetNamespace !== '' &&
+    (!hostnameRequired || targetHostname !== '') &&
+    !hostnameError;
   const isPartialFailure = result !== null && submittedDeleteSource && !result.sourceDeleted;
 
   return (
@@ -179,6 +196,18 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
               onChange={setTargetNamespace}
               disabled={!targetCluster || namespacesLoading || filteredNamespaces.length === 0}
             />
+
+            {sourceHostname && (
+              <Input
+                label="Target Hostname"
+                required={hostnameRequired}
+                placeholder="e.g. new-app.example.com"
+                hint={`Current: ${sourceHostname}`}
+                error={hostnameError}
+                value={targetHostname}
+                onChange={(e) => setTargetHostname(e.target.value)}
+              />
+            )}
 
             <div className="flex items-center gap-3">
               <button

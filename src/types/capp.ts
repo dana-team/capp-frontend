@@ -236,6 +236,7 @@ export interface MigrateRequest {
   targetCluster: string;
   targetNamespace: string;
   deleteSource: boolean;
+  targetHostname?: string;
 }
 
 export interface MigrateResponse {

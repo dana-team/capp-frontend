@@ -346,9 +346,15 @@ route('POST', `${CAPP}/:name/migrate`, ({ res, params, body }) => {
     return badRequest(res, 'target must differ from the source cluster/namespace');
   }
   if (clusterGuard(res, targetCluster)) return;
-  const req: MigrateRequest = { targetCluster, targetNamespace, deleteSource: body.deleteSource === true };
+  const req: MigrateRequest = {
+    targetCluster,
+    targetNamespace,
+    deleteSource: body.deleteSource === true,
+    ...(typeof body.targetHostname === 'string' && body.targetHostname ? { targetHostname: body.targetHostname } : {}),
+  };
   const r = store.migrateCapp(params.cluster, params.namespace, params.name, req);
   if (r.ok) return send(res, 200, r.data);
+  if (r.error === 'bad_request') return badRequest(res, r.message);
   if (r.error === 'conflict') return error(res, 409, 'CONFLICT', r.message);
   error(res, 404, r.error === 'source_not_found' ? 'CAPP_NOT_FOUND' : r.error === 'target_cluster_not_found' ? 'CLUSTER_NOT_FOUND' : 'NOT_FOUND', r.message);
 });
