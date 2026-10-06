@@ -15,7 +15,7 @@ const AccordionItem = ({
 }: React.ComponentProps<typeof AccordionPrimitive.Item>) => (
   <AccordionPrimitive.Item
     ref={ref}
-    className={cn("border-b", className)}
+    className={cn("border-b border-border", className)}
     {...props}
   />
 )
@@ -30,13 +30,13 @@ const AccordionTrigger = ({
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+        "flex flex-1 items-center justify-between py-4 font-sans text-sm font-semibold transition-colors hover:text-primary [&[data-state=open]>svg]:rotate-180",
         className
       )}
       {...props}
     >
       {children}
-      <CaretDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+      <CaretDown className="h-4 w-4 shrink-0 text-text-muted transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 )

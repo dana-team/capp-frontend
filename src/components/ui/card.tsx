@@ -6,7 +6,7 @@ const Card = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
   <div
     ref={ref}
     className={cn(
-      "rounded border border-border bg-card text-text",
+      "rounded border border-border bg-card text-text shadow-none",
       className
     )}
     {...props}
@@ -24,7 +24,7 @@ const CardHeader = ({ className, ref, ...props }: React.ComponentProps<"div">) =
 const CardTitle = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
   <div
     ref={ref}
-    className={cn("text-base font-semibold leading-none tracking-tight", className)}
+    className={cn("font-display text-lg font-medium leading-none tracking-tight", className)}
     {...props}
   />
 )

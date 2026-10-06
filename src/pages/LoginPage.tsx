@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EyeIcon, WarningCircleIcon, CircleNotchIcon, EyeSlashIcon } from '@phosphor-icons/react'
 import { useAuthStore } from '@/store/auth'
-import { useThemeStore } from '@/store/theme'
+import { motion } from 'motion/react'
+import { InkLandscape } from '@/components/landscape/InkLandscape'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -24,7 +26,6 @@ export const LoginPage: React.FC = () => {
   const [authorizeUrl, setAuthorizeUrl] = useState('')
 
   const { setCredentials } = useAuthStore()
-  const { dark } = useThemeStore()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -223,64 +224,33 @@ export const LoginPage: React.FC = () => {
     }
   }
 
-  const sky0   = dark ? 'hsl(220 18% 11%)' : 'hsl(38 57% 87%)'
-  const sky1   = dark ? 'hsl(220 16% 9%)'  : 'hsl(41 50% 82%)'
-  const w1a    = dark ? 'hsl(19 50% 20%)'  : 'hsl(19 61% 49%)'
-  const w1b    = dark ? 'hsl(19 55% 12%)'  : 'hsl(19 65% 30%)'
-  const w2a    = dark ? 'hsl(22 45% 17%)'  : 'hsl(22 60% 42%)'
-  const w2b    = dark ? 'hsl(22 50% 9%)'   : 'hsl(22 62% 24%)'
-  const w3a    = dark ? 'hsl(15 40% 14%)'  : 'hsl(15 58% 38%)'
-  const w3b    = dark ? 'hsl(15 45% 7%)'   : 'hsl(15 60% 22%)'
-  const floor  = dark ? 'hsl(220 18% 14%)' : 'hsl(19 55% 28%)'
-
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden"
-         style={{ background: sky1 }}>
-      {/* Canyon silhouette SVG background */}
-      <svg
-        className="absolute inset-0 w-full h-full"
-        viewBox="0 0 1200 800"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={sky0} />
-            <stop offset="100%" stopColor={sky1} />
-          </linearGradient>
-          <linearGradient id="wall1" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={w1a} stopOpacity="0.55" />
-            <stop offset="100%" stopColor={w1b} stopOpacity="0.7" />
-          </linearGradient>
-          <linearGradient id="wall2" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={w2a} stopOpacity="0.4" />
-            <stop offset="100%" stopColor={w2b} stopOpacity="0.6" />
-          </linearGradient>
-          <linearGradient id="wall3" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={w3a} stopOpacity="0.3" />
-            <stop offset="100%" stopColor={w3b} stopOpacity="0.5" />
-          </linearGradient>
-        </defs>
-        <rect width="1200" height="800" fill="url(#sky)" />
-        {/* Far right wall */}
-        <path d="M820,0 L1200,0 L1200,800 L950,800 L920,650 L970,500 L940,340 L990,200 L820,0 Z" fill="url(#wall3)" />
-        {/* Left wall */}
-        <path d="M0,0 L340,0 L300,130 L360,280 L320,460 L390,600 L280,800 L0,800 Z" fill="url(#wall1)" />
-        {/* Closer right wall */}
-        <path d="M1020,0 L1200,0 L1200,800 L1080,800 L1050,570 L1100,400 L1060,220 L1020,0 Z" fill="url(#wall2)" />
-        {/* Floor hint */}
-        <path d="M0,740 Q300,720 600,730 Q900,740 1200,725 L1200,800 L0,800 Z" fill={floor} opacity="0.25" />
-      </svg>
+    <div className="relative min-h-screen overflow-hidden bg-background">
+      <InkLandscape variant="stage" station={0} />
 
-      {/* Login card */}
-      <div className="relative z-10 w-[320px] border border-border p-8"
-           style={{ background: 'hsl(var(--background))', boxShadow: '0 8px 32px rgba(80,30,10,0.22)' }}>
+      <ThemeToggle size={16} className="absolute right-4 top-4 z-10 border-border bg-card sm:right-6 sm:top-6" />
+
+      <div className="relative z-[1] flex min-h-screen items-center justify-center px-4 py-10 lg:justify-start lg:pl-[10vw]">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-[340px] rounded-[3px] border border-border bg-card p-8 shadow-[0_18px_50px_-18px_hsl(var(--text)/0.35)]"
+        >
 
         {/* Logo */}
-        <div className="text-center mb-7">
-          <div className="font-display font-extrabold text-2xl text-text tracking-tight">RCS</div>
-          <div className="text-[9px] tracking-[2.5px] text-text-muted mt-0.5 uppercase">Run Container Service</div>
+        <div className="mb-8 flex items-center gap-3.5">
+          <span
+            aria-hidden="true"
+            className="relative inline-flex h-11 w-11 shrink-0 -rotate-2 items-center justify-center rounded-[2px] bg-primary text-primary-foreground"
+          >
+            <span className="absolute inset-[3px] rounded-[1px] border border-primary-foreground/45" />
+            <span className="relative font-sans text-[15px] font-extrabold leading-none tracking-[0.02em]">RCS</span>
+          </span>
+          <div>
+            <h1 className="font-display text-[26px] font-medium leading-none tracking-[-0.02em] text-text">RCS</h1>
+            <p className="mt-1.5 font-sans text-[13px] font-medium leading-none tracking-[0.01em] text-text-secondary">Run Container Service</p>
+          </div>
         </div>
 
         {authMode === 'detecting' && (
@@ -294,7 +264,7 @@ export const LoginPage: React.FC = () => {
             {authorizeUrl && (
               <a
                 href={authorizeUrl}
-                className="flex items-center justify-center h-9 border border-primary text-primary text-sm font-semibold hover:bg-primary/[0.08] transition-colors"
+                className="flex items-center justify-center h-9 rounded-[3px] border border-primary text-primary text-sm font-medium hover:bg-primary/[0.08] transition-colors"
               >
                 OpenShift OAuth
               </a>
@@ -408,6 +378,7 @@ export const LoginPage: React.FC = () => {
             </Button>
           </form>
         )}
+        </motion.div>
       </div>
     </div>
   )

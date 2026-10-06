@@ -19,7 +19,7 @@ const SelectTrigger = ({
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-10 w-full items-center justify-between rounded border border-input bg-card px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className
     )}
     {...props}
@@ -76,7 +76,7 @@ const SelectContent = ({
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
+        "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded border border-border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
@@ -106,7 +106,7 @@ const SelectLabel = ({
 }: React.ComponentProps<typeof SelectPrimitive.Label>) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)}
+    className={cn("py-1.5 pl-8 pr-2 text-sm font-medium", className)}
     {...props}
   />
 )
@@ -120,7 +120,7 @@ const SelectItem = ({
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-surface focus:text-text data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default select-none items-center rounded py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-surface focus:text-text data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}
@@ -202,7 +202,7 @@ export const SimpleSelect: React.FC<SimpleSelectProps> = ({
       {label && (
         <label
           htmlFor={inputId}
-          className="text-sm font-medium text-text-secondary"
+          className="font-sans text-sm font-medium text-text-secondary"
         >
           {label}
           {required && <span className="text-danger ml-1">*</span>}
@@ -216,10 +216,10 @@ export const SimpleSelect: React.FC<SimpleSelectProps> = ({
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
           className={cn(
-            "h-9 w-full appearance-none rounded-lg border bg-card px-3 pr-9 text-sm text-text",
-            "transition-all duration-150 outline-none",
-            "focus:ring-2 focus:ring-primary focus:border-primary",
-            error ? "border-danger focus:ring-danger focus:border-danger" : "border-border",
+            "h-9 w-full appearance-none rounded border bg-card px-3 pr-9 text-sm text-text",
+            "transition-colors duration-150 outline-none",
+            "focus:ring-1 focus:ring-primary focus:border-primary",
+            error ? "border-danger focus:ring-danger focus:border-danger" : "border-border hover:border-text/40",
             !value && "text-text-muted",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             className

@@ -29,9 +29,7 @@ export function quotaPercentage(used: string | undefined, limit: string | undefi
 const QUOTA_TOOLTIP = 'Based on resource requests × max pods, not actual runtime usage.';
 
 function barColor(pct: number): string {
-  if (pct >= 90) return 'bg-danger';
-  if (pct >= 70) return 'bg-warning';
-  return 'bg-primary';
+  return pct >= 85 ? 'bg-primary' : 'bg-text-muted';
 }
 
 interface QuotaRowProps {
@@ -45,13 +43,13 @@ const QuotaRow: React.FC<QuotaRowProps> = ({ label, used, limit, pct }) => (
   <div className="flex flex-col gap-0.5">
     <div className="flex items-center justify-between">
       <span className="text-[10px] text-text-muted">{label}</span>
-      <span className="text-[10px] font-mono text-text-secondary">
+      <span className="text-[10px] font-mono tabular-nums text-text-secondary">
         {used ?? '0'} / {limit}
       </span>
     </div>
-    <div className="h-1 w-full rounded-full bg-border/50 overflow-hidden">
+    <div className="h-[2px] w-full bg-border/70 overflow-hidden">
       <div
-        className={cn('h-full rounded-full transition-all duration-300', pct !== null ? barColor(pct) : 'bg-border')}
+        className={cn('h-full transition-all duration-300', pct !== null ? barColor(pct) : 'bg-border')}
         style={{ width: `${pct ?? 0}%` }}
       />
     </div>
@@ -65,13 +63,13 @@ const PodsQuotaRow: React.FC<{ used: number | null | undefined; limit: number | 
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] text-text-muted">Pods</span>
-        <span className="text-[10px] font-mono text-text-secondary">
+        <span className="text-[10px] font-mono tabular-nums text-text-secondary">
           {u} / {limit}
         </span>
       </div>
-      <div className="h-1 w-full rounded-full bg-border/50 overflow-hidden">
+      <div className="h-[2px] w-full bg-border/70 overflow-hidden">
         <div
-          className={cn('h-full rounded-full transition-all duration-300', pct !== null ? barColor(pct) : 'bg-border')}
+          className={cn('h-full transition-all duration-300', pct !== null ? barColor(pct) : 'bg-border')}
           style={{ width: `${pct ?? 0}%` }}
         />
       </div>
@@ -93,7 +91,7 @@ export const NamespaceQuotaBar: React.FC<NamespaceQuotaBarProps> = ({ quota }) =
   return (
     <div className="flex flex-col gap-1.5 mt-1.5 px-0.5">
       <div className="flex items-center gap-1 relative">
-        <span className="text-[10px] font-medium text-text-muted uppercase tracking-[0.8px]">
+        <span className="font-sans text-[12px] font-medium text-text-muted">
           Allocated
         </span>
         <button
@@ -106,7 +104,7 @@ export const NamespaceQuotaBar: React.FC<NamespaceQuotaBarProps> = ({ quota }) =
           <InfoIcon size={10} />
         </button>
         {showTip && (
-          <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded border border-border bg-card px-2 py-1.5 text-[10px] text-text-muted shadow-lg">
+          <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-[3px] border border-border bg-popover px-2 py-1.5 text-[10px] text-text-muted shadow-sm">
             {QUOTA_TOOLTIP}
           </div>
         )}

@@ -41,14 +41,14 @@ export const ArrayInput: React.FC<ArrayInputProps> = ({
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       {label && (
-        <label className="text-sm font-medium text-text-secondary">{label}</label>
+        <label className="font-sans text-sm font-medium text-text-secondary">{label}</label>
       )}
       {value.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {value.map((item, index) => (
             <span
               key={index}
-              className="inline-flex items-center gap-1 rounded-md bg-primary-subtle border border-primary/20 px-2 py-1 text-xs text-primary"
+              className="inline-flex items-center gap-1 rounded border border-border bg-surface px-2 py-1 font-mono text-xs text-text"
             >
               {item}
               <button
@@ -68,12 +68,12 @@ export const ArrayInput: React.FC<ArrayInputProps> = ({
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="flex-1 h-8 rounded-lg border border-border bg-card px-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+          className="flex-1 h-8 rounded border border-border bg-card px-3 font-mono text-xs text-text placeholder:font-sans placeholder:text-sm placeholder:text-text-muted hover:border-text/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
         />
         <button
           type="button"
           onClick={addItem}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-text-muted hover:bg-surface hover:text-text hover:border-primary/40 transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded border border-border text-text-muted hover:bg-surface hover:text-text hover:border-text/40 transition-colors"
         >
           <Plus size={14} />
         </button>

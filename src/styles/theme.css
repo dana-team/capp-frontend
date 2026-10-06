@@ -54,12 +54,12 @@
   /* Border radius */
   --radius-lg:  var(--radius);
   --radius-md:  var(--radius);
-  --radius-sm:  0px;
+  --radius-sm:  2px;
 
   /* Font families */
-  --font-sans:    Outfit, system-ui, sans-serif;
-  --font-mono:    "DM Mono", ui-monospace, monospace;
-  --font-display: Outfit, system-ui, sans-serif;
+  --font-sans:    "Manrope Variable", system-ui, sans-serif;
+  --font-mono:    "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: "Fraunces Variable", Georgia, serif;
 
   /* Animations */
   --animate-pulse-dot:      pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -78,72 +78,64 @@
   }
 }
 :root {
-  /* Backgrounds — warm parchment */
-  --background:         37 51% 92%;
-  --surface:            41 45% 87%;
-  --card:               37 51% 92%;
+  /* Mist & jade */
+  --background:         140 10% 94%;   /* #EEF1EF */
+  --surface:              0  0% 100%;  /* #FFFFFF */
+  --card:                 0  0% 100%;  /* #FFFFFF */
 
-  /* Borders */
-  --border:             39 35% 79%;
-  --border-subtle:      38 41% 85%;
+  --border:             157 11% 85%;   /* #D5DDDA */
+  --border-subtle:      150 12% 90%;   /* #E3E9E6 */
 
-  /* Text */
-  --text:               24 56%  7%;
-  --text-secondary:     27 38% 30%;
-  --text-muted:         30 29% 44%;
+  --text:               185 18% 14%;   /* #1E2A2B slate ink */
+  --text-secondary:     176 11% 28%;   /* #3F4F4E */
+  --text-muted:         176  9% 38%;   /* #586968 */
 
-  /* Primary accent — terracotta */
-  --primary:            19 61% 49%;
-  --primary-foreground: 37 51% 92%;
+  /* Jade */
+  --primary:            168 44% 31%;   /* #2C7264 */
+  --primary-foreground:   0  0% 100%;  /* #FFFFFF */
 
-  /* Semantic */
-  --success:           107 47% 30%;
-  --danger:             10 69% 41%;
-  --warning:            37 69% 41%;
+  --success:            142 46% 31%;   /* #2B7544 */
+  --danger:               5 49% 44%;   /* #A8433A */
+  --warning:             36 77% 31%;   /* #8A5A12 */
 
-  /* shadcn/ui */
-  --radius:             2px;
-  --input:              39 35% 79%;
-  --ring:               19 61% 49%;
-  --muted:              41 45% 87%;
-  --muted-foreground:   30 29% 44%;
-  --popover:            41 45% 87%;
-  --popover-foreground: 24 56%  7%;
-  --accent:             19 61% 49%;
-  --accent-foreground:  37 51% 92%;
+  --radius:             3px;
+  --input:              157 11% 85%;
+  --ring:               168 44% 31%;
+  --muted:              140 10% 94%;
+  --muted-foreground:   176  9% 38%;
+  --popover:              0  0% 100%;
+  --popover-foreground: 185 18% 14%;
+  --accent:             168 44% 31%;
+  --accent-foreground:    0  0% 100%;
 }
 
 .dark {
-  /* Backgrounds — deep warm slate, not pure black */
-  --background:         220 16%  9%;   /* #131720 */
-  --surface:            220 15% 12%;   /* #19202e */
-  --card:               220 14% 15%;   /* #1f2738 */
+  /* Deep pine */
+  --background:         168 14%  7%;   /* #0F1413 */
+  --surface:            170 12% 10%;   /* #171D1C */
+  --card:               171 11% 12%;   /* #1B2221 */
 
-  /* Borders */
-  --border:             220 18% 24%;   /* #2e3d57 */
-  --border-subtle:      220 16% 19%;   /* #253045 */
+  --border:             168 12% 17%;   /* #26302E */
+  --border-subtle:      167 13% 14%;   /* #1F2826 */
 
-  /* Text */
-  --text:               210 28% 92%;   /* #e2eaf5 */
-  --text-secondary:     214 18% 65%;   /* #96a8c2 */
-  --text-muted:         218 14% 48%;   /* #677a94 */
+  --text:               160 15% 88%;   /* #DDE6E3 */
+  --text-secondary:     162  9% 73%;   /* #B4C1BD */
+  --text-muted:         168  7% 56%;   /* #879693 */
 
-  /* Primary accent — terracotta stays warm in dark */
-  --primary:            19 65% 55%;    /* #d96838 */
-  --primary-foreground: 220 16%  9%;
+  /* Jade glow */
+  --primary:            166 39% 55%;   /* #5FB8A3 */
+  --primary-foreground: 168 14%  7%;   /* #0F1413 */
 
-  /* Semantic — brighter for dark contrast */
-  --success:           142 48% 42%;
-  --danger:             10 68% 52%;
-  --warning:            40 68% 50%;
+  --success:            129 33% 64%;   /* #86C28F */
+  --danger:               8 65% 65%;   /* #E07C6C */
+  --warning:             39 61% 57%;   /* #D4A64F */
 
-  /* shadcn/ui */
-  --input:              220 18% 24%;
-  --ring:               19 65% 55%;
-  --muted:              220 15% 12%;
-  --muted-foreground:   218 14% 48%;
-  --popover:            220 14% 15%;
-  --popover-foreground: 210 28% 92%;
-  --accent:             19 65% 55%;
-  --accent-foreground:  220 16%  9%;
+  --input:              168 12% 17%;
+  --ring:               166 39% 55%;
+  --muted:              170 12% 10%;
+  --muted-foreground:   168  7% 56%;
+  --popover:            171 11% 12%;
+  --popover-foreground: 160 15% 88%;
+  --accent:             166 39% 55%;
+  --accent-foreground:  168 14%  7%;
 }

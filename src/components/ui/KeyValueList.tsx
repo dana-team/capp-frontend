@@ -42,7 +42,7 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       {label && (
-        <label className="text-sm font-medium text-text-secondary">{label}</label>
+        <label className="font-sans text-sm font-medium text-text-secondary">{label}</label>
       )}
       {value.length > 0 && (
         <div className="flex flex-col gap-2">
@@ -52,18 +52,18 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
                 value={item.key}
                 onChange={(e) => updateItem(index, 'key', e.target.value)}
                 placeholder={keyPlaceholder}
-                className="flex-1 h-8 rounded-lg border border-border bg-card px-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                className="flex-1 h-8 rounded border border-border bg-card px-3 font-mono text-xs text-text placeholder:font-sans placeholder:text-sm placeholder:text-text-muted hover:border-text/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
               />
               <input
                 value={item.value}
                 onChange={(e) => updateItem(index, 'value', e.target.value)}
                 placeholder={valuePlaceholder}
-                className="flex-1 h-8 rounded-lg border border-border bg-card px-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                className="flex-1 h-8 rounded border border-border bg-card px-3 font-mono text-xs text-text placeholder:font-sans placeholder:text-sm placeholder:text-text-muted hover:border-text/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
               />
               <button
                 type="button"
                 onClick={() => removeItem(index)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-text-muted hover:bg-danger/10 hover:text-danger transition-colors"
               >
                 <Trash size={14} />
               </button>

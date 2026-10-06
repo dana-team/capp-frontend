@@ -6,7 +6,7 @@ export const Skeleton: React.FC<{ className?: string }> = ({ className }) => (
 )
 
 export const TableRowSkeleton: React.FC<{ cols?: number }> = ({ cols = 6 }) => (
-  <tr className="border-b border-border/50">
+  <tr className="border-b border-border-subtle">
     <td className="w-2 p-0" />
     {Array.from({ length: cols }).map((_, i) => (
       <td key={i} className="px-4 py-3">

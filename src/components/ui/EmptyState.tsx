@@ -29,13 +29,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         className
       )}
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-subtle border border-primary/20">
-        {icon ?? <Cube size={32} weight="duotone" className="text-primary" />}
+      <div className="flex h-14 w-14 items-center justify-center rounded border border-border bg-surface">
+        {icon ?? <Cube size={28} weight="light" className="text-text-secondary" />}
       </div>
       <div>
-        <p className="text-base font-semibold text-text">{title}</p>
+        <p className="font-display text-xl font-medium tracking-tight text-text">{title}</p>
         {description && (
-          <p className="mt-1 text-sm text-text-muted max-w-xs">{description}</p>
+          <p className="mt-1 text-sm text-text-muted max-w-sm">{description}</p>
         )}
       </div>
       {action && (
