@@ -64,8 +64,9 @@ export type MigrateResult =
   | { ok: true; data: MigrateResponse }
   | {
       ok: false;
-      /** 404: source_not_found | target_cluster_not_found | target_namespace_not_found; 409: conflict */
+      /** 400: bad_request; 404: source_not_found | target_cluster_not_found | target_namespace_not_found; 409: conflict */
       error:
+        | 'bad_request'
         | 'source_not_found'
         | 'target_cluster_not_found'
         | 'target_namespace_not_found'
@@ -335,6 +336,19 @@ export class MockStore {
       return { ok: false, error: 'conflict', message: `capp "${name}" already exists in target` };
     }
 
+    const sourceHostname = capp.routeSpec?.hostname;
+    if (req.targetHostname && !sourceHostname) {
+      return { ok: false, error: 'bad_request', message: 'targetHostname cannot be set when the source Capp has no hostname' };
+    }
+    if (sourceHostname && !req.deleteSource) {
+      if (!req.targetHostname) {
+        return { ok: false, error: 'bad_request', message: 'targetHostname is required when copying a Capp with a custom hostname' };
+      }
+      if (req.targetHostname === sourceHostname) {
+        return { ok: false, error: 'bad_request', message: 'targetHostname must differ from the source hostname' };
+      }
+    }
+
     const refs = referencedObjects(capp);
     const copiedSecrets: string[] = [];
     const copiedConfigMaps: string[] = [];
@@ -364,6 +378,9 @@ export class MockStore {
       namespace: req.targetNamespace,
       ...this.meta(),
     };
+    if (req.targetHostname && copy.routeSpec) {
+      copy.routeSpec = { ...copy.routeSpec, hostname: req.targetHostname };
+    }
     // Migrated capps start un-synced on the target.
     if (copy.labels) delete copy.labels[LABEL_BACKUP_TO_GIT];
     dst.capps.set(key(req.targetNamespace, name), copy);
