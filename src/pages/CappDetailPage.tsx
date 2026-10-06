@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
-import { CaretRightIcon, CircleNotchIcon, WarningCircleIcon } from '@phosphor-icons/react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { CircleNotchIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { CappDetail } from '@/components/capps/CappDetail'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -8,6 +8,8 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { DetailCrumbs } from '@/components/layout/DetailParts'
+import { Sheet } from '@/components/layout/Sheet'
 import { WarningBanner } from '@/components/capps/WarningBanner'
 import { useCapp, useDeleteCapp, useDisableCappGitSync, useSyncCappToGit } from '@/hooks/useCapps'
 import { hasBackupLabel, SyncToGitResponse, WarningNavState } from '@/types/capp'
@@ -62,24 +64,17 @@ export const CappDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-full mx-auto">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1 text-sm mb-6">
-        <Link to="/capps" className="text-text-muted hover:text-text transition-colors">
-          Capps
-        </Link>
-        <CaretRightIcon size={14} className="text-text-muted" />
-        <span className="text-text">{name}</span>
-      </nav>
+    <div>
+      <DetailCrumbs to="/capps" parent="Capps" name={name} />
 
       {isLoading && (
-        <div className="flex items-center justify-center py-16">
+        <Sheet className="flex items-center justify-center py-16">
           <CircleNotchIcon className="animate-spin h-8 w-8 text-text-muted" />
-        </div>
+        </Sheet>
       )}
 
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="bg-card">
           <WarningCircleIcon className="h-4 w-4" />
           <AlertDescription>{(error as Error).message ?? 'Failed to load Capp'}</AlertDescription>
         </Alert>

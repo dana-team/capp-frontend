@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { CaretRight, CircleNotch, WarningCircle } from '@phosphor-icons/react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { CircleNotch, WarningCircle } from '@phosphor-icons/react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { DetailCrumbs } from '@/components/layout/DetailParts'
+import { Sheet } from '@/components/layout/Sheet'
 import { useSecret, useDeleteSecret } from '@/hooks/useSecrets'
 import { SecretDetail } from '@/components/secrets/SecretDetail'
 
@@ -30,23 +32,17 @@ export const SecretDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <nav className="flex items-center gap-1 text-sm mb-6">
-        <Link to="/secrets" className="text-text-muted hover:text-text transition-colors">
-          Secrets
-        </Link>
-        <CaretRight size={14} className="text-text-muted" />
-        <span className="text-text">{name}</span>
-      </nav>
+    <div>
+      <DetailCrumbs to="/secrets" parent="Secrets" name={name} />
 
       {isLoading && (
-        <div className="flex items-center justify-center py-16">
+        <Sheet className="flex items-center justify-center py-16">
           <CircleNotch className="animate-spin h-8 w-8 text-text-muted" />
-        </div>
+        </Sheet>
       )}
 
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="bg-card">
           <WarningCircle className="h-4 w-4" />
           <AlertDescription>{(error as Error).message ?? 'Failed to load Secret'}</AlertDescription>
         </Alert>

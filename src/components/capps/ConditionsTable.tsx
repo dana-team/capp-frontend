@@ -39,38 +39,45 @@ export const ConditionsTable: React.FC<ConditionsTableProps> = ({ capp }) => {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-3 gap-3">
-        {paginated.map((cond, i) => (
-          <div
-            key={`${cond.source}-${cond.type}-${i}`}
-            className={cn(
-              'rounded-lg border p-3',
-              cond.status === 'True'  ? 'border-success/20 bg-success/5' :
-              cond.status === 'False' ? 'border-danger/20  bg-danger/5'  :
-                                        'border-border      bg-card',
-            )}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className={cn(
-                'w-2 h-2 rounded-full shrink-0',
-                cond.status === 'True'  ? 'bg-success' :
-                cond.status === 'False' ? 'bg-danger'  :
-                                          'bg-text-muted',
-              )} />
-              <span className="text-sm font-semibold text-text truncate">{cond.type}</span>
-              <Badge variant={statusVariant(cond.status)} className="ml-auto shrink-0">
-                {cond.status}
-              </Badge>
-            </div>
-            {cond.source && (
-              <p className="text-xs text-text-muted">{cond.source}</p>
-            )}
-            {cond.reason && <p className="text-xs text-text-secondary mt-1">{cond.reason}</p>}
-            {cond.lastTransitionTime && (
-              <p className="text-xs text-text-muted mt-1">{relativeTime(cond.lastTransitionTime)}</p>
-            )}
-          </div>
-        ))}
+      <div className="overflow-hidden rounded-lg border border-border-subtle">
+        <ul className="divide-y divide-border-subtle">
+          {paginated.map((cond, i) => (
+            <li
+              key={`${cond.source}-${cond.type}-${i}`}
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-0.5 px-3 py-2.5 hover:bg-background/40"
+            >
+              <span
+                className={cn(
+                  'mt-[7px] h-2 w-2 rounded-full',
+                  cond.status === 'True'  ? 'bg-success' :
+                  cond.status === 'False' ? 'bg-danger'  :
+                                            'bg-text-muted/60',
+                )}
+                aria-hidden
+              />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-sm font-medium text-text">{cond.type}</span>
+                  {cond.source && <span className="text-xs text-text-muted">{cond.source}</span>}
+                  {cond.reason && <span className="font-mono text-xs text-text-secondary">{cond.reason}</span>}
+                </div>
+                {cond.message && (
+                  <p className="mt-0.5 break-words text-xs text-text-muted">{cond.message}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 pt-0.5">
+                {cond.lastTransitionTime && (
+                  <span className="whitespace-nowrap text-xs tabular-nums text-text-muted">
+                    {relativeTime(cond.lastTransitionTime)}
+                  </span>
+                )}
+                <Badge variant={statusVariant(cond.status)} className="shrink-0">
+                  {cond.status}
+                </Badge>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {totalPages > 1 && (

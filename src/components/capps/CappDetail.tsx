@@ -2,13 +2,8 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { PencilSimpleIcon,
   TrashIcon,
-  GlobeIcon,
-  ShieldCheckIcon,
-  PulseIcon,
-  ClockIcon,
   CubeIcon,
   CircleNotchIcon,
-  HardDrivesIcon,
   GitBranchIcon,
   CheckCircleIcon,
   ArrowsLeftRightIcon,
@@ -16,12 +11,16 @@ import { PencilSimpleIcon,
   KeyIcon } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ConditionsTable } from './ConditionsTable'
 import { CappResponse, hasBackupLabel, SyncToGitResponse } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
 import { SizeBadge } from '@/components/ui/SizeBadge'
+import { cn } from '@/lib/utils'
+import { StatBand } from '@/components/layout/StatBand'
+import { StatTile, toneDot } from '@/components/layout/StatTile'
+import { DetailHeader, SectionSheet, DataTable, rowCls } from '@/components/layout/DetailParts'
+import { cappHealth, HEALTH_LABEL, HEALTH_TEXT, HEALTH_TONE } from '@/utils/cappHealth'
 
 interface CappDetailProps {
   capp: CappResponse
@@ -35,15 +34,11 @@ interface CappDetailProps {
   onMigrate?: () => void
 }
 
-const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode }> = ({
-  icon, label, value,
-}) => (
-  <div className="flex items-start gap-3">
-    <div className="mt-0.5 text-text-muted">{icon}</div>
-    <div>
-      <p className="text-xs text-text-muted">{label}</p>
-      <div className="mt-0.5 text-sm text-text">{value}</div>
-    </div>
+/** Value line used inside StatTile children. */
+const TileValue: React.FC<{ main: React.ReactNode; sub?: React.ReactNode; className?: string }> = ({ main, sub, className }) => (
+  <div className="mt-3 min-w-0">
+    <div className={cn('truncate font-display text-[28px] font-medium leading-none tabular-nums text-text', className)}>{main}</div>
+    {sub && <div className="mt-2 truncate text-xs text-text-muted">{sub}</div>}
   </div>
 )
 
@@ -53,370 +48,311 @@ export const CappDetail: React.FC<CappDetailProps> = ({
   const namespace = capp.namespace
   const isSynced = hasBackupLabel(capp.labels)
 
+  const health = cappHealth(capp)
+  const scale = capp.scaleSpec
+  const hasReplicas = scale?.minReplicas !== undefined || scale?.maxReplicas !== undefined
+  const replicas = hasReplicas ? `${scale.minReplicas ?? '–'}–${scale.maxReplicas ?? '–'}` : '—'
+  const req = capp.resources?.requests
+  const resourceLine = [req?.cpu && `${req.cpu} cpu`, req?.memory && `${req.memory}`].filter(Boolean).join(' · ')
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-text">{capp.name}</h1>
-            <Badge variant={capp.state === 'disabled' ? 'default' : 'success'}>
-              {capp.state ?? 'enabled'}
-            </Badge>
-            {isSynced && (
-              <Badge variant="info" className="gap-1">
-                <GitBranchIcon size={12} /> Git sync on
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
+      <DetailHeader
+        title={capp.name}
+        badges={isSynced && (
+          <Badge variant="info" className="gap-1">
+            <GitBranchIcon size={12} /> Git sync on
+          </Badge>
+        )}
+        meta={
+          <>
+            <span className="inline-flex items-center gap-2">
+              <span className={cn('h-2 w-2 rounded-full', toneDot[HEALTH_TONE[health]])} aria-hidden />
+              <span className={cn('font-medium', HEALTH_TEXT[health])}>{HEALTH_LABEL[health].toLowerCase()}</span>
+            </span>
             <Badge variant="namespace">{namespace}</Badge>
             {capp.uid && (
-              <span className="text-xs text-text-muted font-mono">
-                {capp.uid}
-              </span>
+              <span className="font-mono text-xs text-text-muted">{capp.uid}</span>
             )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {onSync && !isSynced && (
-            <Button variant="secondary" size="sm" onClick={onSync} disabled={isSyncing}>
-              {isSyncing
-                ? <CircleNotchIcon size={14} className="mr-1.5 animate-spin" />
-                : <GitBranchIcon size={14} className="mr-1.5" />
-              }
-              Enable Git sync
-            </Button>
-          )}
-          {isSynced && onDisableSync && (
-            <Button variant="danger" size="sm" onClick={onDisableSync} disabled={isSyncing}>
-              Disable Git sync
-            </Button>
-          )}
-          {onMigrate && (
-            <Button variant="secondary" size="sm" onClick={onMigrate}>
-              <ArrowsLeftRightIcon size={14} className="mr-1.5" /> Migrate
-            </Button>
-          )}
-          <Link to={`/capps/${namespace}/${capp.name}/edit`}>
-            <Button variant="secondary" size="sm">
-              <PencilSimpleIcon size={14} className="mr-1.5" /> Edit
-            </Button>
-          </Link>
-          {onDelete && (
-            <Button variant="danger" size="sm" onClick={onDelete} disabled={isDeleting}>
-              {isDeleting
-                ? <CircleNotchIcon size={14} className="mr-1.5 animate-spin" />
-                : <TrashIcon size={14} className="mr-1.5" />
-              }
-              Delete
-            </Button>
-          )}
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            {onSync && !isSynced && (
+              <Button variant="secondary" size="sm" onClick={onSync} disabled={isSyncing}>
+                {isSyncing
+                  ? <CircleNotchIcon size={14} className="mr-1.5 animate-spin" />
+                  : <GitBranchIcon size={14} className="mr-1.5" />
+                }
+                Enable Git sync
+              </Button>
+            )}
+            {isSynced && onDisableSync && (
+              <Button variant="danger" size="sm" onClick={onDisableSync} disabled={isSyncing}>
+                Disable Git sync
+              </Button>
+            )}
+            {onMigrate && (
+              <Button variant="secondary" size="sm" onClick={onMigrate}>
+                <ArrowsLeftRightIcon size={14} className="mr-1.5" /> Migrate
+              </Button>
+            )}
+            <Link to={`/capps/${namespace}/${capp.name}/edit`}>
+              <Button variant="secondary" size="sm">
+                <PencilSimpleIcon size={14} className="mr-1.5" /> Edit
+              </Button>
+            </Link>
+            {onDelete && (
+              <Button variant="danger" size="sm" onClick={onDelete} disabled={isDeleting}>
+                {isDeleting
+                  ? <CircleNotchIcon size={14} className="mr-1.5 animate-spin" />
+                  : <TrashIcon size={14} className="mr-1.5" />
+                }
+                Delete
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* Sync result banner. Deliberately says nothing about the values file
           path or the commit — those are Git internals the user does not act on. */}
       {syncResult && (
-        <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 px-4 py-3 text-sm text-success">
+        <div className="flex items-center gap-2 rounded-[10px] border border-success/40 bg-card px-4 py-3 text-sm text-success shadow-[0_18px_50px_-18px_hsl(var(--text)/0.35)]">
           <CheckCircleIcon size={16} weight="fill" />
           <span>Git sync is {syncResult.enabled ? 'on' : 'off'}.</span>
         </div>
       )}
 
       {syncError && (
-        <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+        <div className="flex items-center gap-2 rounded-[10px] border border-danger/40 bg-card px-4 py-3 text-sm text-danger shadow-[0_18px_50px_-18px_hsl(var(--text)/0.35)]">
           <span>Git sync failed: {syncError}</span>
         </div>
       )}
 
-      {/* 2-column card grid */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Overview card */}
-        <Card className="bg-surface border-border border-l-2 border-l-primary">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            <InfoRow
-              icon={<ClockIcon size={14} />}
-              label="Created"
-              value={
-                <span title={formatTimestamp(capp.createdAt)}>
-                  {relativeTime(capp.createdAt)}
-                </span>
-              }
-            />
-            <InfoRow
-              icon={<PulseIcon size={14} />}
-              label="Scale Metric"
-              value={
-                capp.scaleSpec?.metric
-                  ? <Badge variant="info">{capp.scaleSpec.metric}</Badge>
-                  : <span className="text-text-muted">concurrency (default)</span>
-              }
-            />
-            {capp.size && (
-              <InfoRow
-                icon={<CubeIcon size={14} />}
-                label="Size"
-                value={<SizeBadge size={capp.size} />}
-              />
-            )}
-            {capp.scaleSpec?.minReplicas !== undefined && (
-              <InfoRow
-                icon={<PulseIcon size={14} />}
-                label="Min Replicas"
-                value={<span className="font-mono">{capp.scaleSpec.minReplicas}</span>}
-              />
-            )}
-            {capp.scaleSpec?.maxReplicas !== undefined && (
-              <InfoRow
-                icon={<PulseIcon size={14} />}
-                label="Max Replicas"
-                value={<span className="font-mono">{capp.scaleSpec.maxReplicas}</span>}
-              />
-            )}
-            {capp.scaleSpec?.scaleDelaySeconds !== undefined && capp.scaleSpec.scaleDelaySeconds > 0 && (
-              <InfoRow
-                icon={<ClockIcon size={14} />}
-                label="Scale Delay"
-                value={<span className="font-mono">{capp.scaleSpec.scaleDelaySeconds}s</span>}
-              />
-            )}
-            {capp.routeSpec?.hostname && (
-              <InfoRow
-                icon={<GlobeIcon size={14} />}
-                label="Hostname"
-                value={
-                  <a
-                    href={`http${capp.routeSpec.tlsEnabled ? 's' : ''}://${capp.routeSpec.hostname}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:underline"
-                  >
-                    {capp.routeSpec.hostname}
-                  </a>
-                }
-              />
+      {/* Key facts */}
+      <StatBand className="lg:grid-cols-5">
+        <StatTile index={0} label="State" tone={HEALTH_TONE[health]}>
+          <TileValue
+            main={<span className={HEALTH_TEXT[health]}>{HEALTH_LABEL[health]}</span>}
+            sub={health === 'disabled' ? undefined : (capp.state ?? 'enabled')}
+          />
+        </StatTile>
+        <StatTile index={1} label="Scale">
+          <TileValue
+            main={replicas}
+            sub={
+              <>
+                {scale?.metric ? scale.metric : 'concurrency (default)'}
+                {scale?.scaleDelaySeconds !== undefined && scale.scaleDelaySeconds > 0 && ` · ${scale.scaleDelaySeconds}s delay`}
+              </>
+            }
+          />
+        </StatTile>
+        <StatTile index={2} label="Size">
+          <div className="mt-3 min-w-0">
+            <div className="flex items-center gap-2">
+              {capp.size ? <SizeBadge size={capp.size} /> : <span className="font-display text-[28px] leading-none text-text">—</span>}
+              {capp.size && <span className="font-display text-[28px] font-medium capitalize leading-none text-text">{capp.size}</span>}
+            </div>
+            {resourceLine && <div className="mt-2 truncate font-mono text-xs text-text-muted">{resourceLine}</div>}
+          </div>
+        </StatTile>
+        <StatTile index={3} label="Route">
+          <div className="mt-3 min-w-0">
+            {capp.routeSpec?.hostname ? (
+              <a
+                href={`http${capp.routeSpec.tlsEnabled ? 's' : ''}://${capp.routeSpec.hostname}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block truncate text-sm font-medium text-accent hover:underline"
+              >
+                {capp.routeSpec.hostname}
+              </a>
+            ) : (
+              <span className="text-sm text-text-muted">No hostname</span>
             )}
             {capp.routeSpec && (
-              <InfoRow
-                icon={<ShieldCheckIcon size={14} />}
-                label="TLS"
-                value={
-                  capp.routeSpec.tlsEnabled
-                    ? <Badge variant="success">Enabled</Badge>
-                    : <Badge variant="default">Disabled</Badge>
-                }
-              />
-            )}
-            {capp.logSpec && (
-              <InfoRow icon={<HardDrivesIcon size={14} />} label="Log Host" value={capp.logSpec.host} />
-            )}
-            {capp.logSpec?.target && (
-              <InfoRow icon={<HardDrivesIcon size={14} />} label="Log Target" value={capp.logSpec.target} />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Container card */}
-        <Card className="bg-surface border-border border-l-2 border-l-accent">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">Container</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex items-start gap-3">
-              <CubeIcon size={14} weight="duotone" className="mt-0.5 text-text-muted shrink-0" />
-              <div>
-                <p className="text-xs text-text-muted">Image</p>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-sm font-mono text-text overflow-auto">{capp.image}</span>
-                  <CopyButton text={capp.image ?? ''} />
-                </div>
+              <div className="mt-2">
+                {capp.routeSpec.tlsEnabled
+                  ? <Badge variant="success">TLS enabled</Badge>
+                  : <Badge variant="default">TLS disabled</Badge>}
               </div>
+            )}
+          </div>
+        </StatTile>
+        <StatTile index={4} label="Created">
+          <TileValue
+            main={relativeTime(capp.createdAt)}
+            sub={formatTimestamp(capp.createdAt)}
+          />
+        </StatTile>
+      </StatBand>
+
+      {/* Container */}
+      <SectionSheet title="Container">
+        <div className="flex flex-col gap-5">
+          <div>
+            <p className="mb-1 text-xs text-text-muted">Image</p>
+            <div className="flex items-center gap-1">
+              <CubeIcon size={14} weight="duotone" className="shrink-0 text-text-muted" />
+              <span className="min-w-0 break-all font-mono text-sm text-text">{capp.image}</span>
+              <CopyButton text={capp.image ?? ''} />
             </div>
+          </div>
 
-            <div className="flex items-start gap-3">
-              <KeyIcon size={14} weight="duotone" className="mt-0.5 text-text-muted shrink-0" />
-              <div>
-                <p className="text-xs text-text-muted">
-                  {(capp.imagePullSecrets?.length ?? 0) > 1 ? 'Image Pull Secrets' : 'Image Pull Secret'}
-                </p>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
-                  {capp.imagePullSecrets?.length ? (
-                    capp.imagePullSecrets.map((secretName) => (
-                      <Link
-                        key={secretName}
-                        to={`/secrets/${namespace}/${secretName}`}
-                        className="text-sm font-mono text-primary hover:underline"
-                      >
-                        {secretName}
-                      </Link>
-                    ))
-                  ) : (
-                    <span className="text-sm text-text-muted">None</span>
-                  )}
-                </div>
-              </div>
+          <div>
+            <p className="mb-1 text-xs text-text-muted">
+              {(capp.imagePullSecrets?.length ?? 0) > 1 ? 'Image Pull Secrets' : 'Image Pull Secret'}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <KeyIcon size={14} weight="duotone" className="shrink-0 text-text-muted" />
+              {capp.imagePullSecrets?.length ? (
+                capp.imagePullSecrets.map((secretName) => (
+                  <Link
+                    key={secretName}
+                    to={`/secrets/${namespace}/${secretName}`}
+                    className="font-mono text-sm text-primary hover:underline"
+                  >
+                    {secretName}
+                  </Link>
+                ))
+              ) : (
+                <span className="text-sm text-text-muted">None</span>
+              )}
             </div>
+          </div>
 
-            {capp.env && capp.env.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs text-text-muted">
-                  Environment Variables ({capp.env.length})
-                </p>
-                <div className="overflow-hidden rounded-lg border border-border">
-                  <table className="w-full table-fixed">
-                    <thead>
-                      <tr className="border-b border-border bg-card">
-                        <th className="px-3 py-2 text-left text-xs font-medium text-text-muted max-w-1/2 ">Name</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {capp.env.map((env, i) => (
-                        <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-surface/50">
-                          <td className="px-3 py-2 text-sm font-mono text-text max-w-1/2 overflow-x-scroll">{env.name}</td>
-                          <td className="px-3 py-2 text-sm text-text-secondary font-mono overflow-scroll">{env.value}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+          {capp.env && capp.env.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs text-text-muted">
+                Environment Variables ({capp.env.length})
+              </p>
+              <DataTable head={['Name', 'Value']}>
+                {capp.env.map((env, i) => (
+                  <tr key={i} className={rowCls}>
+                    <td className="max-w-[40%] break-all px-3 py-2 align-top font-mono text-sm text-text">{env.name}</td>
+                    <td className="break-all px-3 py-2 font-mono text-sm text-text-secondary">{env.value}</td>
+                  </tr>
+                ))}
+              </DataTable>
+            </div>
+          )}
 
-            {capp.volumeMounts && capp.volumeMounts.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs text-text-muted">
-                  Volume Mounts ({capp.volumeMounts.length})
-                </p>
-                <div className="overflow-hidden rounded-lg border border-border">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border bg-card">
-                        <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Name</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Mount Path</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {capp.volumeMounts.map((vm, i) => (
-                        <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-surface/50">
-                          <td className="px-3 py-2 text-sm font-mono text-text">{vm.name}</td>
-                          <td className="px-3 py-2 text-sm text-text-secondary font-mono">{vm.mountPath}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          {capp.volumeMounts && capp.volumeMounts.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs text-text-muted">
+                Volume Mounts ({capp.volumeMounts.length})
+              </p>
+              <DataTable head={['Name', 'Mount Path']}>
+                {capp.volumeMounts.map((vm, i) => (
+                  <tr key={i} className={rowCls}>
+                    <td className="px-3 py-2 font-mono text-sm text-text">{vm.name}</td>
+                    <td className="break-all px-3 py-2 font-mono text-sm text-text-secondary">{vm.mountPath}</td>
+                  </tr>
+                ))}
+              </DataTable>
+            </div>
+          )}
+        </div>
+      </SectionSheet>
 
       {/* Status Conditions */}
-      <Card className="bg-surface border-border border-l-2 border-l-success">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">Status Conditions</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+      <SectionSheet title="Status conditions" aside={capp.status?.conditions?.length ? `${capp.status.conditions.length}` : undefined}>
+        <div className="flex flex-col gap-5">
           <ConditionsTable capp={capp} />
           {capp.status?.eventingStatus?.eventSources && capp.status.eventingStatus.eventSources.length > 0 && (
             <div>
-              <p className="mb-2 text-xs text-text-muted uppercase tracking-widest font-mono">Event Source Status</p>
-              <div className="overflow-hidden rounded-lg border border-border">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border bg-card">
-                      <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Name</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Status</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-text-muted">Reason</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {capp.status.eventingStatus.eventSources.map((src, i) => (
-                      <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-surface/50">
-                        <td className="px-3 py-2 text-sm font-mono text-text">{src.name}</td>
-                        <td className="px-3 py-2">
-                          <Badge variant={src.status === 'True' ? 'success' : src.status === 'False' ? 'danger' : 'default'}>
-                            {src.status}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2 text-sm text-text-secondary">{src.reason ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <p className="mb-2 text-xs font-medium text-text-muted">Event Source Status</p>
+              <DataTable head={['Name', 'Status', 'Reason']}>
+                {capp.status.eventingStatus.eventSources.map((src, i) => (
+                  <tr key={i} className={rowCls}>
+                    <td className="px-3 py-2 font-mono text-sm text-text">{src.name}</td>
+                    <td className="px-3 py-2">
+                      <Badge variant={src.status === 'True' ? 'success' : src.status === 'False' ? 'danger' : 'default'}>
+                        {src.status}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-sm text-text-secondary">{src.reason ?? '—'}</td>
+                  </tr>
+                ))}
+              </DataTable>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </SectionSheet>
+
+      {/* Log */}
+      {capp.logSpec && (
+        <SectionSheet title="Log">
+          <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-text-muted">Log Host</dt>
+              <dd className="mt-0.5 break-all font-mono text-sm text-text">{capp.logSpec.host}</dd>
+            </div>
+            {capp.logSpec.target && (
+              <div>
+                <dt className="text-xs text-text-muted">Log Target</dt>
+                <dd className="mt-0.5 break-all font-mono text-sm text-text">{capp.logSpec.target}</dd>
+              </div>
+            )}
+          </dl>
+        </SectionSheet>
+      )}
 
       {/* NFS Volumes */}
       {capp.nfsVolumes && capp.nfsVolumes.length > 0 && (
-        <Card className="bg-surface border-border border-l-2 border-l-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted">NFS Volumes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              {capp.nfsVolumes.map((vol) => (
-                <div key={vol.name} className="rounded-lg border border-border bg-card p-3">
-                  <p className="font-medium text-sm text-text">{vol.name}</p>
-                  <p className="text-xs text-text-muted mt-1">
-                    {vol.server}:{vol.path} · {vol.capacity}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <SectionSheet title="NFS Volumes" aside={`${capp.nfsVolumes.length}`}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {capp.nfsVolumes.map((vol) => (
+              <div key={vol.name} className="rounded-lg border border-border-subtle p-3">
+                <p className="text-sm font-medium text-text">{vol.name}</p>
+                <p className="mt-1 break-all font-mono text-xs text-text-muted">
+                  {vol.server}:{vol.path} · {vol.capacity}
+                </p>
+              </div>
+            ))}
+          </div>
+        </SectionSheet>
       )}
 
       {/* Event Sources */}
       {capp.eventSourcesSpec?.sources && capp.eventSourcesSpec.sources.length > 0 && (
-        <Card className="bg-surface border-border border-l-2 border-l-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-widest font-mono text-text-muted flex items-center gap-2">
-              <LightningIcon size={12} /> Event Sources
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-2">
-              {capp.eventSourcesSpec.sources.map((src) => {
-                const isPing = Boolean(src.pingSourceConfiguration);
-                return (
-                  <div key={src.name} className="rounded-lg border border-border bg-card p-3 flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm text-text">{src.name}</span>
-                      <Badge variant="info">{isPing ? 'Ping' : 'Kafka'}</Badge>
-                    </div>
-                    {src.uri && (
-                      <p className="text-xs text-text-muted font-mono">URI: {src.uri}</p>
-                    )}
-                    {isPing && src.pingSourceConfiguration && (
-                      <p className="text-xs text-text-muted font-mono">
-                        Schedule: {src.pingSourceConfiguration.schedule}
-                        {src.pingSourceConfiguration.data && ` · data: ${src.pingSourceConfiguration.data}`}
-                      </p>
-                    )}
-                    {!isPing && src.kafkaSourceConfiguration && (
-                      <p className="text-xs text-text-muted font-mono">
-                        Brokers: {src.kafkaSourceConfiguration.bootstrapServers.join(', ')}
-                        {' · '}Topics: {src.kafkaSourceConfiguration.topics.join(', ')}
-                      </p>
-                    )}
+        <SectionSheet
+          title={<><LightningIcon size={16} className="text-text-muted" /> Event Sources</>}
+          aside={`${capp.eventSourcesSpec.sources.length}`}
+        >
+          <div className="flex flex-col gap-2">
+            {capp.eventSourcesSpec.sources.map((src) => {
+              const isPing = Boolean(src.pingSourceConfiguration);
+              return (
+                <div key={src.name} className="flex flex-col gap-1 rounded-lg border border-border-subtle p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-text">{src.name}</span>
+                    <Badge variant="info">{isPing ? 'Ping' : 'Kafka'}</Badge>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                  {src.uri && (
+                    <p className="break-all font-mono text-xs text-text-muted">URI: {src.uri}</p>
+                  )}
+                  {isPing && src.pingSourceConfiguration && (
+                    <p className="font-mono text-xs text-text-muted">
+                      Schedule: {src.pingSourceConfiguration.schedule}
+                      {src.pingSourceConfiguration.data && ` · data: ${src.pingSourceConfiguration.data}`}
+                    </p>
+                  )}
+                  {!isPing && src.kafkaSourceConfiguration && (
+                    <p className="break-all font-mono text-xs text-text-muted">
+                      Brokers: {src.kafkaSourceConfiguration.bootstrapServers.join(', ')}
+                      {' · '}Topics: {src.kafkaSourceConfiguration.topics.join(', ')}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </SectionSheet>
       )}
-
     </div>
   )
 }
