@@ -130,6 +130,8 @@ export interface CappRequest {
   nfsVolumes?: NFSVolume[];
   secretVolumes?: SecretVolume[];
   configMapVolumes?: ConfigMapVolume[];
+  /** Names of kubernetes.io/dockerconfigjson Secrets used to pull the image. */
+  imagePullSecrets?: string[];
   eventSourcesSpec?: EventSourcesSpec;
 }
 
@@ -176,6 +178,7 @@ export interface CappResponse {
   nfsVolumes?: NFSVolume[];
   secretVolumes?: SecretVolume[];
   configMapVolumes?: ConfigMapVolume[];
+  imagePullSecrets?: string[];
   eventSourcesSpec?: EventSourcesSpec;
   status: CappStatusResponse;
   /** Side effects that failed while the cluster write itself succeeded. */
@@ -279,6 +282,7 @@ export interface LegacyCappSpec {
           volumeMounts?: VolumeMount[];
           resources?: ResourceSpec;
         }>;
+        imagePullSecrets?: Array<{ name: string }>;
       };
     };
   };
