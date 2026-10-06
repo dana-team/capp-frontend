@@ -37,7 +37,7 @@ interface CappDetailProps {
 /** Value line used inside StatTile children. */
 const TileValue: React.FC<{ main: React.ReactNode; sub?: React.ReactNode; className?: string }> = ({ main, sub, className }) => (
   <div className="mt-3 min-w-0">
-    <div className={cn('truncate font-display text-[28px] font-medium leading-none tabular-nums text-text', className)}>{main}</div>
+    <div className={cn('truncate font-display text-[28px] font-medium leading-[1.2] tabular-nums text-text', className)}>{main}</div>
     {sub && <div className="mt-2 truncate text-xs text-text-muted">{sub}</div>}
   </div>
 )
