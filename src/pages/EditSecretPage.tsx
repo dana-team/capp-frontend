@@ -1,7 +1,8 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CaretRight, CircleNotch, WarningCircle } from '@phosphor-icons/react';
-import { SecretForm, SecretFormValues } from '@/components/secrets/SecretForm';
+import { SecretForm, SecretFormValues, emptyRegistry, toSecretData } from '@/components/secrets/SecretForm';
+import { DOCKER_CONFIG_JSON_KEY, DOCKER_CONFIG_JSON_TYPE, parseDockerConfigJson } from '@/utils/dockerConfig';
 import { useSecret, useUpdateSecret } from '@/hooks/useSecrets';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -17,7 +18,7 @@ export const EditSecretPage: React.FC = () => {
       namespace,
       name,
       req: {
-        data: Object.fromEntries(values.data.map(({ key, value }) => [key, value])),
+        data: toSecretData(values),
       },
     });
     navigate(`/secrets/${namespace}/${name}`);
@@ -42,9 +43,15 @@ export const EditSecretPage: React.FC = () => {
     );
   }
 
+  const isImagePull = secret?.type === DOCKER_CONFIG_JSON_TYPE;
+  // Single-registry pull secrets get structured fields; anything else falls
+  // back to raw key/value editing so no data is lost.
+  const registry = isImagePull ? parseDockerConfigJson(secret?.data?.[DOCKER_CONFIG_JSON_KEY]) : null;
   const initialValues: SecretFormValues = {
     name,
+    kind: registry ? 'imagePull' : 'generic',
     data: Object.entries(secret?.data ?? {}).map(([key, value]) => ({ key, value })),
+    registry: registry ? { ...registry, email: registry.email ?? '' } : emptyRegistry,
   };
 
   return (
@@ -68,6 +75,7 @@ export const EditSecretPage: React.FC = () => {
         <h1 className="text-xl font-bold text-text">Edit {name}</h1>
         <p className="mt-1 text-sm text-text-muted">
           Namespace: <span className="text-primary font-medium">{namespace}</span>
+          {isImagePull && <> · Image pull secret{!registry && ' (raw data)'}</>}
         </p>
       </div>
 

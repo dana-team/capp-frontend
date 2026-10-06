@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { CaretRight } from '@phosphor-icons/react';
-import { SecretForm, SecretFormValues } from '@/components/secrets/SecretForm';
+import { SecretForm, SecretFormValues, toSecretData } from '@/components/secrets/SecretForm';
+import { DOCKER_CONFIG_JSON_TYPE } from '@/utils/dockerConfig';
 import { useCreateSecret } from '@/hooks/useSecrets';
 import { useNamespaceContext } from '@/context/NamespaceContext';
 
@@ -17,7 +18,8 @@ export const CreateSecretPage: React.FC = () => {
       req: {
         name: values.name,
         namespace,
-        data: Object.fromEntries(values.data.map(({ key, value }) => [key, value])),
+        type: values.kind === 'imagePull' ? DOCKER_CONFIG_JSON_TYPE : 'Opaque',
+        data: toSecretData(values),
       },
     });
     navigate(`/secrets/${namespace}/${values.name}`);
