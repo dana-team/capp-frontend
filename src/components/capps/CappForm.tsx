@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Accordion } from "@/components/ui/accordion";
+import { Sheet } from "@/components/layout/Sheet";
+import { SectionIndex } from "./SectionIndex";
+import { useScrollContainer } from "@/components/layout/ScrollContainer";
 import { cn } from "@/lib/utils";
 import { DetailsSection } from "./sections/DetailsSection";
 import { ConfigurationSection } from "./sections/ConfigurationSection";
@@ -295,9 +298,31 @@ interface CappFormProps {
   namespace?: string;
   onCancel?: () => void;
   quota?: import('@/api/namespaces').QuotaInfo;
+  /** Page header renderer; receives the Form | YAML toggle to place. */
+  header?: (toggle: React.ReactNode) => React.ReactNode;
 }
 
 export type Tab = "form" | "yaml";
+
+// Form sections shown in the section index, and the fields that belong to each.
+const SECTION_FIELDS: Record<string, string[]> = {
+  name: ["name"],
+  details: ["scaleMetric", "state", "minReplicas", "maxReplicas", "scaleDelaySeconds", "sizingMode", "size", "cpuRequest", "cpuLimit", "memoryRequest", "memoryLimit"],
+  configuration: ["image", "containerName", "envVars"],
+  route: ["hostname", "tlsEnabled", "routeTimeoutSeconds"],
+  log: ["logType", "logHost", "logTarget", "logUser", "logPasswordSecret", "logPasswordKey"],
+  volumes: ["nfsVolumes", "secretVolumes", "configMapVolumes", "volumeMounts"],
+  eventSources: ["eventSources"],
+};
+const SECTION_LABELS: Array<[string, string]> = [
+  ["name", "Name"],
+  ["details", "Details"],
+  ["configuration", "Configuration"],
+  ["route", "Route"],
+  ["log", "Logging"],
+  ["volumes", "Volumes"],
+  ["eventSources", "Event Sources"],
+];
 
 function computeImpactPct(value: string | undefined, quotaLimit: string | undefined): number | null {
   const v = parseResource(value);
@@ -332,7 +357,7 @@ const QuotaBanner: React.FC<{ quota?: import('@/api/namespaces').QuotaInfo; cont
   const hasImpact = cpuPct !== null || memPct !== null;
 
   return (
-    <div className="flex items-center gap-4 text-xs text-text-muted rounded-lg border border-border bg-surface px-3 py-2" title="Based on resource requests × max pods, not actual runtime usage">
+    <Sheet className="flex flex-wrap items-center gap-x-5 gap-y-1.5 px-4 py-3 text-sm text-text-muted" title="Based on resource requests × max pods, not actual runtime usage">
       <span className="font-medium text-text-secondary">Allocated:</span>
       {quota.cpu && (
         <span>
@@ -380,7 +405,7 @@ const QuotaBanner: React.FC<{ quota?: import('@/api/namespaces').QuotaInfo; cont
           )}
         </>
       )}
-    </div>
+    </Sheet>
   );
 };
 
@@ -394,6 +419,7 @@ export const CappForm: React.FC<CappFormProps> = ({
   namespace = "default",
   onCancel,
   quota,
+  header,
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>("form");
   const [yamlContent, setYamlContent] = useState("");
@@ -562,108 +588,165 @@ export const CappForm: React.FC<CappFormProps> = ({
     await onSubmit(values);
   };
 
-  return (
-    <form
-      onSubmit={handleSubmit(handleFormSubmit)}
-      className="flex flex-col gap-4 overflow-y-scroll"
-    >
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-surface border border-border p-1 w-fit overflow-y-scroll">
-        {(["form", "yaml"] as Tab[]).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => handleTabChange(tab)}
-            className={cn(
-              "flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-all",
-              activeTab === tab
-                ? "bg-card text-text shadow-sm"
-                : "text-text-muted hover:text-text",
-            )}
-          >
-            {tab === "form" ? <FileTextIcon size={14} /> : <CodeIcon size={14} />}
-            {tab === "form" ? "Form" : "YAML"}
-          </button>
-        ))}
-      </div>
+  const errorKeys = Object.keys(errors);
+  const indexItems = SECTION_LABELS.map(([id, label]) => ({
+    id,
+    label,
+    hasError: SECTION_FIELDS[id].some((f) => errorKeys.includes(f)),
+  }));
 
+  // Presentation only: which sections are expanded, and which one is in view.
+  const [openSections, setOpenSections] = useState<string[]>(["details", "configuration"]);
+  const [activeSection, setActiveSection] = useState("name");
+  const scrollContainer = useScrollContainer();
+  useEffect(() => {
+    if (activeTab !== "form") return;
+    // The section whose top has most recently crossed ~35% of the viewport.
+    const update = () => {
+      const line = window.innerHeight * 0.35;
+      let current = SECTION_LABELS[0][0];
+      SECTION_LABELS.forEach(([id]) => {
+        const el = document.getElementById(`section-${id}`);
+        if (el && el.getBoundingClientRect().top <= line) current = id;
+      });
+      setActiveSection(current);
+    };
+    const scroller: HTMLElement | Window = scrollContainer?.current ?? window;
+    scroller.addEventListener("scroll", update, { passive: true });
+    update();
+    return () => scroller.removeEventListener("scroll", update);
+  }, [activeTab, scrollContainer]);
+
+  const handleSelectSection = (id: string) => {
+    if (id !== "name" && !openSections.includes(id)) {
+      setOpenSections((prev) => [...prev, id]);
+    }
+    setActiveSection(id);
+    // Wait for the expanded section to lay out before scrolling to it.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      ),
+    );
+  };
+
+  const toggle = (
+    <div className="flex w-fit gap-1 rounded-lg border border-border bg-background/60 p-1">
+      {(["form", "yaml"] as Tab[]).map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          onClick={() => handleTabChange(tab)}
+          aria-pressed={activeTab === tab}
+          className={cn(
+            "flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-all",
+            activeTab === tab
+              ? "bg-card text-text shadow-sm"
+              : "text-text-muted hover:text-text",
+          )}
+        >
+          {tab === "form" ? <FileTextIcon size={14} /> : <CodeIcon size={14} />}
+          {tab === "form" ? "Form" : "YAML"}
+        </button>
+      ))}
+    </div>
+  );
+
+  const actionBar = (submit: React.ReactNode) => (
+    <div className="sticky bottom-4 z-10 mt-2 flex flex-col items-center gap-2">
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="max-w-xl bg-card shadow-[0_18px_50px_-18px_hsl(var(--text)/0.35)]">
           <WarningCircleIcon className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+      <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 shadow-[0_18px_50px_-18px_hsl(var(--text)/0.45)]">
+        {onCancel && (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+        {submit}
+      </div>
+    </div>
+  );
+
+  return (
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col gap-5">
+      {header ? header(toggle) : toggle}
 
       <QuotaBanner quota={quota} control={control} />
 
       {activeTab === "form" ? (
         <>
-          <div className="flex flex-col gap-3">
-            {/* Name field */}
-            <div className="rounded-xl border border-border bg-card p-5">
-              <Controller
-                name="name"
-                control={control}
-                render={({ field }) => (
-                  <Input
-                    label="Name"
-                    required
-                    placeholder="my-capp"
-                    error={errors.name?.message}
-                    hint="Lowercase alphanumeric and hyphens only, max 63 characters"
-                    disabled={isEdit}
-                    {...field}
-                  />
-                )}
-              />
+          <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[200px_minmax(0,1fr)]">
+            <div className="sticky top-24 hidden lg:block">
+              <SectionIndex items={indexItems} active={activeSection} onSelect={handleSelectSection} />
             </div>
+            <div className="flex min-w-0 flex-col gap-4">
+              {/* Name field */}
+              <Sheet as="section" id="section-name" className="scroll-mt-24 p-5">
+                <Controller
+                  name="name"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      label="Name"
+                      required
+                      placeholder="my-capp"
+                      className="font-mono"
+                      error={errors.name?.message}
+                      hint="Lowercase alphanumeric and hyphens only, max 63 characters"
+                      disabled={isEdit}
+                      {...field}
+                    />
+                  )}
+                />
+              </Sheet>
 
-            <Accordion
-              type="multiple"
-              defaultValue={["details", "configuration"]}
-              className="flex flex-col gap-3"
-            >
-              <DetailsSection
-                control={control}
-                watch={watch as (name: keyof CappFormValues) => unknown}
-                quota={quota}
-              />
-              <ConfigurationSection
-                control={control}
-                errors={errors}
-                namespace={namespace}
-                watch={watch as (name: keyof CappFormValues) => unknown}
-                setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
-              />
-              <RouteSection
-                control={control}
-                watch={watch as (name: keyof CappFormValues) => unknown}
-              />
-              <LogSection control={control} />
-              <VolumesSection
-                control={control}
-                watch={watch as (name: keyof CappFormValues) => unknown}
-                setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
-                namespace={namespace}
-              />
-              <EventSourcesSection
-                control={control}
-                watch={watch as (name: keyof CappFormValues) => unknown}
-                setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
-                namespace={namespace}
-              />
-            </Accordion>
+              <Accordion
+                type="multiple"
+                value={openSections}
+                onValueChange={setOpenSections}
+                className="flex flex-col gap-4"
+              >
+                <DetailsSection
+                  control={control}
+                  watch={watch as (name: keyof CappFormValues) => unknown}
+                  quota={quota}
+                />
+                <ConfigurationSection
+                  control={control}
+                  errors={errors}
+                  namespace={namespace}
+                  watch={watch as (name: keyof CappFormValues) => unknown}
+                  setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
+                />
+                <RouteSection
+                  control={control}
+                  watch={watch as (name: keyof CappFormValues) => unknown}
+                />
+                <LogSection control={control} />
+                <VolumesSection
+                  control={control}
+                  watch={watch as (name: keyof CappFormValues) => unknown}
+                  setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
+                  namespace={namespace}
+                />
+                <EventSourcesSection
+                  control={control}
+                  watch={watch as (name: keyof CappFormValues) => unknown}
+                  setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
+                  namespace={namespace}
+                />
+              </Accordion>
+            </div>
           </div>
-          <div className="flex items-center gap-3 justify-end pt-2">
-            {onCancel && (
-              <Button type="button" variant="ghost" onClick={onCancel}>
-                Cancel
-              </Button>
-            )}
+          {actionBar(
             <Button type="submit" variant="primary" loading={isLoading}>
               {submitLabel}
-            </Button>
-          </div>
+            </Button>,
+          )}
         </>
       ) : (
         <>
@@ -672,13 +755,7 @@ export const CappForm: React.FC<CappFormProps> = ({
             yamlContent={yamlContent}
             yamlError={yamlError}
           />
-
-          <div className="flex items-center gap-3 justify-end pt-2">
-            {onCancel && (
-              <Button type="button" variant="ghost" onClick={onCancel}>
-                Cancel
-              </Button>
-            )}
+          {actionBar(
             <Button
               type="button"
               variant="primary"
@@ -686,8 +763,8 @@ export const CappForm: React.FC<CappFormProps> = ({
               onClick={async () => handleFormSubmit()}
             >
               {submitLabel}
-            </Button>
-          </div>
+            </Button>,
+          )}
         </>
       )}
     </form>

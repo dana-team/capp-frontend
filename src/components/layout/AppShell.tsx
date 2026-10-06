@@ -10,11 +10,12 @@
  *    (react-router syntax, e.g. '/capps/:namespace/:name') to DASHBOARD_ROUTES
  *    below and build the page from PageHeader / StatBand / Sheet.
  */
-import React from 'react'
+import React, { useRef } from 'react'
 import { Outlet, matchPath, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { TopBar } from './TopBar'
 import { Sheet } from './Sheet'
+import { ScrollContainerContext } from './ScrollContainer'
 import { InkLandscape } from '@/components/landscape/InkLandscape'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +27,12 @@ export const DASHBOARD_ROUTES: string[] = [
   '/capps/:namespace/:name',
   '/secrets/:namespace/:name',
   '/configmaps/:namespace/:name',
+  '/capps/new',
+  '/secrets/new',
+  '/configmaps/new',
+  '/capps/:namespace/:name/edit',
+  '/secrets/:namespace/:name/edit',
+  '/configmaps/:namespace/:name/edit',
 ]
 
 export function isDashboardRoute(pathname: string): boolean {
@@ -59,13 +66,15 @@ const pageVariants = {
 
 export const AppShell: React.FC = () => {
   const location = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
   const dashboard = isDashboardRoute(location.pathname)
 
   return (
     <div className="relative h-[100dvh] overflow-hidden bg-background">
       <InkLandscape variant="stage" station={stationForPath(location.pathname)} />
       <TopBar />
-      <main className="absolute inset-0 z-[1] overflow-y-auto">
+      <main ref={mainRef} className="absolute inset-0 z-[1] overflow-y-auto">
+        <ScrollContainerContext.Provider value={mainRef}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
@@ -81,6 +90,7 @@ export const AppShell: React.FC = () => {
             {dashboard ? <Outlet /> : <Sheet><Outlet /></Sheet>}
           </motion.div>
         </AnimatePresence>
+        </ScrollContainerContext.Provider>
       </main>
     </div>
   )

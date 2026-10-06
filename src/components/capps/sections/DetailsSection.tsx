@@ -60,7 +60,7 @@ export const DetailsSection: React.FC<DetailsSectionProps> = ({ control, quota }
   return (
     <SectionAccordion value="details" title="Details">
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name="scaleMetric"
             control={control}
@@ -109,7 +109,7 @@ export const DetailsSection: React.FC<DetailsSectionProps> = ({ control, quota }
             )}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name="minReplicas"
             control={control}
@@ -188,7 +188,7 @@ export const DetailsSection: React.FC<DetailsSectionProps> = ({ control, quota }
           />
 
           {sizingMode === 'preset' ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Controller
                 name="size"
                 control={control}
@@ -216,7 +216,7 @@ export const DetailsSection: React.FC<DetailsSectionProps> = ({ control, quota }
               />
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Controller
                 name="cpuRequest"
                 control={control}

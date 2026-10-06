@@ -1,7 +1,7 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { CaretRight } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
 import { CappForm, CappFormValues } from '@/components/capps/CappForm';
+import { DetailCrumbs, DetailHeader } from '@/components/layout/DetailParts';
 import { useCreateCapp } from '@/hooks/useCapps';
 import { useNamespaces } from '@/hooks/useNamespaces';
 import { useNamespaceContext } from '@/context/NamespaceContext';
@@ -22,24 +22,21 @@ export const CreateCappPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-full mx-auto">
-      <nav className="flex items-center gap-1 text-sm mb-6">
-        <Link to="/capps" className="text-text-muted hover:text-text transition-colors">
-          Capps
-        </Link>
-        <CaretRight size={14} className="text-text-muted" />
-        <span className="text-text">Create</span>
-      </nav>
-
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-text">Create Capp</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Deploying to namespace:{' '}
-          <span className="text-primary font-medium">{namespace}</span>
-        </p>
-      </div>
-
+    <div>
+      <DetailCrumbs to="/capps" parent="Capps" name="Create" />
       <CappForm
+        header={(toggle) => (
+          <DetailHeader
+            title="Create Capp"
+            meta={
+              <span>
+                Deploying to namespace{' '}
+                <span className="font-mono text-primary">{namespace}</span>
+              </span>
+            }
+            actions={toggle}
+          />
+        )}
         onSubmit={handleSubmit}
         isLoading={isPending}
         error={error ? (error as Error).message : undefined}

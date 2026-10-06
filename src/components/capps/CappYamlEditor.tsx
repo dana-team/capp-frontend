@@ -2,6 +2,7 @@ import React from "react";
 import { WarningCircle } from "@phosphor-icons/react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import CodeEditor, { type Monaco } from "@monaco-editor/react";
+import { Sheet } from "@/components/layout/Sheet";
 import { useThemeStore } from "@/store/theme";
 
 const bare = (c: string) => c.slice(1, 7);
@@ -79,15 +80,15 @@ export const CappYamlEditor: React.FC<CappYamlEditorProps> = ({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="rounded-[3px] border border-border bg-card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border px-4 py-2">
+      <Sheet className="overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border-subtle px-5 py-3">
           <span className="font-sans text-[13px] font-medium text-text-secondary">
             YAML Editor
           </span>
           <span className="font-mono text-xs tabular-nums text-text-muted">{lineCount} lines</span>
         </div>
         <CodeEditor
-          height="400px"
+          height="min(70vh, 720px)"
           defaultLanguage="yaml"
           value={yamlContent}
           onChange={(value) => handleYamlChange(value || "")}
@@ -105,7 +106,7 @@ export const CappYamlEditor: React.FC<CappYamlEditorProps> = ({
           beforeMount={handleEditorWillMount}
           theme={dark ? "ink-night" : "rice-paper"}
         />
-      </div>
+      </Sheet>
       {yamlError && (
         <Alert variant="destructive">
           <WarningCircle className="h-4 w-4" />

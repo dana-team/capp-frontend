@@ -1,9 +1,12 @@
 import React from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { CaretRight, CircleNotch, WarningCircle } from '@phosphor-icons/react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { CircleNotch, WarningCircle } from '@phosphor-icons/react';
 import { SecretForm, SecretFormValues, emptyRegistry, toSecretData } from '@/components/secrets/SecretForm';
 import { DOCKER_CONFIG_JSON_KEY, DOCKER_CONFIG_JSON_TYPE, parseDockerConfigJson } from '@/utils/dockerConfig';
 import { useSecret, useUpdateSecret } from '@/hooks/useSecrets';
+import { DetailCrumbs } from '@/components/layout/DetailParts';
+import { Sheet } from '@/components/layout/Sheet';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const EditSecretPage: React.FC = () => {
@@ -26,20 +29,20 @@ export const EditSecretPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <Sheet className="flex items-center justify-center py-16">
         <CircleNotch className="animate-spin h-8 w-8 text-text-muted" />
-      </div>
+      </Sheet>
     );
   }
 
   if (loadError) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
+      <Sheet className="p-5">
         <Alert variant="destructive">
           <WarningCircle className="h-4 w-4" />
           <AlertDescription>{(loadError as Error).message}</AlertDescription>
         </Alert>
-      </div>
+      </Sheet>
     );
   }
 
@@ -55,29 +58,18 @@ export const EditSecretPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <nav className="flex items-center gap-1 text-sm mb-6">
-        <Link to="/secrets" className="text-text-muted hover:text-text transition-colors">
-          Secrets
-        </Link>
-        <CaretRight size={14} className="text-text-muted" />
-        <Link
-          to={`/secrets/${namespace}/${name}`}
-          className="text-text-muted hover:text-text transition-colors"
-        >
-          <span className="truncate max-w-[200px]">{name}</span>
-        </Link>
-        <CaretRight size={14} className="text-text-muted" />
-        <span className="text-text">Edit</span>
-      </nav>
-
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-text">Edit {name}</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Namespace: <span className="text-primary font-medium">{namespace}</span>
-          {isImagePull && <> · Image pull secret{!registry && ' (raw data)'}</>}
-        </p>
-      </div>
+    <div>
+      <DetailCrumbs to={`/secrets/${namespace}/${name}`} parent={name} name="Edit" />
+      <PageHeader
+        title={`Edit ${name}`}
+        description={
+          <>
+            Namespace <span className="font-medium text-primary">{namespace}</span>
+            {isImagePull && <> · Image pull secret{!registry && ' (raw data)'}</>}
+          </>
+        }
+        className="mb-5"
+      />
 
       <SecretForm
         initialValues={initialValues}
@@ -86,6 +78,7 @@ export const EditSecretPage: React.FC = () => {
         error={updateError ? (updateError as Error).message : undefined}
         submitLabel="Save Changes"
         isEdit
+        namespace={namespace}
         onCancel={() => navigate(`/secrets/${namespace}/${name}`)}
       />
     </div>

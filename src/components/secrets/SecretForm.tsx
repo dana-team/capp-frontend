@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { buildDockerConfigJson, DOCKER_CONFIG_JSON_KEY } from "@/utils/dockerConfig";
+import { FormLayout, AsideFacts } from "@/components/layout/FormLayout";
 
 export type SecretKind = "generic" | "imagePull";
 
@@ -107,6 +108,8 @@ interface SecretFormProps {
   submitLabel: string;
   isEdit?: boolean;
   onCancel: () => void;
+  /** Display only: namespace shown in the context panel. */
+  namespace?: string;
 }
 
 export const SecretForm: React.FC<SecretFormProps> = ({
@@ -117,6 +120,7 @@ export const SecretForm: React.FC<SecretFormProps> = ({
   submitLabel,
   isEdit,
   onCancel,
+  namespace,
 }) => {
   const {
     register,
@@ -147,7 +151,38 @@ export const SecretForm: React.FC<SecretFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <FormLayout
+        aside={
+          <AsideFacts
+            title="Details"
+            facts={[
+              ["Namespace", namespace ?? "-"],
+              ["Type", kind === "imagePull" ? "Image pull secret" : "Generic"],
+              ["Entries", kind === "imagePull" ? "1" : String(fields.length)],
+            ]}
+            note="Values are sent to the cluster and stored as a Kubernetes Secret. They stay masked here until you reveal them."
+          />
+        }
+        error={
+          error ? (
+            <Alert variant="destructive">
+              <WarningCircleIcon className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : undefined
+        }
+        actions={
+          <>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={isLoading}>
+              {submitLabel}
+            </Button>
+          </>
+        }
+      >
       <Input
         label="Name"
         required
@@ -159,7 +194,7 @@ export const SecretForm: React.FC<SecretFormProps> = ({
 
       {!isEdit && (
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-text-secondary">Type</label>
+          <label className="font-sans text-sm font-medium text-text-secondary">Type</label>
           <div role="radiogroup" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {KIND_OPTIONS.map((opt) => (
               <button
@@ -169,10 +204,10 @@ export const SecretForm: React.FC<SecretFormProps> = ({
                 aria-checked={kind === opt.value}
                 onClick={() => setValue("kind", opt.value, { shouldValidate: false })}
                 className={cn(
-                  "flex flex-col items-start gap-0.5 rounded border px-3 py-2 text-left transition-colors duration-150",
+                  "flex flex-col items-start gap-0.5 rounded-lg border px-3.5 py-3 text-left transition-colors duration-150",
                   kind === opt.value
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-text-muted",
+                    ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                    : "border-border-subtle bg-background/40 hover:border-border",
                 )}
               >
                 <span className="text-sm font-medium text-text">{opt.label}</span>
@@ -202,7 +237,7 @@ export const SecretForm: React.FC<SecretFormProps> = ({
             {...register("registry.username")}
           />
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="registry-password" className="text-xs font-medium text-text-secondary">
+            <label htmlFor="registry-password" className="font-sans text-sm font-medium text-text-secondary">
               Password or token
               <span className="text-danger ml-1">*</span>
             </label>
@@ -238,7 +273,7 @@ export const SecretForm: React.FC<SecretFormProps> = ({
 
       {kind === "generic" && (
       <div className="flex flex-col gap-3">
-        <label className="text-xs font-medium text-text-secondary">Data</label>
+        <label className="font-sans text-sm font-medium text-text-secondary">Data</label>
 
         {fields.length > 0 && (
           <div className="flex flex-col gap-3">
@@ -254,7 +289,7 @@ export const SecretForm: React.FC<SecretFormProps> = ({
                           {...f}
                           placeholder="Key"
                           className={cn(
-                            "h-9 w-full rounded border bg-background px-3 text-sm text-text placeholder:text-text-muted",
+                            "h-9 w-full rounded border bg-background px-3 font-mono text-[13px] text-text placeholder:text-text-muted",
                             "transition-colors duration-150 outline-none focus:outline-none focus:border-primary",
                             fieldState.error
                               ? "border-danger"
@@ -277,7 +312,7 @@ export const SecretForm: React.FC<SecretFormProps> = ({
                     placeholder="Value"
                     rows={3}
                     className={cn(
-                      "h-9 w-full rounded border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-muted transition-colors duration-150 outline-none focus:outline-none focus:border-primary resize-y",
+                      "h-9 w-full rounded border border-border bg-background px-3 py-2 font-mono text-[13px] text-text placeholder:text-text-muted transition-colors duration-150 outline-none focus:outline-none focus:border-primary resize-y",
                       !revealedIndices.has(index) && "text-security-disc",
                     )}
                     style={
@@ -326,7 +361,7 @@ export const SecretForm: React.FC<SecretFormProps> = ({
         <button
           type="button"
           onClick={() => append({ key: "", value: "" })}
-          className="flex items-center gap-2 text-sm text-text-muted hover:text-text transition-colors w-fit"
+          className="flex w-fit items-center gap-2 rounded-full border border-dashed border-border px-3 py-1.5 text-sm text-text-secondary transition-colors hover:border-primary hover:text-text"
         >
           <PlusIcon size={14} />
           Add entry
@@ -334,21 +369,8 @@ export const SecretForm: React.FC<SecretFormProps> = ({
       </div>
       )}
 
-      {error && (
-        <Alert variant="destructive">
-          <WarningCircleIcon className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
-      <div className="flex items-center gap-3">
-        <Button type="submit" loading={isLoading}>
-          {submitLabel}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
+      </FormLayout>
     </form>
   );
 };

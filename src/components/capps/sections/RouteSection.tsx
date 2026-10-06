@@ -26,13 +26,14 @@ export const RouteSection: React.FC<RouteSectionProps> = ({ control }) => {
           render={({ field }) => (
             <Input
               label="Hostname"
+              className="font-mono"
               placeholder="app.example.com"
               hint="Custom domain for this Capp. Leave empty to use auto-generated."
               {...field}
             />
           )}
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name="tlsEnabled"
             control={control}

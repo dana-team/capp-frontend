@@ -41,7 +41,7 @@ export const LogSection: React.FC<LogSectionProps> = ({ control }) => {
             )}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name="logHost"
             control={control}
@@ -71,7 +71,7 @@ export const LogSection: React.FC<LogSectionProps> = ({ control }) => {
             )}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name="logUser"
             control={control}
@@ -96,7 +96,7 @@ export const LogSection: React.FC<LogSectionProps> = ({ control }) => {
             )}
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name="logPasswordKey"
             control={control}
