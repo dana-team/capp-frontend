@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { DetailCrumbs } from '@/components/layout/DetailParts'
 import { Sheet } from '@/components/layout/Sheet'
 import { WarningBanner } from '@/components/capps/WarningBanner'
+import { CappMessageBanner } from '@/components/capps/CappMessageBanner'
 import { useCapp, useDeleteCapp, useDisableCappGitSync, useSyncCappToGit } from '@/hooks/useCapps'
 import { hasBackupLabel, SyncToGitResponse, WarningNavState } from '@/types/capp'
 import { MigrateDialog } from '@/components/capps/MigrateDialog'
@@ -82,6 +83,7 @@ export const CappDetailPage: React.FC = () => {
 
       {capp && (
         <div className="flex flex-col gap-6">
+          <CappMessageBanner annotations={capp.annotations} />
           <WarningBanner warnings={carriedWarnings} />
 
           <CappDetail
