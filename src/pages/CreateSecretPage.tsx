@@ -1,6 +1,7 @@
 import React from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { CaretRight } from '@phosphor-icons/react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DetailCrumbs } from '@/components/layout/DetailParts';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { SecretForm, SecretFormValues, emptyRegistry, toSecretData } from '@/components/secrets/SecretForm';
 import { DOCKER_CONFIG_JSON_TYPE } from '@/utils/dockerConfig';
 import { useCreateSecret } from '@/hooks/useSecrets';
@@ -28,22 +29,18 @@ export const CreateSecretPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-full mx-auto">
-      <nav className="flex items-center gap-1 text-sm mb-6">
-        <Link to="/secrets" className="text-text-muted hover:text-text transition-colors">
-          Secrets
-        </Link>
-        <CaretRight size={14} className="text-text-muted" />
-        <span className="text-text">Create</span>
-      </nav>
-
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-text">Create Secret</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Deploying to namespace:{' '}
-          <span className="text-primary font-medium">{namespace}</span>
-        </p>
-      </div>
+    <div>
+      <DetailCrumbs to="/secrets" parent="Secrets" name="Create" />
+      <PageHeader
+        title="Create Secret"
+        description={
+          <>
+            Deploying to namespace{' '}
+            <span className="font-medium text-primary">{namespace}</span>
+          </>
+        }
+        className="mb-5"
+      />
 
       <SecretForm
         initialValues={{ name: '', kind: initialKind, data: [], registry: emptyRegistry }}
@@ -51,6 +48,7 @@ export const CreateSecretPage: React.FC = () => {
         isLoading={isPending}
         error={error ? (error as Error).message : undefined}
         submitLabel="Create Secret"
+        namespace={namespace}
         onCancel={() => navigate('/secrets')}
       />
     </div>

@@ -33,7 +33,7 @@ export const CopyButton: React.FC<CopyButtonProps> = ({ text, className }) => {
       type="button"
       onClick={handleCopy}
       className={cn(
-        'flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-colors',
+        'flex h-7 w-7 items-center justify-center rounded text-text-muted transition-colors',
         copied
           ? 'text-success hover:text-success'
           : 'hover:bg-surface hover:text-text',

@@ -13,7 +13,7 @@ const Table = ({ className, ref, ...props }: React.ComponentProps<"table">) => (
 )
 
 const TableHeader = ({ className, ref, ...props }: React.ComponentProps<"thead">) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead ref={ref} className={cn("[&_tr]:border-b [&_tr]:border-border", className)} {...props} />
 )
 
 const TableBody = ({ className, ref, ...props }: React.ComponentProps<"tbody">) => (
@@ -28,7 +28,7 @@ const TableFooter = ({ className, ref, ...props }: React.ComponentProps<"tfoot">
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      "border-t border-border bg-surface/60 font-medium [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -39,7 +39,7 @@ const TableRow = ({ className, ref, ...props }: React.ComponentProps<"tr">) => (
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "border-b border-border-subtle transition-colors hover:bg-surface/70 data-[state=selected]:bg-surface",
       className
     )}
     {...props}
@@ -50,7 +50,7 @@ const TableHead = ({ className, ref, ...props }: React.ComponentProps<"th">) => 
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-10 px-4 text-left align-middle font-sans text-xs font-semibold uppercase tracking-wider text-text-secondary [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -60,7 +60,7 @@ const TableHead = ({ className, ref, ...props }: React.ComponentProps<"th">) => 
 const TableCell = ({ className, ref, ...props }: React.ComponentProps<"td">) => (
   <td
     ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn("px-4 py-3 align-middle [&:has([role=checkbox])]:pr-0", className)}
     {...props}
   />
 )
@@ -68,7 +68,7 @@ const TableCell = ({ className, ref, ...props }: React.ComponentProps<"td">) => 
 const TableCaption = ({ className, ref, ...props }: React.ComponentProps<"caption">) => (
   <caption
     ref={ref}
-    className={cn("mt-4 text-sm text-muted-foreground", className)}
+    className={cn("mt-4 text-sm text-text-secondary", className)}
     {...props}
   />
 )

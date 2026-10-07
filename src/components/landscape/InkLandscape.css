@@ -1,0 +1,302 @@
+/* Ink landscape: tiled parallax strip + mist + birds + water. Plain CSS; colors from theme tokens. */
+
+.ink-landscape {
+  --mist-rgb: 255 255 255;
+  --mist-op: 0.7;
+  --bird-op: 0.6;
+  --shimmer-rgb: 40 60 60;
+  --shimmer-op: 0.16;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: hsl(var(--background));
+  background-image: var(--ink-paper, none);
+  background-size: 256px 256px;
+}
+
+.dark .ink-landscape {
+  --mist-rgb: 150 170 190;
+  --mist-op: 0.3;
+  --bird-op: 0.55;
+  --shimmer-rgb: 190 205 220;
+  --shimmer-op: 0.12;
+}
+
+.ink-landscape--hero {
+  opacity: 0.85;
+}
+
+.ink-landscape--stage {
+  position: fixed;
+  z-index: 0;
+}
+
+.ink-landscape--backdrop {
+  position: fixed;
+  z-index: 0;
+  opacity: 0.12;
+  background: none;
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 35%, transparent 75%);
+  mask-image: linear-gradient(to top, black 0%, black 35%, transparent 75%);
+}
+
+.dark .ink-landscape--backdrop {
+  opacity: 0.1;
+}
+
+.ink-landscape__placeholder {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    hsl(var(--surface) / 0.9) 0%,
+    hsl(var(--surface) / 0.4) 30%,
+    transparent 65%
+  );
+  transition: opacity 0.8s ease 0.3s;
+}
+
+/* Blurred, static snapshot of the last visit; cross-fades into the sharp tiles. */
+.ink-landscape__preview {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center bottom;
+  filter: blur(14px);
+  transform: scale(1.06);
+  transition: opacity 0.7s ease 0.35s;
+}
+
+.ink-landscape[data-ready='true'] .ink-landscape__placeholder,
+.ink-landscape[data-ready='true'] .ink-landscape__preview {
+  opacity: 0;
+}
+
+/* One moving container per depth layer; its transform is driven from JS (rAF). */
+.ink-landscape__layer {
+  position: absolute;
+  left: 0;
+  width: 0;
+  top: 0;
+  height: 100%;
+  will-change: transform;
+}
+
+/* Each tile exists once per theme (both pre-rendered); the theme switch only cross-fades. */
+.ink-tile {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  max-width: none;
+  display: block;
+  /* Not exactly 0: the hidden theme stays painted/decoded, so the switch never decodes. */
+  opacity: 0.004;
+  transition: opacity 0.4s ease-in-out 0.1s;
+  user-select: none;
+}
+
+.ink-landscape[data-ready='true'] .ink-tile.is-on {
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.ink-landscape[data-ready='true'] .ink-tile--dark.is-on {
+  opacity: 0.9;
+}
+
+.ink-landscape--hero[data-ready='true'] .ink-tile--dark.is-on {
+  opacity: 0.7;
+}
+
+/* ---- mist: soft blobs drifting between the depth layers ---- */
+
+.ink-mist {
+  --band: 14%;
+  --k: 1;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+/* Ambient motion (mist, water) holds still until the sharp scene is in. */
+.ink-landscape[data-ready='true'] .ink-mist,
+.ink-landscape[data-ready='true'] .ink-water {
+  opacity: 1;
+}
+
+.ink-mist--far {
+  --band: 14%;
+}
+
+.ink-mist--near {
+  --band: 42%;
+  --k: 0.8;
+}
+
+.ink-mist__blob {
+  --i: 0;
+  position: absolute;
+  left: 0;
+  top: calc(var(--band) + var(--i) * 14%);
+  width: calc(40vw + var(--i) * 10vw);
+  height: calc(20% + var(--i) * 4%);
+  background: var(--ink-mist-tex, none) center / 100% 100% no-repeat;
+  opacity: calc(var(--mist-op) * var(--k));
+  will-change: transform;
+  transform: translate3d(calc(var(--i) * 28vw - 10vw), 0, 0);
+  animation: ink-mist-drift calc(150s + var(--i) * 37s) linear infinite;
+  animation-delay: calc(var(--i) * -41s);
+}
+
+.ink-mist--near .ink-mist__blob {
+  animation-duration: calc(110s + var(--i) * 29s);
+  animation-delay: calc(var(--i) * -33s - 17s);
+  animation-direction: reverse;
+}
+
+@keyframes ink-mist-drift {
+  from {
+    transform: translate3d(-60vw, 0, 0);
+  }
+  to {
+    transform: translate3d(110vw, 0, 0);
+  }
+}
+
+/* ---- water shimmer: understated glints near the bottom edge ---- */
+
+.ink-water {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 16%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 25%, transparent 100%);
+  mask-image: linear-gradient(to top, black 0%, black 25%, transparent 100%);
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.ink-water::before,
+.ink-water::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(100% + 240px);
+  will-change: transform;
+}
+
+.ink-water::before {
+  background: radial-gradient(
+      ellipse at center,
+      rgb(var(--shimmer-rgb) / var(--shimmer-op)) 0 18%,
+      transparent 62%
+    )
+    0 0 / 140px 12px;
+  animation: ink-water-slide 14s linear infinite;
+}
+
+.ink-water::after {
+  background: radial-gradient(
+      ellipse at center,
+      rgb(var(--shimmer-rgb) / var(--shimmer-op)) 0 18%,
+      transparent 62%
+    )
+    60px 5px / 260px 19px;
+  animation: ink-water-slide 22s linear infinite reverse;
+}
+
+@keyframes ink-water-slide {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-240px, 0, 0);
+  }
+}
+
+/* ---- birds ---- */
+
+.ink-birds {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.ink-bird {
+  position: absolute;
+  left: 0;
+  width: 24px;
+  height: 12px;
+  color: hsl(var(--text));
+  opacity: var(--bird-op);
+  will-change: transform;
+}
+
+.ink-bird svg {
+  display: block;
+  overflow: visible;
+}
+
+.ink-bird path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.ink-bird__wing {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ink-flap var(--flap, 0.65s) ease-in-out infinite alternate;
+}
+
+.ink-bird__wing--l {
+  transform-origin: 100% 100%;
+}
+
+.ink-bird__wing--r {
+  transform-origin: 0% 100%;
+  animation-name: ink-flap-r;
+}
+
+@keyframes ink-flap {
+  from {
+    transform: rotate(-22deg);
+  }
+  to {
+    transform: rotate(26deg);
+  }
+}
+
+@keyframes ink-flap-r {
+  from {
+    transform: rotate(22deg);
+  }
+  to {
+    transform: rotate(-26deg);
+  }
+}
+
+/* ---- reduced motion: static painting, static mist, no birds ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-mist__blob,
+  .ink-water::before,
+  .ink-water::after {
+    animation: none;
+  }
+  .ink-tile,
+  .ink-landscape__placeholder,
+  .ink-landscape__preview {
+    transition: none;
+  }
+  .ink-birds {
+    display: none;
+  }
+}

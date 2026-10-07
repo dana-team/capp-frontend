@@ -1,9 +1,9 @@
 import React from 'react';
 
 const SIZE_CONFIG = {
-  small:  { label: 'S', title: 'Small',  className: 'bg-teal-500/15 text-teal-400 border-teal-500/30' },
-  medium: { label: 'M', title: 'Medium', className: 'bg-violet-500/15 text-violet-400 border-violet-500/30' },
-  large:  { label: 'L', title: 'Large',  className: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
+  small:  { label: 'S', title: 'Small',  className: 'bg-transparent text-text-secondary border-border' },
+  medium: { label: 'M', title: 'Medium', className: 'bg-transparent text-text border-text/40' },
+  large:  { label: 'L', title: 'Large',  className: 'bg-primary/10 text-primary border-primary/40' },
 } as const;
 
 export const SizeBadge: React.FC<{ size?: string }> = ({ size }) => {
@@ -12,7 +12,7 @@ export const SizeBadge: React.FC<{ size?: string }> = ({ size }) => {
   return (
     <span
       title={cfg.title}
-      className={`inline-flex items-center justify-center h-5 w-5 rounded border text-[10px] font-bold leading-none ${cfg.className}`}
+      className={`inline-flex items-center justify-center h-5 w-5 rounded border font-mono text-[10px] font-medium leading-none ${cfg.className}`}
     >
       {cfg.label}
     </span>

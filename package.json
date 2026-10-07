@@ -12,8 +12,9 @@
     "typecheck:mock": "tsc -p mock-server"
   },
   "dependencies": {
-    "@fontsource/dm-mono": "^5.2.7",
-    "@fontsource/outfit": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
     "@hookform/resolvers": "^5.9.1",
     "@monaco-editor/react": "^4.7.0",
     "@phosphor-icons/react": "^2.1.10",

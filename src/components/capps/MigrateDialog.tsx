@@ -113,8 +113,8 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="gap-5 rounded-[10px] shadow-[0_24px_70px_-20px_hsl(var(--text)/0.5)] sm:max-w-md">
+        <DialogHeader className="gap-1.5 border-b border-border-subtle pb-4 pr-6">
           <DialogTitle>Migrate Capp</DialogTitle>
           <DialogDescription>
             Migrate <span className="font-mono font-medium text-text">{cappName}</span> to a different cluster or namespace.
@@ -124,12 +124,12 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
         {result ? (
           <div className="flex flex-col gap-4">
             {isPartialFailure ? (
-              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
                 Capp migrated to <span className="font-mono font-medium">{result.targetCluster}/{result.targetNamespace}</span>,
                 but the source could not be deleted.
               </div>
             ) : (
-              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
                 Capp migrated to <span className="font-mono font-medium">{result.targetCluster}/{result.targetNamespace}</span>.
               </div>
             )}
@@ -147,7 +147,7 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
               </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="gap-2 border-t border-border-subtle pt-4 sm:space-x-0">
               <Button variant="outline" onClick={() => handleClose(false)}>
                 Close
               </Button>
@@ -155,10 +155,10 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
           </div>
         ) : error ? (
           <div className="flex flex-col gap-4">
-            <div className="rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
+            <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
               {error}
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 border-t border-border-subtle pt-4 sm:space-x-0">
               <Button variant="outline" onClick={() => handleClose(false)}>
                 Close
               </Button>
@@ -209,7 +209,7 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
               />
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 rounded-lg border border-border-subtle bg-background/40 px-3.5 py-3">
               <button
                 type="button"
                 role="switch"
@@ -227,12 +227,12 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
                   )}
                 />
               </button>
-              <label className="text-sm text-text-secondary">
+              <label className="font-sans text-sm text-text-secondary">
                 Delete source after migration
               </label>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="gap-2 border-t border-border-subtle pt-4 sm:space-x-0">
               <Button variant="outline" onClick={() => handleClose(false)}>
                 Cancel
               </Button>

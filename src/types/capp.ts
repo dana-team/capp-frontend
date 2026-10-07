@@ -229,6 +229,9 @@ export interface SyncToGitResponse {
 
 export const LABEL_BACKUP_TO_GIT = 'rcs.dana.io/backup-to-git';
 
+/** Free-text message shown as a banner on the Capp page. */
+export const ANNOTATION_MESSAGE = 'rcs.dana.io/message';
+
 export function hasBackupLabel(labels?: Record<string, string>): boolean {
   return labels != null && labels[LABEL_BACKUP_TO_GIT] === 'true';
 }

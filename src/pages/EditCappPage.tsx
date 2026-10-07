@@ -5,6 +5,8 @@ import { CappForm, CappFormValues } from '@/components/capps/CappForm';
 import { useCapp, useUpdateCapp } from '@/hooks/useCapps';
 import { useNamespaces } from '@/hooks/useNamespaces';
 import { buildCappRequest, cappToFormValues } from '@/utils/cappBuilder';
+import { Sheet } from '@/components/layout/Sheet';
+import { DetailHeader } from '@/components/layout/DetailParts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { hasBackupLabel, WarningNavState } from '@/types/capp';
 
@@ -32,53 +34,57 @@ export const EditCappPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <Sheet className="flex items-center justify-center py-16">
         <CircleNotchIcon className="animate-spin h-8 w-8 text-text-muted" />
-      </div>
+      </Sheet>
     );
   }
 
   if (loadError) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
+      <Sheet className="p-5">
         <Alert variant="destructive">
           <WarningCircleIcon className="h-4 w-4" />
           <AlertDescription>{(loadError as Error).message}</AlertDescription>
         </Alert>
-      </div>
+      </Sheet>
     );
   }
 
   const initialValues = capp ? cappToFormValues(capp) : undefined;
 
   return (
-    <div className="p-6 max-w-full mx-auto">
-      <nav className="flex items-center gap-1 text-sm mb-6">
-        <Link to="/capps" className="text-text-muted hover:text-text transition-colors">
+    <div>
+      <nav className="mb-4 inline-flex max-w-full items-center gap-1 rounded-full bg-background/70 px-3 py-1 text-sm backdrop-blur-md">
+        <Link to="/capps" className="text-text-secondary transition-colors hover:text-text">
           Capps
         </Link>
-        <CaretRightIcon size={14} className="text-text-muted" />
+        <CaretRightIcon size={13} className="shrink-0 text-text-muted" />
         <Link
           to={`/capps/${namespace}/${name}`}
-          className="text-text-muted hover:text-text transition-colors"
+          className="truncate text-text-secondary transition-colors hover:text-text"
         >
           {name}
         </Link>
-        <CaretRightIcon size={14} className="text-text-muted" />
+        <CaretRightIcon size={13} className="shrink-0 text-text-muted" />
         <span className="text-text">Edit</span>
       </nav>
 
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-text">Edit {name}</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Namespace: <span className="text-primary font-medium">{namespace}</span>
-        </p>
-        {hasBackupLabel(capp?.labels) && (
-          <p className="mt-1 text-sm text-text-muted">Changes will be committed to Git.</p>
-        )}
-      </div>
-
       <CappForm
+        header={(toggle) => (
+          <DetailHeader
+            title={`Edit ${name}`}
+            meta={
+              <>
+                <span>
+                  Namespace <span className="font-mono text-primary">{namespace}</span>
+                </span>
+                {hasBackupLabel(capp?.labels) && <span>Changes will be committed to Git.</span>}
+              </>
+            }
+            actions={toggle}
+          />
+        )}
         initialValues={initialValues}
         onSubmit={handleSubmit}
         isLoading={isPending}

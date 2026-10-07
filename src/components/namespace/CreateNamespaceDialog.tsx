@@ -65,8 +65,8 @@ export const CreateNamespaceDialog: React.FC<CreateNamespaceDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="gap-5 rounded-[10px] shadow-[0_24px_70px_-20px_hsl(var(--text)/0.5)] sm:max-w-md">
+        <DialogHeader className="gap-1.5 border-b border-border-subtle pb-4 pr-6">
           <DialogTitle>Create Namespace</DialogTitle>
           <DialogDescription>
             Create a new namespace with optional resource quotas and user access.
@@ -83,8 +83,8 @@ export const CreateNamespaceDialog: React.FC<CreateNamespaceDialogProps> = ({
             className="font-mono"
           />
 
-          <fieldset className="flex flex-col gap-3 rounded border border-border p-3">
-            <legend className="px-1.5 text-xs font-medium text-text-secondary">
+          <fieldset className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-background/40 p-3.5">
+            <legend className="px-1.5 font-sans text-sm font-medium text-text-secondary">
               Resource Quota
             </legend>
             <div className="grid grid-cols-3 gap-3">
@@ -129,7 +129,7 @@ export const CreateNamespaceDialog: React.FC<CreateNamespaceDialogProps> = ({
             </p>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 border-t border-border-subtle pt-4 sm:space-x-0">
             <Button type="button" variant="outline" onClick={() => handleClose(false)}>
               Cancel
             </Button>

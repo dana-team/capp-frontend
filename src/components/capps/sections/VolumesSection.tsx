@@ -53,14 +53,14 @@ export const VolumesSection: React.FC<VolumesSectionProps> = ({ control, watch, 
         <div className="flex flex-col gap-3">
           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">NFS</span>
           {nfsVolumes.map((_, index) => (
-            <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-3">
+            <div key={index} className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-text-secondary">NFS Volume {index + 1}</span>
                 <button type="button" onClick={() => removeNfs(index)} aria-label="Remove NFS volume" className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors">
                   <Trash size={14} />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Controller name={`nfsVolumes.${index}.name` as keyof CappFormValues} control={control} render={({ field }) => (
                   <Input label="Name" placeholder="my-nfs-volume" hint="Must be a valid k8s name" value={field.value as string} onChange={field.onChange} />
                 )} />
@@ -97,14 +97,14 @@ export const VolumesSection: React.FC<VolumesSectionProps> = ({ control, watch, 
         <div className="flex flex-col gap-3">
           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Secret Volumes</span>
           {secretVolumes.map((_, index) => (
-            <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-3">
+            <div key={index} className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-text-secondary">Secret Volume {index + 1}</span>
                 <button type="button" onClick={() => removeSecret(index)} aria-label="Remove secret volume" className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors">
                   <Trash size={14} />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Controller name={`secretVolumes.${index}.volumeName` as keyof CappFormValues} control={control} render={({ field }) => (
                   <Input label="Volume Name" placeholder="my-secret-vol" hint="K8s volume object name" value={field.value as string} onChange={field.onChange} />
                 )} />
@@ -132,14 +132,14 @@ export const VolumesSection: React.FC<VolumesSectionProps> = ({ control, watch, 
         <div className="flex flex-col gap-3">
           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">ConfigMap Volumes</span>
           {configMapVolumes.map((_, index) => (
-            <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-3">
+            <div key={index} className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-text-secondary">ConfigMap Volume {index + 1}</span>
                 <button type="button" onClick={() => removeConfigMap(index)} aria-label="Remove ConfigMap volume" className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors">
                   <Trash size={14} />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Controller name={`configMapVolumes.${index}.volumeName` as keyof CappFormValues} control={control} render={({ field }) => (
                   <Input label="Volume Name" placeholder="my-cm-vol" hint="K8s volume object name" value={field.value as string} onChange={field.onChange} />
                 )} />
@@ -168,14 +168,14 @@ export const VolumesSection: React.FC<VolumesSectionProps> = ({ control, watch, 
           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Volume Mounts</span>
           <span className="text-xs text-text-muted -mt-1">NFS volumes must be mounted here, otherwise the Capp is rejected. Secret and ConfigMap volumes are mounted automatically.</span>
           {volumeMounts.map((_, index) => (
-            <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-3">
+            <div key={index} className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-text-secondary">Volume Mount {index + 1}</span>
                 <button type="button" onClick={() => removeVolumeMount(index)} aria-label="Remove volume mount" className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted hover:bg-danger/10 hover:text-danger transition-colors">
                   <Trash size={14} />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Controller name={`volumeMounts.${index}.volumeName` as keyof CappFormValues} control={control} render={({ field }) => (
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-text-secondary">NFS Volume</label>

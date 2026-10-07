@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Plus,
   MagnifyingGlass,
@@ -8,7 +8,6 @@ import {
   ArrowsDownUp,
   WarningCircle,
 } from "@phosphor-icons/react";
-import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -25,14 +24,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -40,9 +31,14 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { TableRowSkeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { WarningBanner } from "@/components/capps/WarningBanner";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Sheet } from "@/components/layout/Sheet";
+import { StatBand } from "@/components/layout/StatBand";
+import { StatTile } from "@/components/layout/StatTile";
+import { ResourceList, ResourceRow } from "@/components/layout/ResourceList";
 import { useCapps, useDeleteCapp } from "@/hooks/useCapps";
 import { Warning, WarningNavState } from "@/types/capp";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -50,12 +46,22 @@ import { useNamespaces } from "@/hooks/useNamespaces";
 import { useNamespaceContext } from "@/context/NamespaceContext";
 import { CappResponse } from "@/types/capp";
 import { relativeTime } from "@/utils/time";
+import { cappHealth, HEALTH_LABEL, HEALTH_TEXT, HEALTH_TONE, type CappHealth } from "@/utils/cappHealth";
 
 type SortField = "name" | "namespace" | "state" | "metric" | "createdAt";
 
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 15;
+
+// Shared column widths so the sort header lines up with the rows.
+const COL = {
+  namespace: "hidden w-36 shrink-0 truncate md:block",
+  metric: "hidden w-24 shrink-0 lg:block",
+  size: "hidden w-12 shrink-0 sm:block",
+  age: "hidden w-20 shrink-0 text-right sm:block",
+  status: "w-24 shrink-0",
+};
 
 export const CappListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -81,11 +87,22 @@ export const CappListPage: React.FC = () => {
   );
 
   const totalCapps = capps?.length ?? 0;
-  const enabledCapps =
-    capps?.filter((c) => (c.state ?? "enabled") === "enabled").length ?? 0;
-  const namespaceCount = capps
-    ? new Set(capps.map((c) => c.namespace).filter(Boolean)).size
-    : 0;
+  const counts = useMemo(() => {
+    const c: Record<CappHealth, number> = { ready: 0, progressing: 0, failed: 0, disabled: 0 };
+    capps?.forEach((x) => { c[cappHealth(x)] += 1; });
+    return c;
+  }, [capps]);
+  const namespaceStats = useMemo(() => {
+    const m = new Map<string, number>();
+    capps?.forEach((x) => {
+      if (x.namespace) m.set(x.namespace, (m.get(x.namespace) ?? 0) + 1);
+    });
+    return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [capps]);
+  const topNamespaces = namespaceStats.slice(0, 4);
+  const maxNsCount = topNamespaces[0]?.[1] ?? 1;
+  const namespaceCount = namespaceStats.length;
+  const attention = counts.progressing + counts.failed;
 
   const filtered = useMemo(() => {
     if (!capps) return [];
@@ -150,256 +167,265 @@ export const CappListPage: React.FC = () => {
     }
   };
 
-  const SortHeader: React.FC<{ field: SortField; label: string }> = ({
-    field,
-    label,
-  }) => (
-    <button
-      type="button"
-      onClick={() => handleSort(field)}
-      className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-text-muted hover:text-text transition-colors"
-    >
-      {label}
-      <ArrowsDownUp
-        size={11}
+  const sortButton = (field: SortField, label: string, className?: string, end = false) => (
+    <div className={className}>
+      <button
+        type="button"
+        onClick={() => handleSort(field)}
+        aria-label={`Sort by ${label}`}
         className={cn(
-          "transition-opacity",
-          sortField === field ? "opacity-100 text-primary" : "opacity-40",
+          "flex items-center gap-1 text-xs font-medium text-text-muted transition-colors hover:text-text",
+          sortField === field && "text-text",
+          end && "ml-auto",
         )}
-      />
-    </button>
+      >
+        {label}
+        <ArrowsDownUp
+          size={11}
+          className={cn(
+            "transition-opacity",
+            sortField === field ? "opacity-100 text-primary" : "opacity-40",
+          )}
+        />
+      </button>
+    </div>
   );
 
+  const loadingTile = isLoading || !capps;
+  const num = (n: number) => (loadingTile ? "–" : n);
+  const share = (n: number) => (totalCapps ? n / totalCapps : 0);
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
+    <div className="space-y-4">
       <WarningBanner warnings={warnings} />
 
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text">Capps</h1>
-          <p className="mt-0.5 text-sm text-text-muted">
-            {selectedNamespace ? `Namespace: ${selectedNamespace}` : "All namespaces"}
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => navigate("/capps/new")}>
-          <Plus size={14} />
-          New Capp
-        </Button>
-      </div>
+      <PageHeader
+        title="Capps"
+        count={capps ? totalCapps : undefined}
+        description={selectedNamespace ? `Namespace ${selectedNamespace}` : "All namespaces"}
+        actions={
+          <Button variant="primary" onClick={() => navigate("/capps/new")}>
+            <Plus size={14} />
+            New Capp
+          </Button>
+        }
+      />
 
-      {/* Stats strip */}
-      {!isLoading && capps && (
-        <motion.div
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-          className="flex items-center gap-5 text-sm pb-4 border-b border-border"
+      <StatBand>
+        <StatTile index={0} label="Total" value={num(totalCapps)} share={totalCapps ? 1 : 0} />
+        <StatTile index={1} label="Ready" tone="success" value={num(counts.ready)} share={share(counts.ready)} />
+        <StatTile
+          index={2}
+          label="Needs attention"
+          tone={counts.failed ? "danger" : "warning"}
+          value={num(attention)}
+          share={share(attention)}
+        />
+        <StatTile index={3} label="Disabled" tone="neutral" value={num(counts.disabled)} share={share(counts.disabled)} />
+        <StatTile
+          index={4}
+          label={namespaceCount === 1 ? "1 namespace" : `${namespaceCount} namespaces`}
+          className="col-span-2"
         >
-          <span>
-            <span className="font-semibold tabular-nums text-text">{totalCapps}</span>
-            <span className="text-text-muted ml-1.5">total</span>
-          </span>
-          <span className="text-border">·</span>
-          <span>
-            <span className="font-semibold tabular-nums text-success">{enabledCapps}</span>
-            <span className="text-text-muted ml-1.5">enabled</span>
-          </span>
-          <span className="text-border">·</span>
-          <span>
-            <span className="font-semibold tabular-nums text-text">{namespaceCount}</span>
-            <span className="text-text-muted ml-1.5">{namespaceCount === 1 ? "namespace" : "namespaces"}</span>
-          </span>
-          {selectedNsQuota && (selectedNsQuota.cpu || selectedNsQuota.memory || selectedNsQuota.pods != null) && (
-            <>
-              <span className="text-border">·</span>
-              <span className="text-text-muted text-xs" title="Based on resource requests × max pods, not actual runtime usage">
-                Allocated:
-                {selectedNsQuota.cpu && (
-                  <span className="ml-1.5">
-                    CPU <span className="font-mono text-text">{selectedNsQuota.used?.cpu ?? '0'}</span>
-                    <span className="text-text-muted">/</span>
-                    <span className="font-mono text-text">{selectedNsQuota.cpu}</span>
-                  </span>
-                )}
-                {selectedNsQuota.memory && (
-                  <span className="ml-1.5">
-                    Mem <span className="font-mono text-text">{selectedNsQuota.used?.memory ?? '0'}</span>
-                    <span className="text-text-muted">/</span>
-                    <span className="font-mono text-text">{selectedNsQuota.memory}</span>
-                  </span>
-                )}
-                {selectedNsQuota.pods != null && (
-                  <span className="ml-1.5">
-                    Pods <span className="font-mono text-text">{selectedNsQuota.used?.pods ?? 0}</span>
-                    <span className="text-text-muted">/</span>
-                    <span className="font-mono text-text">{selectedNsQuota.pods}</span>
-                  </span>
-                )}
-              </span>
-            </>
-          )}
-        </motion.div>
-      )}
+          <ul className="mt-3 space-y-1.5">
+            {topNamespaces.length === 0 && <li className="text-xs text-text-muted">{loadingTile ? "Loading…" : "No Capps yet"}</li>}
+            {topNamespaces.map(([ns, n]) => (
+              <li key={ns} className="flex items-center gap-2 text-xs">
+                <span className="w-24 shrink-0 truncate font-mono text-text-secondary" title={ns}>{ns}</span>
+                <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-border-subtle">
+                  <span className="block h-full rounded-full bg-primary/70" style={{ width: `${(n / maxNsCount) * 100}%` }} />
+                </span>
+                <span className="w-5 text-right tabular-nums text-text-muted">{n}</span>
+              </li>
+            ))}
+          </ul>
+        </StatTile>
+      </StatBand>
 
-      {/* Search */}
-      <div className="relative max-w-xs">
-        <MagnifyingGlass
-          size={13}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-        />
-        <Input
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search capps…"
-          className="pl-8 h-8 text-sm bg-card border-border"
-        />
-      </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <WarningCircle className="h-4 w-4" />
-          <AlertDescription>
-            {(error as Error).message ?? "Failed to load Capps"}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Table */}
-      {(isLoading || paginated.length > 0) && (
-        <div className="space-y-3">
-          <div className="rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-surface hover:bg-surface border-border">
-                  <TableHead className="w-2 p-0" />
-                  <TableHead><SortHeader field="name" label="Name" /></TableHead>
-                  <TableHead><SortHeader field="namespace" label="Namespace" /></TableHead>
-                  <TableHead><SortHeader field="state" label="State" /></TableHead>
-                  <TableHead className="text-xs font-medium uppercase tracking-wide text-text-muted">Size</TableHead>
-                  <TableHead><SortHeader field="metric" label="Metric" /></TableHead>
-                  <TableHead><SortHeader field="createdAt" label="Created" /></TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading
-                  ? Array.from({ length: 6 }).map((_, i) => (
-                      <TableRowSkeleton key={i} cols={5} />
-                    ))
-                  : paginated.map((capp, i) => (
-                      <motion.tr
-                        key={`${capp.namespace}/${capp.name}`}
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.15, delay: i * 0.03, ease: [0.16, 1, 0.3, 1] }}
-                        className="group border-b border-border/50 last:border-0 hover:bg-primary/[0.04] cursor-pointer transition-colors"
-                        role="link"
-                        tabIndex={0}
-                        onClick={() => navigate(`/capps/${capp.namespace}/${capp.name}`)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/capps/${capp.namespace}/${capp.name}`); } }}
-                      >
-                        <TableCell className="w-2 p-0" />
-                        <TableCell className="py-2.5">
-                          <Link
-                            to={`/capps/${capp.namespace}/${capp.name}`}
-                            className="font-mono font-medium text-sm text-text hover:text-primary transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {capp.name}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="py-2.5 font-mono text-xs text-text-muted">
-                          {capp.namespace}
-                        </TableCell>
-                        <TableCell className="py-2.5">
-                          <Badge variant={capp.state === "disabled" ? "default" : "success"}>
-                            {capp.state ?? "enabled"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-2.5">
-                          <SizeBadge size={capp.size} />
-                        </TableCell>
-                        <TableCell className="py-2.5">
-                          {capp.scaleSpec?.metric ? (
-                            <Badge variant="info">{capp.scaleSpec.metric}</Badge>
-                          ) : (
-                            <span className="text-xs text-text-muted font-mono">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-2.5 font-mono text-xs text-text-muted">
-                          {relativeTime(capp.createdAt)}
-                        </TableCell>
-                        <TableCell className="py-2.5">
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                            <Link
-                              to={`/capps/${capp.namespace}/${capp.name}/edit`}
-                              className="flex h-7 w-7 items-center justify-center rounded text-text-muted hover:bg-primary/10 hover:text-primary transition-all active:scale-95"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <PencilSimple size={13} />
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteTarget(capp);
-                                setDeleteError(null);
-                              }}
-                              className="flex h-7 w-7 items-center justify-center rounded text-text-muted hover:bg-danger/10 hover:text-danger transition-all active:scale-95"
-                            >
-                              <Trash size={13} />
-                            </button>
-                          </div>
-                        </TableCell>
-                      </motion.tr>
-                    ))
-                }
-              </TableBody>
-            </Table>
+      <Sheet>
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle px-4 py-3">
+          <div className="relative w-full max-w-xs">
+            <MagnifyingGlass
+              size={13}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+            />
+            <Input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Search capps…"
+              aria-label="Search capps"
+              className="h-8 border-border bg-card pl-8 text-sm"
+            />
           </div>
-
-          {!isLoading && totalPages > 1 && (
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setPage(page - 1)}
-                    className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="px-3 text-sm text-text-muted font-mono">
-                    {page} / {totalPages}
-                  </span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setPage(page + 1)}
-                    className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+          {selectedNsQuota && (selectedNsQuota.cpu || selectedNsQuota.memory || selectedNsQuota.pods != null) && (
+            <span className="ml-auto text-xs text-text-muted" title="Based on resource requests × max pods, not actual runtime usage">
+              Allocated
+              {selectedNsQuota.cpu && (
+                <span className="ml-2">
+                  CPU <span className="font-mono text-text">{selectedNsQuota.used?.cpu ?? "0"}</span>
+                  <span>/</span>
+                  <span className="font-mono text-text">{selectedNsQuota.cpu}</span>
+                </span>
+              )}
+              {selectedNsQuota.memory && (
+                <span className="ml-2">
+                  Mem <span className="font-mono text-text">{selectedNsQuota.used?.memory ?? "0"}</span>
+                  <span>/</span>
+                  <span className="font-mono text-text">{selectedNsQuota.memory}</span>
+                </span>
+              )}
+              {selectedNsQuota.pods != null && (
+                <span className="ml-2">
+                  Pods <span className="font-mono text-text">{selectedNsQuota.used?.pods ?? 0}</span>
+                  <span>/</span>
+                  <span className="font-mono text-text">{selectedNsQuota.pods}</span>
+                </span>
+              )}
+            </span>
           )}
         </div>
-      )}
 
-      {!isLoading && !error && paginated.length === 0 && (
-        <EmptyState
-          title={debouncedSearch ? "No results found" : "No Capps yet"}
-          description={
-            debouncedSearch
-              ? `No Capps match "${debouncedSearch}"`
-              : "Create your first Capp to get started"
-          }
-          action={
-            !debouncedSearch
-              ? { label: "Create Capp", onClick: () => navigate("/capps/new"), icon: <Plus size={14} /> }
-              : undefined
-          }
-        />
-      )}
+        {error && (
+          <div className="p-4">
+            <Alert variant="destructive">
+              <WarningCircle className="h-4 w-4" />
+              <AlertDescription>
+                {(error as Error).message ?? "Failed to load Capps"}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {(isLoading || paginated.length > 0) && (
+          <>
+            {/* Sort header, aligned with the row columns */}
+            <div className="flex items-center gap-4 border-b border-border-subtle px-4 py-2 pr-20">
+              <span className="w-2 shrink-0" />
+              <span className="flex-1">{sortButton("name", "Name")}</span>
+              {sortButton("namespace", "Namespace", COL.namespace)}
+              {sortButton("metric", "Metric", COL.metric)}
+              <span className={cn(COL.size, "text-xs font-medium text-text-muted")}>Size</span>
+              {sortButton("createdAt", "Created", COL.age, true)}
+              {sortButton("state", "State", COL.status)}
+            </div>
+
+            {isLoading ? (
+              <ul className="divide-y divide-border-subtle" aria-busy="true">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <li key={i} className="flex items-center gap-4 px-4 py-3.5">
+                    <Skeleton className="h-2 w-2 rounded-full" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-3 w-64" />
+                    </div>
+                    <Skeleton className="h-4 w-24" />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <ResourceList>
+                {paginated.map((capp, i) => {
+                  const h = cappHealth(capp);
+                  const href = `/capps/${capp.namespace}/${capp.name}`;
+                  return (
+                    <ResourceRow
+                      key={`${capp.namespace}/${capp.name}`}
+                      index={i}
+                      to={href}
+                      name={capp.name}
+                      subline={capp.image}
+                      tone={HEALTH_TONE[h]}
+                      statusLabel={HEALTH_LABEL[h]}
+                      meta={
+                        <>
+                          <span className={cn(COL.namespace, "font-mono text-xs text-text-muted")}>{capp.namespace}</span>
+                          <span className={COL.metric}>
+                            {capp.scaleSpec?.metric ? (
+                              <Badge variant="info">{capp.scaleSpec.metric}</Badge>
+                            ) : (
+                              <span className="font-mono text-xs text-text-muted">—</span>
+                            )}
+                          </span>
+                          <span className={COL.size}><SizeBadge size={capp.size} /></span>
+                          <span className={cn(COL.age, "font-mono text-xs text-text-muted")}>{relativeTime(capp.createdAt)}</span>
+                          <span className={cn(COL.status, "text-xs font-medium", HEALTH_TEXT[h])}>
+                            {capp.state === "disabled" ? "disabled" : HEALTH_LABEL[h].toLowerCase()}
+                          </span>
+                        </>
+                      }
+                      actions={
+                        <>
+                          <Link
+                            to={`${href}/edit`}
+                            aria-label={`Edit ${capp.name}`}
+                            className="flex h-7 w-7 items-center justify-center rounded text-text-muted transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
+                          >
+                            <PencilSimple size={13} />
+                          </Link>
+                          <button
+                            type="button"
+                            aria-label={`Delete ${capp.name}`}
+                            onClick={() => {
+                              setDeleteTarget(capp);
+                              setDeleteError(null);
+                            }}
+                            className="flex h-7 w-7 items-center justify-center rounded text-text-muted transition-all hover:bg-danger/10 hover:text-danger focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
+                          >
+                            <Trash size={13} />
+                          </button>
+                        </>
+                      }
+                    />
+                  );
+                })}
+              </ResourceList>
+            )}
+
+            {!isLoading && totalPages > 1 && (
+              <div className="border-t border-border-subtle px-4 py-3">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setPage(page - 1)}
+                        className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <span className="px-3 font-mono text-sm text-text-muted">
+                        {page} / {totalPages}
+                      </span>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setPage(page + 1)}
+                        className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
+        )}
+
+        {!isLoading && !error && paginated.length === 0 && (
+          <EmptyState
+            title={debouncedSearch ? "No results found" : "No Capps yet"}
+            description={
+              debouncedSearch
+                ? `No Capps match "${debouncedSearch}"`
+                : "Create your first Capp to get started"
+            }
+            action={
+              !debouncedSearch
+                ? { label: "Create Capp", onClick: () => navigate("/capps/new"), icon: <Plus size={14} /> }
+                : undefined
+            }
+          />
+        )}
+      </Sheet>
 
       <AlertDialog
         open={!!deleteTarget}

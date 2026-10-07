@@ -47,7 +47,7 @@ export const EventSourcesSection: React.FC<EventSourcesSectionProps> = ({ contro
         )}
 
         {eventSources.map((entry, index) => (
-          <div key={index} className="rounded-lg border border-border bg-surface p-4 space-y-3">
+          <div key={index} className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-text-secondary">
                 Event Source {index + 1}
@@ -62,7 +62,7 @@ export const EventSourcesSection: React.FC<EventSourcesSectionProps> = ({ contro
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Controller
                 name={`eventSources.${index}.name` as keyof CappFormValues}
                 control={control}
@@ -99,7 +99,7 @@ export const EventSourcesSection: React.FC<EventSourcesSectionProps> = ({ contro
             </div>
 
             {entry.sourceType === 'ping' && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Controller
                   name={`eventSources.${index}.pingSchedule` as keyof CappFormValues}
                   control={control}
@@ -118,7 +118,7 @@ export const EventSourcesSection: React.FC<EventSourcesSectionProps> = ({ contro
             )}
 
             {entry.sourceType === 'kafka' && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Controller
                   name={`eventSources.${index}.kafkaBootstrapServers` as keyof CappFormValues}
                   control={control}

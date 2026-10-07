@@ -1,4 +1,6 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
+import { MotionConfig } from 'motion/react';
+import { prewarmLandscape } from '@/components/landscape/InkLandscape';
 import {
   BrowserRouter,
   Routes,
@@ -44,7 +46,13 @@ const App: React.FC = () => {
     document.documentElement.classList.toggle('dark', dark);
   }, [dark]);
 
+  // Only schedules async work; no DOM reads/writes, so it must not block paint.
+  useEffect(() => {
+    prewarmLandscape();
+  }, []);
+
   return (
+    <MotionConfig reducedMotion="user">
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -66,6 +74,7 @@ const App: React.FC = () => {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </MotionConfig>
   );
 };
 

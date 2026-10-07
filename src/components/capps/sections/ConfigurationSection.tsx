@@ -125,7 +125,7 @@ const EnvVarRow: React.FC<{
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-3 space-y-2">
+    <div className="rounded-lg border border-border bg-background/40 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs text-text-muted">Env Var {index + 1}</span>
         <button
@@ -138,7 +138,7 @@ const EnvVarRow: React.FC<{
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Controller
           name={`envVars.${index}.name` as keyof CappFormValues}
           control={control}
@@ -189,7 +189,7 @@ const EnvVarRow: React.FC<{
       )}
 
       {(source === 'secretKeyRef' || source === 'configMapKeyRef') && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name={`envVars.${index}.refName` as keyof CappFormValues}
             control={control}
@@ -262,6 +262,7 @@ export const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({
           render={({ field }) => (
             <Input
               label="Container Image"
+              className="font-mono"
               required
               placeholder="registry.example.com/org/image:tag"
               error={errors.image?.message}
@@ -288,6 +289,7 @@ export const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({
           render={({ field }) => (
             <Input
               label="Container Name"
+              className="font-mono"
               placeholder="my-container"
               hint="Optional. Defaults to the Capp name."
               {...field}

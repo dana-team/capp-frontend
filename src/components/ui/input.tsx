@@ -16,11 +16,11 @@ const Input = ({ className, type, label, error, hint, required, id, ref, ...prop
       type={type}
       id={inputId}
       className={cn(
-        "flex h-9 w-full rounded border bg-background px-3 text-sm text-text placeholder:text-text-muted",
+        "flex h-9 w-full rounded border bg-card px-3 text-sm text-text placeholder:text-text-muted",
         "transition-colors duration-150 outline-none",
-        "focus:outline-none focus:border-primary",
+        "focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        error ? "border-danger focus:border-danger" : "border-border",
+        error ? "border-danger focus:border-danger focus:ring-danger" : "border-border hover:border-text/40",
         className
       )}
       ref={ref}
@@ -38,7 +38,7 @@ const Input = ({ className, type, label, error, hint, required, id, ref, ...prop
       {label && (
         <label
           htmlFor={inputId}
-          className="text-xs font-medium text-text-secondary"
+          className="font-sans text-sm font-medium text-text-secondary"
         >
           {label}
           {required && <span className="text-danger ml-1">*</span>}

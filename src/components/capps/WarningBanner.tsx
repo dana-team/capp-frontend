@@ -15,7 +15,7 @@ export const WarningBanner: React.FC<WarningBannerProps> = ({ warnings }) => {
   if (!warnings?.length) return null
 
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
+    <div className="flex flex-col gap-1 rounded-[10px] border border-warning/40 bg-card px-4 py-3 text-sm text-warning shadow-[0_18px_50px_-18px_hsl(var(--text)/0.35)]">
       {warnings.map((w, i) => (
         <div key={`${w.code}-${i}`} className="flex items-start gap-2">
           <WarningCircleIcon size={16} className="mt-0.5 shrink-0" />

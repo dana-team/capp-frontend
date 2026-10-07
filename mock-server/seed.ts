@@ -20,7 +20,7 @@ import type {
 import type { ConfigMapResponse } from '../src/types/configmap';
 import type { SecretResponse } from '../src/types/secret';
 import type { NamespaceItem } from '../src/api/namespaces';
-import { LABEL_BACKUP_TO_GIT } from '../src/types/capp';
+import { ANNOTATION_MESSAGE, LABEL_BACKUP_TO_GIT } from '../src/types/capp';
 import { buildDockerConfigJson, DOCKER_CONFIG_JSON_KEY, DOCKER_CONFIG_JSON_TYPE } from '../src/utils/dockerConfig';
 import { SIZES, type MockStore } from './store';
 
@@ -209,6 +209,17 @@ function genCapp(
   if (faker.datatype.boolean({ probability: 0.25 })) capp.labels = { [LABEL_BACKUP_TO_GIT]: 'true' };
   if (faker.datatype.boolean({ probability: 0.2 })) {
     capp.annotations = { 'rcs.dana.io/owner': faker.internet.email().toLowerCase() };
+  }
+  if (faker.datatype.boolean({ probability: 0.2 })) {
+    capp.annotations = {
+      ...capp.annotations,
+      [ANNOTATION_MESSAGE]: faker.helpers.arrayElement([
+        'Scheduled maintenance on Sunday 02:00–04:00 UTC. Expect brief downtime.',
+        'This Capp is deprecated and will be removed at the end of the quarter. Migrate to the v2 service.',
+        'Owned by the platform team. Contact #platform-support before changing scaling settings.',
+        'Image is pinned to a known-good version while an upstream regression is investigated.',
+      ]),
+    };
   }
 
   if (faker.datatype.boolean({ probability: 0.6 })) {
