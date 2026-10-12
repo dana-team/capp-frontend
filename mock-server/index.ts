@@ -380,6 +380,37 @@ route('POST', `${CAPP}/:name/migrate`, ({ res, params, body }) => {
   error(res, 404, r.error === 'source_not_found' ? 'CAPP_NOT_FOUND' : r.error === 'target_cluster_not_found' ? 'CLUSTER_NOT_FOUND' : 'NOT_FOUND', r.message);
 });
 
+// ── Capp revisions ───────────────────────────────────────────────────────────
+
+const REV = `${CAPP}/:name/revisions`;
+
+/** Parses :revision like the backend; replies 400 and returns undefined when invalid. */
+function revisionNumber(res: ServerResponse, param: string): number | undefined {
+  const n = /^[+-]?\d+$/.test(param) ? Number(param) : NaN;
+  if (Number.isSafeInteger(n) && n >= 1) return n;
+  badRequest(res, `invalid revision "${param}": must be a positive integer`);
+  return undefined;
+}
+const revisionNotFound = (res: ServerResponse, name: string, n: number) =>
+  error(res, 404, 'NOT_FOUND', `CappRevision "${name} revision ${n}" not found`);
+
+route('GET', REV, ({ res, params }) => {
+  const r = store.listRevisions(params.cluster, params.namespace, params.name);
+  r ? send(res, 200, listOf(r)) : notFound(res, 'cluster');
+});
+route('GET', `${REV}/:revision`, ({ res, params }) => {
+  const n = revisionNumber(res, params.revision);
+  if (n === undefined) return;
+  const r = store.getRevision(params.cluster, params.namespace, params.name, n);
+  r ? send(res, 200, r) : revisionNotFound(res, params.name, n);
+});
+route('POST', `${REV}/:revision/rollback`, ({ res, params }) => {
+  const n = revisionNumber(res, params.revision);
+  if (n === undefined) return;
+  const r = store.rollbackCapp(params.cluster, params.namespace, params.name, n);
+  r.ok ? send(res, 200, r.data) : error(res, 404, 'NOT_FOUND', r.message);
+});
+
 // ── Server ───────────────────────────────────────────────────────────────────
 
 async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {

@@ -13,6 +13,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { CappListPage } from '@/pages/CappListPage';
 import { CreateCappPage } from '@/pages/CreateCappPage';
 import { EditCappPage } from '@/pages/EditCappPage';
+import { CappRevisionsPage } from '@/pages/CappRevisionsPage';
 import { CappDetailPage } from '@/pages/CappDetailPage';
 import { useAuthStore } from '@/store/auth';
 import { useThemeStore } from '@/store/theme';
@@ -62,6 +63,7 @@ const App: React.FC = () => {
           <Route path="/capps/new" element={<CreateCappPage />} />
           <Route path="/capps/:namespace/:name" element={<CappDetailPage />} />
           <Route path="/capps/:namespace/:name/edit" element={<EditCappPage />} />
+          <Route path="/capps/:namespace/:name/revisions" element={<CappRevisionsPage />} />
           <Route path="/configmaps" element={<ConfigMapListPage />} />
           <Route path="/configmaps/new" element={<CreateConfigMapPage />} />
           <Route path="/configmaps/:namespace/:name" element={<ConfigMapDetailPage />} />

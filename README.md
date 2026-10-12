@@ -82,7 +82,7 @@ Runs ESLint over all `*.ts` and `*.tsx` files in `src/`.
 
 ## Run without a backend (mock server)
 
-A stateful in-memory mock of `capp-backend` lives in `mock-server/`. It generates fresh fake clusters, namespaces, capps, configmaps and secrets on every start, so no cluster is needed.
+A stateful in-memory mock of `capp-backend` lives in `mock-server/`. It generates fresh fake clusters, namespaces, capps (with revision history), configmaps and secrets on every start, so no cluster is needed.
 
 ```bash
 npm run mock        # mock backend on http://localhost:8080 (the default backend URL)

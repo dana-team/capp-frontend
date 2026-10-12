@@ -33,6 +33,7 @@ export const DASHBOARD_ROUTES: string[] = [
   '/capps/:namespace/:name/edit',
   '/secrets/:namespace/:name/edit',
   '/configmaps/:namespace/:name/edit',
+  '/capps/:namespace/:name/revisions',
 ]
 
 export function isDashboardRoute(pathname: string): boolean {

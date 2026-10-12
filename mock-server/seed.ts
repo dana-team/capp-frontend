@@ -4,7 +4,9 @@
  */
 import { faker } from '@faker-js/faker';
 import type {
+  BareCappResponse,
   CappResponse,
+  CappRevisionResponse,
   CappSize,
   ClusterMeta,
   ConditionResponse,
@@ -22,7 +24,7 @@ import type { SecretResponse } from '../src/types/secret';
 import type { NamespaceItem } from '../src/api/namespaces';
 import { ANNOTATION_MESSAGE, LABEL_BACKUP_TO_GIT } from '../src/types/capp';
 import { buildDockerConfigJson, DOCKER_CONFIG_JSON_KEY, DOCKER_CONFIG_JSON_TYPE } from '../src/utils/dockerConfig';
-import { SIZES, type MockStore } from './store';
+import { REVISION_HISTORY_LIMIT, SIZES, toRevision, type MockStore } from './store';
 
 const dns = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
@@ -311,6 +313,64 @@ function genCapp(
   return capp;
 }
 
+/** One plausible edit, applied in reverse to derive an older version of a capp. */
+const EDITS: Array<(c: BareCappResponse) => void> = [
+  (c) => {
+    c.image = c.image.replace(/:[^:]+$/, `:${semver()}`);
+  },
+  (c) => {
+    const min = c.scaleSpec.minReplicas ?? 0;
+    c.scaleSpec = { ...c.scaleSpec, maxReplicas: min + faker.number.int({ min: 1, max: 8 }) };
+  },
+  (c) => {
+    c.env = (c.env ?? []).map((e) =>
+      e.name === 'APP_ENV' ? { ...e, value: faker.helpers.arrayElement(['production', 'staging', 'development']) } : e,
+    );
+  },
+  (c) => {
+    c.state = c.state === 'disabled' ? 'enabled' : 'disabled';
+  },
+  (c) => {
+    if (!c.size) return;
+    c.size = faker.helpers.arrayElement((['small', 'medium', 'large'] as const).filter((s) => s !== c.size));
+    c.resources = SIZES[c.size];
+  },
+  (c) => {
+    if (!c.annotations?.[ANNOTATION_MESSAGE]) return;
+    const { [ANNOTATION_MESSAGE]: _, ...rest } = c.annotations;
+    if (Object.keys(rest).length) c.annotations = rest;
+    else delete c.annotations;
+  },
+];
+
+/**
+ * Revision history for a seeded capp, ending with its current state. Older versions are
+ * derived by undoing random edits; numbering sometimes starts above 1, as if trimmed.
+ */
+function genRevisions(capp: CappResponse, now: number): CappRevisionResponse[] {
+  const count = faker.number.int({ min: 1, max: 6 });
+  const first = faker.datatype.boolean({ probability: 0.2 }) ? faker.number.int({ min: 2, max: REVISION_HISTORY_LIMIT }) : 1;
+  const created = capp.createdAt ? Date.parse(capp.createdAt) : now - 60 * 60_000;
+  // Ascending timestamps between creation and now; the first revision is at creation.
+  const times = [created, ...Array.from({ length: count - 1 }, () => faker.number.int({ min: created, max: now }))].sort((a, b) => a - b);
+
+  const versions: BareCappResponse[] = [structuredClone(capp)];
+  for (let i = 1; i < count; i++) {
+    const older = structuredClone(versions[0]);
+    const before = JSON.stringify(older);
+    for (const edit of faker.helpers.arrayElements(EDITS, { min: 1, max: 2 })) edit(older);
+    if (JSON.stringify(older) === before) EDITS[0](older); // no-op edits (no size/message): bump the image
+    versions.unshift(older);
+  }
+  return versions.map((v, i) =>
+    toRevision(v, first + i, {
+      createdAt: new Date(times[i]).toISOString(),
+      uid: faker.string.uuid(),
+      resourceVersion: String(faker.number.int({ min: 100, max: 999 })),
+    }),
+  );
+}
+
 /**
  * Fills `store` with 3 clusters of namespaces, capps, configmaps and secrets.
  * @param seed  defaults to MOCK_SEED (if numeric) else random
@@ -374,7 +434,9 @@ export function seedStore(store: MockStore, seed?: number, now: number = Date.no
       const cappCount = faker.number.int({ min: 2, max: 8 });
       for (let i = 0; i < cappCount; i++) {
         const name = uniqueName(cappNames, () => `${faker.word.adjective()}-${faker.word.noun()}`);
-        store.putCapp(meta.name, genCapp(name, ns, meta.name, { secrets, configMaps, pullSecrets }, store.allocResourceVersion(), now, volNames));
+        const capp = genCapp(name, ns, meta.name, { secrets, configMaps, pullSecrets }, store.allocResourceVersion(), now, volNames);
+        store.putCapp(meta.name, capp);
+        store.putRevisions(meta.name, ns, name, genRevisions(capp, now));
       }
     });
   }

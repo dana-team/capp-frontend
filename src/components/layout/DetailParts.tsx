@@ -5,12 +5,26 @@ import { cn } from '@/lib/utils'
 import { Sheet } from './Sheet'
 
 /** Breadcrumb that stays legible when it sits directly on the painting. */
-export const DetailCrumbs: React.FC<{ to: string; parent: string; name: string }> = ({ to, parent, name }) => (
+export const DetailCrumbs: React.FC<{
+  to: string
+  parent: string
+  name: string
+  /** Optional middle crumb, e.g. the Capp on its revisions page. */
+  via?: { to: string; name: string }
+}> = ({ to, parent, name, via }) => (
   <nav className="mb-4 inline-flex max-w-full items-center gap-1 rounded-full bg-background/70 px-3 py-1 text-sm backdrop-blur-md">
     <Link to={to} className="text-text-secondary transition-colors hover:text-text">
       {parent}
     </Link>
     <CaretRightIcon size={13} className="shrink-0 text-text-muted" />
+    {via && (
+      <>
+        <Link to={via.to} className="truncate text-text-secondary transition-colors hover:text-text">
+          {via.name}
+        </Link>
+        <CaretRightIcon size={13} className="shrink-0 text-text-muted" />
+      </>
+    )}
     <span className="truncate text-text">{name}</span>
   </nav>
 )
