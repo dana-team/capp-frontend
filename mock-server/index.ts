@@ -1,6 +1,6 @@
 /**
  * Mock capp-backend HTTP server (node:http, no framework).
- * Env: PORT (8080), MOCK_SEED, MOCK_AUTH_MODE, MOCK_TOKEN_TTL, MOCK_LATENCY_MS.
+ * Env: PORT (8080), MOCK_SEED, MOCK_AUTH_MODE, MOCK_TOKEN_TTL, MOCK_LATENCY_MS, MOCK_NAMESPACE_SCOPED.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
@@ -19,6 +19,9 @@ import * as auth from './auth';
 
 const PORT = Number(process.env.PORT) || 8080;
 const LATENCY_MS = Number(process.env.MOCK_LATENCY_MS) || 0;
+/** Simulates a user with RBAC in only the first SCOPED_NAMESPACES namespaces of each cluster. */
+const NAMESPACE_SCOPED = process.env.MOCK_NAMESPACE_SCOPED === '1' || process.env.MOCK_NAMESPACE_SCOPED === 'true';
+const SCOPED_NAMESPACES = 2;
 const SPEC_PATH = fileURLToPath(new URL('../../capp-backend/api/openapi.yaml', import.meta.url));
 const DNS_1123 = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 const DNS_1123_SUBDOMAIN = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$/;
@@ -95,6 +98,32 @@ function route(method: string, pattern: string, handler: Handler): void {
     return '([^/]+)';
   });
   routes.push({ method, re: new RegExp(`^${src}/?$`), names, handler });
+}
+
+/** Namespaces the user may access, or undefined when not scoped (access to all). */
+function accessibleNamespaces(cluster: string): Set<string> | undefined {
+  if (!NAMESPACE_SCOPED) return undefined;
+  const items = store.listNamespaces(cluster)?.items ?? [];
+  return new Set(items.slice(0, SCOPED_NAMESPACES).map((ns) => ns.name));
+}
+
+/** Cluster-wide lists of namespaced resources need cluster-scoped RBAC. */
+const CLUSTER_WIDE_LIST = /^\/api\/v1\/clusters\/[^/]+\/(capps|configmaps|secrets)\/?$/;
+
+/** Returns true (after replying 403) when a namespace-scoped user oversteps, like Kubernetes RBAC would. */
+function rbacGuard(res: ServerResponse, method: string, path: string, params: Record<string, string>): boolean {
+  const allowed = accessibleNamespaces(params.cluster);
+  if (!allowed) return false;
+  const wide = method === 'GET' ? CLUSTER_WIDE_LIST.exec(path) : null;
+  if (wide) {
+    error(res, 403, 'FORBIDDEN', `${wide[1]} is forbidden: user cannot list resource "${wide[1]}" at the cluster scope`);
+    return true;
+  }
+  if (params.namespace && !allowed.has(params.namespace)) {
+    error(res, 403, 'FORBIDDEN', `user cannot access namespace "${params.namespace}"`);
+    return true;
+  }
+  return false;
 }
 
 // ── Shared checks ────────────────────────────────────────────────────────────
@@ -211,7 +240,10 @@ const NS = '/api/v1/clusters/:cluster/namespaces';
 
 route('GET', NS, ({ res, params }) => {
   const r = store.listNamespaces(params.cluster);
-  r ? send(res, 200, r) : notFound(res, 'cluster');
+  if (!r) return notFound(res, 'cluster');
+  // Like the backend, list only the namespaces the user has access to.
+  const allowed = accessibleNamespaces(params.cluster);
+  send(res, 200, allowed ? { items: r.items.filter((ns) => allowed.has(ns.name)), canCreate: false } : r);
 });
 route('POST', NS, ({ res, params, body }) => {
   if (!checkName(res, body.name, 'namespace')) return;
@@ -411,6 +443,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     // Resource routes: 404 for unknown cluster, 503 for unhealthy (cluster detail stays readable).
     const isClusterDetail = /^\/api\/v1\/clusters\/[^/]+\/?$/.test(path);
     if (params.cluster && !isClusterDetail && clusterGuard(res, params.cluster)) return;
+    if (params.cluster && rbacGuard(res, method, path, params)) return;
 
     let body: Body = {};
     if (method === 'POST' || method === 'PUT' || method === 'PATCH') {

@@ -8,6 +8,8 @@ import {
     UpdateNamespaceRequest,
     PatchNamespaceRequest,
 } from '@/api/namespaces';
+import { listCapps } from '@/api/capps';
+import { BackendApiError } from '@/api/client';
 import { useAuthStore } from '@/store/auth';
 import { getBackendUrl } from '@/lib/config';
 
@@ -21,6 +23,35 @@ export function useNamespaces() {
         refetchIntervalInBackground: true,
         refetchOnWindowFocus: true,
         staleTime: 3000,
+    });
+}
+
+/**
+ * Whether the user may list resources across all namespaces. There is no
+ * permission endpoint, so this tries the cluster-wide Capp list once per
+ * cluster: a 403 means the user only has access to some namespaces. Other
+ * errors surface as a query error, and callers fall back to allowing it.
+ */
+export function useCanListAllNamespaces() {
+    const cluster = useAuthStore((s) => s.cluster);
+    const queryClient = useQueryClient();
+    const backendUrl = getBackendUrl();
+    return useQuery({
+        queryKey: ["canListAllNamespaces", backendUrl, cluster],
+        queryFn: async () => {
+            try {
+                const capps = await listCapps();
+                // Hand the result to the Capp list so it does not fetch it again.
+                queryClient.setQueryData(["capps", backendUrl, cluster, "all"], capps);
+                return true;
+            } catch (e) {
+                if (e instanceof BackendApiError && e.status === 403) return false;
+                throw e;
+            }
+        },
+        enabled: Boolean(cluster),
+        staleTime: Infinity,
+        retry: false,
     });
 }
 

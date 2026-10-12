@@ -59,7 +59,7 @@ const keyCount = (r: { data?: Record<string, string> }) => Object.keys(r.data ||
 export const ConfigMapListPage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedNamespace } = useNamespaceContext();
-  const { data: items, isLoading, error } = useConfigmaps(selectedNamespace);
+  const { data: items, isPending: isLoading, error } = useConfigmaps(selectedNamespace);
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
