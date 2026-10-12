@@ -8,7 +8,8 @@ import { PencilSimpleIcon,
   CheckCircleIcon,
   ArrowsLeftRightIcon,
   LightningIcon,
-  KeyIcon } from '@phosphor-icons/react'
+  KeyIcon,
+  ClockCounterClockwiseIcon } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/CopyButton'
@@ -98,6 +99,11 @@ export const CappDetail: React.FC<CappDetailProps> = ({
                 <ArrowsLeftRightIcon size={14} className="mr-1.5" /> Migrate
               </Button>
             )}
+            <Link to={`/capps/${namespace}/${capp.name}/revisions`}>
+              <Button variant="secondary" size="sm">
+                <ClockCounterClockwiseIcon size={14} className="mr-1.5" /> History
+              </Button>
+            </Link>
             <Link to={`/capps/${namespace}/${capp.name}/edit`}>
               <Button variant="secondary" size="sm">
                 <PencilSimpleIcon size={14} className="mr-1.5" /> Edit

@@ -157,7 +157,8 @@ export interface CappStatusResponse {
   stateStatus: StateStatusResponse;
 }
 
-export interface CappResponse {
+/** Capp metadata and spec, without status. Shared by CappResponse and CappRevisionResponse. */
+export interface BareCappResponse {
   name: string;
   namespace: string;
   createdAt?: string;
@@ -180,6 +181,9 @@ export interface CappResponse {
   configMapVolumes?: ConfigMapVolume[];
   imagePullSecrets?: string[];
   eventSourcesSpec?: EventSourcesSpec;
+}
+
+export interface CappResponse extends BareCappResponse {
   status: CappStatusResponse;
   /** Side effects that failed while the cluster write itself succeeded. */
   warnings?: Warning[];
@@ -203,6 +207,21 @@ export interface WarningNavState {
 
 export interface CappListResponse {
   items: CappResponse[];
+  total: number;
+}
+
+/**
+ * A historical snapshot of a Capp, recorded by the operator as a CappRevision on
+ * every spec, label or annotation change. `name`, `namespace`, `createdAt`, `uid`
+ * and `resourceVersion` identify the revision object; the rest is the Capp as recorded.
+ */
+export interface CappRevisionResponse extends BareCappResponse {
+  revisionNumber: number;
+}
+
+/** GET .../capps/:name/revisions — newest first. */
+export interface CappRevisionListResponse {
+  items: CappRevisionResponse[];
   total: number;
 }
 

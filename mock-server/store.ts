@@ -14,11 +14,13 @@
  *
  * All DTO shapes come from the frontend types, so drift fails to compile.
  */
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { LABEL_BACKUP_TO_GIT } from '../src/types/capp';
 import type {
+  BareCappResponse,
   CappRequest,
   CappResponse,
+  CappRevisionResponse,
   CappSizesResponse,
   ClusterMeta,
   MigrateRequest,
@@ -45,6 +47,12 @@ export const SIZES: CappSizesResponse = {
   medium: { requests: { cpu: '250m', memory: '512Mi' }, limits: { cpu: '500m', memory: '1Gi' } },
   large: { requests: { cpu: '500m', memory: '1Gi' }, limits: { cpu: '1', memory: '2Gi' } },
 };
+
+/** Operator default (CappConfig spec.revisionHistoryLimit). */
+export const REVISION_HISTORY_LIMIT = 10;
+
+/** Ignored by the operator when deciding whether a Capp changed. */
+const ANNOTATION_LAST_UPDATED_BY = 'rcs.dana.io/last-updated-by';
 
 export class ConflictError extends Error {
   constructor(message: string) {
@@ -74,6 +82,10 @@ export type MigrateResult =
       message: string;
     };
 
+export type RollbackResult =
+  | { ok: true; data: CappResponse }
+  | { ok: false; error: 'revision_not_found' | 'capp_not_found'; message: string };
+
 interface ClusterData {
   meta: ClusterMeta;
   namespaces: Map<string, NamespaceItem>;
@@ -81,6 +93,8 @@ interface ClusterData {
   capps: Map<string, CappResponse>;
   configMaps: Map<string, ConfigMapResponse>;
   secrets: Map<string, SecretResponse>;
+  // capp revisions keyed `namespace/cappName`, oldest first
+  revisions: Map<string, CappRevisionResponse[]>;
 }
 
 const key = (ns: string, name: string) => `${ns}/${name}`;
@@ -114,6 +128,56 @@ export function referencedObjects(capp: CappResponse): { secrets: string[]; conf
     nonEmpty(s.kafkaSourceConfiguration?.secretRef).forEach((n) => secrets.add(n));
   }
   return { secrets: [...secrets], configMaps: [...configMaps] };
+}
+
+/** knative kmeta.ChildName: `parent+suffix`, hashing the parent when longer than 63 chars. */
+function childName(parent: string, suffix: string): string {
+  if (parent.length + suffix.length <= 63) return parent + suffix;
+  const hash = createHash('md5').update(parent).digest('hex');
+  return parent.slice(0, 63 - hash.length - suffix.length) + hash + suffix;
+}
+
+/** Operator names revisions `<capp>-<5-digit number>`. */
+export const revisionName = (capp: string, n: number) => childName(capp, `-${String(n).padStart(5, '0')}`);
+
+/** Capp spec, labels and annotations: what the operator compares and records. */
+function cappTemplate(capp: BareCappResponse & Partial<CappResponse & CappRevisionResponse>) {
+  const { name: _n, namespace: _ns, createdAt: _c, uid: _u, resourceVersion: _rv, status: _s, warnings: _w, revisionNumber: _r, ...tmpl } = capp;
+  return tmpl;
+}
+
+/** JSON with sorted keys, for order-insensitive deep equality. */
+function canonical(v: unknown): string {
+  return JSON.stringify(v, (_, x: unknown) =>
+    x && typeof x === 'object' && !Array.isArray(x)
+      ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b)))
+      : x,
+  );
+}
+
+function sameTemplate(a: BareCappResponse, b: BareCappResponse): boolean {
+  const strip = (c: BareCappResponse) => {
+    const t = cappTemplate(c);
+    const annotations = { ...t.annotations };
+    delete annotations[ANNOTATION_LAST_UPDATED_BY];
+    return { ...t, labels: t.labels ?? {}, annotations };
+  };
+  return canonical(strip(a)) === canonical(strip(b));
+}
+
+/** Snapshots `capp` as revision `n`; `meta` identifies the revision object. */
+export function toRevision(
+  capp: BareCappResponse,
+  n: number,
+  meta: { createdAt: string; uid: string; resourceVersion: string },
+): CappRevisionResponse {
+  return {
+    ...structuredClone(cappTemplate(capp)),
+    name: revisionName(capp.name, n),
+    namespace: capp.namespace,
+    ...meta,
+    revisionNumber: n,
+  };
 }
 
 export class MockStore {
@@ -153,6 +217,7 @@ export class MockStore {
       capps: new Map(),
       configMaps: new Map(),
       secrets: new Map(),
+      revisions: new Map(),
     });
   }
   /** Allocates the next resourceVersion string (for seed generators). */
@@ -170,6 +235,10 @@ export class MockStore {
   }
   putSecret(cluster: string, s: SecretResponse): void {
     this.cluster(cluster)?.secrets.set(key(s.namespace, s.name), s);
+  }
+  /** Replaces a capp's revision history (any order; stored oldest first). */
+  putRevisions(cluster: string, ns: string, cappName: string, revs: CappRevisionResponse[]): void {
+    this.cluster(cluster)?.revisions.set(key(ns, cappName), [...revs].sort((a, b) => a.revisionNumber - b.revisionNumber));
   }
 
   // ── Clusters & sizes ───────────────────────────────────────────────────────
@@ -233,6 +302,7 @@ export class MockStore {
     dropNamespace(c.capps, name);
     dropNamespace(c.configMaps, name);
     dropNamespace(c.secrets, name);
+    dropNamespace(c.revisions, name);
     return true;
   }
 
@@ -289,6 +359,7 @@ export class MockStore {
     if (c.capps.has(key(ns, req.name))) throw new ConflictError(`capp "${req.name}" already exists`);
     const capp = this.buildCapp(ns, req);
     c.capps.set(key(ns, req.name), capp);
+    this.recordRevision(c, capp);
     return capp;
   }
   /** Full replace of the spec; keeps uid, createdAt, labels, annotations. `undefined` if not found. */
@@ -298,10 +369,15 @@ export class MockStore {
     if (!c || !prev) return undefined;
     const capp = this.buildCapp(ns, { ...req, name }, prev);
     c.capps.set(key(ns, name), capp);
+    this.recordRevision(c, capp);
     return capp;
   }
+  /** Revisions are owned by the capp, so they go with it. */
   deleteCapp(cluster: string, ns: string, name: string): boolean | undefined {
-    return this.cluster(cluster)?.capps.delete(key(ns, name)) ? true : undefined;
+    const c = this.cluster(cluster);
+    if (!c?.capps.delete(key(ns, name))) return undefined;
+    c.revisions.delete(key(ns, name));
+    return true;
   }
   /** Toggles the backup-to-git label. Returns the SyncToGitResponse (fake sha) or `undefined`. */
   setBackupLabel(cluster: string, ns: string, name: string, enabled: boolean): SyncToGitResponse | undefined {
@@ -313,6 +389,7 @@ export class MockStore {
     else delete labels[LABEL_BACKUP_TO_GIT];
     capp.labels = labels;
     capp.resourceVersion = this.nextRV();
+    this.recordRevision(c, capp);
     return {
       enabled,
       path: `${c.meta.gitOpsPath ?? c.meta.name}/${ns}/${name}.yaml`,
@@ -385,9 +462,10 @@ export class MockStore {
     // Migrated capps start un-synced on the target.
     if (copy.labels) delete copy.labels[LABEL_BACKUP_TO_GIT];
     dst.capps.set(key(req.targetNamespace, name), copy);
+    this.recordRevision(dst, copy);
 
     let sourceDeleted = false;
-    if (req.deleteSource) sourceDeleted = src.capps.delete(key(ns, name));
+    if (req.deleteSource) sourceDeleted = !!this.deleteCapp(cluster, ns, name);
 
     return {
       ok: true,
@@ -402,6 +480,70 @@ export class MockStore {
         ...(copiedConfigMaps.length ? { copiedConfigMaps } : {}),
       },
     };
+  }
+
+  // ── Capp revisions ─────────────────────────────────────────────────────────
+
+  /**
+   * Mirrors the operator: records a new revision when the capp's spec, labels or
+   * annotations differ from the latest one, keeping at most REVISION_HISTORY_LIMIT.
+   */
+  private recordRevision(c: ClusterData, capp: CappResponse): void {
+    const k = key(capp.namespace, capp.name);
+    const revs = c.revisions.get(k) ?? [];
+    const latest = revs.at(-1);
+    if (latest && sameTemplate(latest, capp)) return;
+    revs.push(toRevision(capp, (latest?.revisionNumber ?? 0) + 1, this.meta()));
+    c.revisions.set(k, revs.slice(-REVISION_HISTORY_LIMIT));
+  }
+
+  /**
+   * Newest first. Like the backend (a label-selector list), an unknown capp or
+   * namespace yields an empty list; only an unknown cluster is `undefined`.
+   */
+  listRevisions(cluster: string, ns: string, cappName: string): CappRevisionResponse[] | undefined {
+    const c = this.cluster(cluster);
+    return c && [...(c.revisions.get(key(ns, cappName)) ?? [])].reverse();
+  }
+  getRevision(cluster: string, ns: string, cappName: string, n: number): CappRevisionResponse | undefined {
+    return this.cluster(cluster)?.revisions.get(key(ns, cappName))?.find((r) => r.revisionNumber === n);
+  }
+  /**
+   * Replaces the capp's spec, labels and annotations with revision `n`'s, keeping the
+   * live backup-to-git label. The result is recorded as a new revision (unless unchanged).
+   */
+  rollbackCapp(cluster: string, ns: string, cappName: string, n: number): RollbackResult {
+    const c = this.cluster(cluster);
+    const rev = this.getRevision(cluster, ns, cappName, n);
+    if (!c || !rev) {
+      return { ok: false, error: 'revision_not_found', message: `CappRevision "${cappName} revision ${n}" not found` };
+    }
+    const live = c.capps.get(key(ns, cappName));
+    if (!live) return { ok: false, error: 'capp_not_found', message: `Capp "${cappName}" not found` };
+
+    const { labels: revLabels, ...tmpl } = structuredClone(cappTemplate(rev));
+    const labels = { ...revLabels };
+    delete labels[LABEL_BACKUP_TO_GIT];
+    const backup = live.labels?.[LABEL_BACKUP_TO_GIT];
+    if (backup !== undefined) labels[LABEL_BACKUP_TO_GIT] = backup;
+
+    const now = new Date().toISOString();
+    const next: CappResponse = {
+      ...tmpl,
+      name: live.name,
+      namespace: live.namespace,
+      createdAt: live.createdAt,
+      uid: live.uid,
+      resourceVersion: this.nextRV(),
+      ...(Object.keys(labels).length ? { labels } : {}),
+      status:
+        tmpl.state === live.state
+          ? live.status
+          : { ...live.status, stateStatus: { state: tmpl.state ?? 'enabled', lastChange: now } },
+    };
+    c.capps.set(key(ns, cappName), next);
+    this.recordRevision(c, next);
+    return { ok: true, data: next };
   }
 
   // ── ConfigMaps ─────────────────────────────────────────────────────────────

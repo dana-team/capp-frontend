@@ -1,5 +1,5 @@
 import { backendClient, clusterBase } from './client';
-import { CappRequest, CappResponse, CappListResponse, CappSizesResponse, SyncToGitResponse, DeleteCappResponse, MigrateRequest, MigrateResponse } from '@/types/capp';
+import { CappRequest, CappResponse, CappListResponse, CappRevisionListResponse, CappSizesResponse, SyncToGitResponse, DeleteCappResponse, MigrateRequest, MigrateResponse } from '@/types/capp';
 
 /** Fetch the configured t-shirt size definitions (no auth required). */
 export function fetchSizes(): Promise<CappSizesResponse> {
@@ -75,5 +75,20 @@ export function migrateCapp(
   return backendClient<MigrateResponse>(
     `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/migrate`,
     { method: 'POST', body: JSON.stringify(req) }
+  );
+}
+
+/** Revisions of a Capp, newest first. */
+export function listCappRevisions(namespace: string, name: string): Promise<CappRevisionListResponse> {
+  return backendClient<CappRevisionListResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/revisions`
+  );
+}
+
+/** Restores the Capp's spec, labels and annotations from a revision; returns the updated Capp. */
+export function rollbackCapp(namespace: string, name: string, revision: number): Promise<CappResponse> {
+  return backendClient<CappResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/revisions/${revision}/rollback`,
+    { method: 'POST' }
   );
 }

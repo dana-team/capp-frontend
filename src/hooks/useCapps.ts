@@ -10,6 +10,8 @@ import {
   disableCappGitSync,
   fetchSizes,
   migrateCapp,
+  listCappRevisions,
+  rollbackCapp,
 } from "@/api/capps";
 import { CappRequest, MigrateRequest, SyncToGitResponse } from "@/types/capp";
 import { useAuthStore } from "@/store/auth";
@@ -182,6 +184,45 @@ export function useMigrateCapp() {
       });
       queryClient.invalidateQueries({
         queryKey: ["capps", backendUrl, data.targetCluster, data.targetNamespace],
+      });
+    },
+  });
+}
+
+export function useCappRevisions(namespace: string, name: string) {
+  const cluster = useAuthStore((s) => s.cluster);
+  return useQuery({
+    queryKey: ["capp-revisions", getBackendUrl(), cluster, namespace, name],
+    queryFn: () => listCappRevisions(namespace, name),
+    select: (data) => data.items,
+    enabled: Boolean(cluster && namespace && name),
+  });
+}
+
+export function useRollbackCapp() {
+  const queryClient = useQueryClient();
+  const cluster = useAuthStore((s) => s.cluster);
+
+  return useMutation({
+    mutationFn: ({
+      namespace,
+      name,
+      revision,
+    }: {
+      namespace: string;
+      name: string;
+      revision: number;
+    }) => rollbackCapp(namespace, name, revision),
+    onSuccess: (_data, variables) => {
+      const backendUrl = getBackendUrl();
+      queryClient.invalidateQueries({
+        queryKey: ["capps", backendUrl, cluster],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["capp", backendUrl, cluster, variables.namespace, variables.name],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["capp-revisions", backendUrl, cluster, variables.namespace, variables.name],
       });
     },
   });

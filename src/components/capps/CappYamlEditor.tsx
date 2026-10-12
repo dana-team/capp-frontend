@@ -8,7 +8,7 @@ import { useThemeStore } from "@/store/theme";
 const bare = (c: string) => c.slice(1, 7);
 
 /** Monaco needs literal hex, so these mirror the theme.css tokens (card, text, surface, border, primary...). */
-function defineInkThemes(monaco: Monaco) {
+export function defineInkThemes(monaco: Monaco) {
   const make = (name: string, base: "vs" | "vs-dark", dark: boolean) => {
     const p = dark
       ? { bg: "#1B2221", fg: "#DDE6E3", muted: "#879693", sec: "#B4C1BD", surface: "#171D1C", border: "#26302E", seal: "#5FB8A3", ok: "#86C28F", warn: "#D4A64F" }
