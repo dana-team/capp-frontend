@@ -10,15 +10,17 @@ import {
 import { SecretRequest, SecretUpdateRequest } from "@/types/secret";
 import { useAuthStore } from "@/store/auth";
 import { getBackendUrl } from "@/lib/config";
+import { useNamespaceContext } from "@/context/NamespaceContext";
 
 export function useSecrets(namespace?: string) {
   const cluster = useAuthStore((s) => s.cluster);
+  const { allNamespacesEnabled } = useNamespaceContext();
   return useQuery({
     queryKey: ["secrets", getBackendUrl(), cluster, namespace ?? "all"],
     queryFn: () =>
       namespace ? listSecretsInNamespace(namespace) : listSecrets(),
     select: (data) => data.items,
-    enabled: Boolean(cluster),
+    enabled: Boolean(cluster) && (Boolean(namespace) || allNamespacesEnabled),
     refetchInterval: 8000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,

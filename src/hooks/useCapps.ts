@@ -14,14 +14,16 @@ import {
 import { CappRequest, MigrateRequest, SyncToGitResponse } from "@/types/capp";
 import { useAuthStore } from "@/store/auth";
 import { getBackendUrl } from "@/lib/config";
+import { useNamespaceContext } from "@/context/NamespaceContext";
 
 export function useCapps(namespace?: string) {
   const cluster = useAuthStore((s) => s.cluster);
+  const { allNamespacesEnabled } = useNamespaceContext();
   return useQuery({
     queryKey: ["capps", getBackendUrl(), cluster, namespace ?? "all"],
     queryFn: () => (namespace ? listCappsInNamespace(namespace) : listCapps()),
     select: (data) => data.items,
-    enabled: Boolean(cluster),
+    enabled: Boolean(cluster) && (Boolean(namespace) || allNamespacesEnabled),
     refetchInterval: 8000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,

@@ -66,7 +66,7 @@ const COL = {
 export const CappListPage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedNamespace } = useNamespaceContext();
-  const { data: capps, isLoading, error } = useCapps(selectedNamespace);
+  const { data: capps, isPending: isLoading, error } = useCapps(selectedNamespace);
   const { data: namespacesData } = useNamespaces();
   const selectedNsQuota = selectedNamespace
     ? namespacesData?.items?.find((ns) => ns.name === selectedNamespace)?.quota

@@ -99,6 +99,7 @@ Sign in with any token (default `passthrough` mode) and keep the default backend
 | `MOCK_AUTH_MODE` | `passthrough` | `passthrough`, `jwt`, `static`, `dex` or `openshift` |
 | `MOCK_TOKEN_TTL` | `900` | Access-token lifetime in seconds (refresh tokens last 24h); set to `2` to exercise refresh-and-retry |
 | `MOCK_LATENCY_MS` | `0` | Artificial delay per request |
+| `MOCK_NAMESPACE_SCOPED` | unset | `1` simulates a user with access to only the first 2 namespaces of each cluster: other namespaces are hidden and return 403, as do the all-namespaces lists |
 | `MOCK_FRONTEND_URL` | `http://localhost:3000` | Where the `openshift` authorize URL redirects back to |
 
 Auth modes:

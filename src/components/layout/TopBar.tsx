@@ -106,7 +106,7 @@ const panelCls = 'absolute right-0 top-full z-30 mt-3 w-64 rounded-[10px] border
 export const TopBar: React.FC = () => {
   const { cluster, logout, setCredentials, token, refreshToken } = useAuthStore()
   const navigate = useNavigate()
-  const { selectedNamespace, setSelectedNamespace } = useNamespaceContext()
+  const { selectedNamespace, setSelectedNamespace, canListAll } = useNamespaceContext()
 
   const { data: namespaces } = useNamespaces()
   const { data: clusters } = useClusters()
@@ -129,17 +129,17 @@ export const TopBar: React.FC = () => {
 
   const namespaceSelect = (
     <Select
-      value={selectedNamespace ?? '__all__'}
+      value={selectedNamespace ?? (canListAll === false ? '' : '__all__')}
       onValueChange={(v) => {
         if (v === '__create__') { setCreateDialogOpen(true); return }
         setSelectedNamespace(v === '__all__' ? undefined : v)
       }}
     >
       <SelectTrigger aria-label="Namespace" className={cn(triggerCls, wide ? 'w-[150px]' : 'w-full')}>
-        <SelectValue placeholder="All Namespaces" />
+        <SelectValue placeholder={canListAll === false ? 'Namespace' : 'All Namespaces'} />
       </SelectTrigger>
       <SelectContent {...panelLayer}>
-        <SelectItem value="__all__">All Namespaces</SelectItem>
+        {canListAll !== false && <SelectItem value="__all__">All Namespaces</SelectItem>}
         {(namespaces?.items ?? []).map((ns) => (
           <SelectItem key={ns.name} value={ns.name}>{ns.name}</SelectItem>
         ))}

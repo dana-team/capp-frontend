@@ -60,7 +60,7 @@ const keyCount = (r: { data?: Record<string, string> }) => Object.keys(r.data ||
 export const SecretListPage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedNamespace } = useNamespaceContext();
-  const { data: items, isLoading, error } = useSecrets(selectedNamespace);
+  const { data: items, isPending: isLoading, error } = useSecrets(selectedNamespace);
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
