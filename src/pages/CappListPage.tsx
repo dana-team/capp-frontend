@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Plus,
@@ -34,6 +34,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { WarningBanner } from "@/components/capps/WarningBanner";
+import { BatchMigrateDialog } from "@/components/capps/BatchMigrateDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Sheet } from "@/components/layout/Sheet";
 import { StatBand } from "@/components/layout/StatBand";
@@ -77,6 +78,8 @@ export const CappListPage: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showBatchMigrate, setShowBatchMigrate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CappResponse | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { mutateAsync: deleteCapp, isPending: isDeleting } = useDeleteCapp();
@@ -85,6 +88,37 @@ export const CappListPage: React.FC = () => {
   const [warnings, setWarnings] = useState<Warning[] | undefined>(
     (useLocation().state as WarningNavState | null)?.warnings,
   );
+
+  useEffect(() => {
+    setSelected(new Set());
+  }, [selectedNamespace]);
+
+  const toggleSelect = (name: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (!capps) return;
+    if (selected.size >= capps.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(capps.map((c) => c.name)));
+    }
+  };
+
+  const validSelected = useMemo(() => {
+    if (!capps) return new Set<string>();
+    const names = new Set(capps.map((c) => c.name));
+    return new Set([...selected].filter((n) => names.has(n)));
+  }, [capps, selected]);
+
+  const isAllSelected = Boolean(capps?.length && validSelected.size === capps.length);
+  const isSomeSelected = validSelected.size > 0 && !isAllSelected;
 
   const totalCapps = capps?.length ?? 0;
   const counts = useMemo(() => {
@@ -297,11 +331,46 @@ export const CappListPage: React.FC = () => {
           </div>
         )}
 
+        {validSelected.size > 0 && (
+          <div className="flex items-center gap-3 border-b border-border-subtle bg-primary/[0.04] px-4 py-2">
+            <span className="text-sm font-medium text-text">
+              {validSelected.size} selected
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowBatchMigrate(true)}
+            >
+              Migrate Selected
+            </Button>
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="ml-auto text-xs text-text-muted hover:text-text"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {(isLoading || paginated.length > 0) && (
           <>
             {/* Sort header, aligned with the row columns */}
             <div className="flex items-center gap-4 border-b border-border-subtle px-4 py-2 pr-20">
-              <span className="w-2 shrink-0" />
+              {selectedNamespace ? (
+                <label className="flex w-10 shrink-0 items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={(el) => { if (el) el.indeterminate = isSomeSelected; }}
+                    onChange={toggleSelectAll}
+                    aria-label="Select all Capps"
+                    className="h-3.5 w-3.5 cursor-pointer rounded border-border bg-card text-primary accent-primary focus:ring-1 focus:ring-primary"
+                  />
+                </label>
+              ) : (
+                <span className="w-2 shrink-0" />
+              )}
               <span className="flex-1">{sortButton("name", "Name")}</span>
               {sortButton("namespace", "Namespace", COL.namespace)}
               {sortButton("metric", "Metric", COL.metric)}
@@ -337,6 +406,8 @@ export const CappListPage: React.FC = () => {
                       subline={capp.image}
                       tone={HEALTH_TONE[h]}
                       statusLabel={HEALTH_LABEL[h]}
+                      selected={selectedNamespace ? validSelected.has(capp.name) : undefined}
+                      onSelect={selectedNamespace ? () => toggleSelect(capp.name) : undefined}
                       meta={
                         <>
                           <span className={cn(COL.namespace, "font-mono text-xs text-text-muted")}>{capp.namespace}</span>
@@ -459,6 +530,18 @@ export const CappListPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {selectedNamespace && capps && (
+        <BatchMigrateDialog
+          open={showBatchMigrate}
+          onOpenChange={setShowBatchMigrate}
+          selectedNames={Array.from(validSelected)}
+          totalCapps={capps.length}
+          namespace={selectedNamespace}
+          capps={capps}
+          onMigrated={() => setSelected(new Set())}
+        />
+      )}
     </div>
   );
 };
