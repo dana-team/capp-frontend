@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
+import { InfoIcon } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import {
   Pagination, PaginationContent, PaginationItem,
   PaginationNext, PaginationPrevious,
 } from '@/components/ui/pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { CappResponse, ConditionResponse } from '@/types/capp';
 import { relativeTime } from '@/utils/time';
+import { statusVariant } from '@/utils/cappHealth';
 
 interface ConditionsTableProps {
   capp: CappResponse;
@@ -15,16 +18,23 @@ interface ConditionsTableProps {
 
 const PAGE_SIZE = 9;
 
-const statusVariant = (status: string): 'success' | 'danger' | 'default' => {
-  if (status === 'True') return 'success';
-  if (status === 'False') return 'danger';
-  return 'default';
+const CONDITION_INFO: Record<string, string> = {
+  Ready: 'Overall health. When not ready, it points to the capability that is the root cause.',
+  ServingReady: 'The app is deployed and its latest revision is running.',
+  RouteReady: 'The custom hostname works: DNS record, TLS certificate (if enabled) and domain mapping.',
+  VolumesReady: 'The NFS volumes are provisioned and ready to mount.',
+  EventingReady: 'The event sources (Ping, Kafka) are running and delivering events.',
+  LoggingReady: 'Logs are shipped to the configured logging target.',
 };
+
+// Ready first; the operator appends other conditions in no fixed order.
+const readyFirst = (a: ConditionResponse, b: ConditionResponse) =>
+  Number(b.type === 'Ready') - Number(a.type === 'Ready');
 
 export const ConditionsTable: React.FC<ConditionsTableProps> = ({ capp }) => {
   const [page, setPage] = useState(1);
 
-  const conditions: ConditionResponse[] = capp.status?.conditions ?? [];
+  const conditions = [...(capp.status?.conditions ?? [])].sort(readyFirst);
   const totalPages = Math.max(1, Math.ceil(conditions.length / PAGE_SIZE));
   const paginated = conditions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -43,22 +53,40 @@ export const ConditionsTable: React.FC<ConditionsTableProps> = ({ capp }) => {
         <ul className="divide-y divide-border-subtle">
           {paginated.map((cond, i) => (
             <li
-              key={`${cond.source}-${cond.type}-${i}`}
+              key={`${cond.type}-${i}`}
               className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-0.5 px-3 py-2.5 hover:bg-background/40"
             >
               <span
                 className={cn(
                   'mt-[7px] h-2 w-2 rounded-full',
-                  cond.status === 'True'  ? 'bg-success' :
-                  cond.status === 'False' ? 'bg-danger'  :
-                                            'bg-text-muted/60',
+                  cond.status === 'True'    ? 'bg-success' :
+                  cond.status === 'False'   ? 'bg-danger'  :
+                  cond.status === 'Unknown' ? 'bg-warning' :
+                                              'bg-text-muted/60',
                 )}
                 aria-hidden
               />
               <div className="min-w-0">
                 <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="text-sm font-medium text-text">{cond.type}</span>
-                  {cond.source && <span className="text-xs text-text-muted">{cond.source}</span>}
+                  <span className="inline-flex items-center gap-1 self-center">
+                    <span className="text-sm font-medium text-text">{cond.type}</span>
+                    {CONDITION_INFO[cond.type] && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="rounded-sm text-text-muted transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`About ${cond.type}`}
+                          >
+                            <InfoIcon size={14} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="start">
+                          {CONDITION_INFO[cond.type]}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </span>
                   {cond.reason && <span className="font-mono text-xs text-text-secondary">{cond.reason}</span>}
                 </div>
                 {cond.message && (

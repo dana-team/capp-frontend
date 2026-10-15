@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 import { StatBand } from '@/components/layout/StatBand'
 import { StatTile, toneDot } from '@/components/layout/StatTile'
 import { DetailHeader, SectionSheet, DataTable, rowCls } from '@/components/layout/DetailParts'
-import { cappHealth, HEALTH_LABEL, HEALTH_TEXT, HEALTH_TONE } from '@/utils/cappHealth'
+import { cappHealth, HEALTH_LABEL, HEALTH_TEXT, HEALTH_TONE, statusVariant } from '@/utils/cappHealth'
 
 interface CappDetailProps {
   capp: CappResponse
@@ -36,10 +36,10 @@ interface CappDetailProps {
 }
 
 /** Value line used inside StatTile children. */
-const TileValue: React.FC<{ main: React.ReactNode; sub?: React.ReactNode; className?: string }> = ({ main, sub, className }) => (
+const TileValue: React.FC<{ main: React.ReactNode; sub?: React.ReactNode; className?: string; subClassName?: string }> = ({ main, sub, className, subClassName }) => (
   <div className="mt-3 min-w-0">
     <div className={cn('truncate font-display text-[28px] font-medium leading-[1.2] tabular-nums text-text', className)}>{main}</div>
-    {sub && <div className="mt-2 truncate text-xs text-text-muted">{sub}</div>}
+    {sub && <div className={cn('mt-2 text-xs text-text-muted', subClassName ?? 'truncate')}>{sub}</div>}
   </div>
 )
 
@@ -50,6 +50,8 @@ export const CappDetail: React.FC<CappDetailProps> = ({
   const isSynced = hasBackupLabel(capp.labels)
 
   const health = cappHealth(capp)
+  const ready = capp.status?.conditions?.find((c) => c.type === 'Ready')
+  const notReady = ready && ready.status !== 'True' ? (ready.message || ready.reason) : undefined
   const scale = capp.scaleSpec
   const hasReplicas = scale?.minReplicas !== undefined || scale?.maxReplicas !== undefined
   const replicas = hasReplicas ? `${scale.minReplicas ?? '–'}–${scale.maxReplicas ?? '–'}` : '—'
@@ -142,7 +144,11 @@ export const CappDetail: React.FC<CappDetailProps> = ({
         <StatTile index={0} label="State" tone={HEALTH_TONE[health]}>
           <TileValue
             main={<span className={HEALTH_TEXT[health]}>{HEALTH_LABEL[health]}</span>}
-            sub={health === 'disabled' ? undefined : (capp.state ?? 'enabled')}
+            subClassName="line-clamp-2 break-words"
+            sub={
+              notReady ? <span title={`${ready?.reason}: ${notReady}`}>{notReady}</span>
+              : health === 'disabled' ? undefined : (capp.state ?? 'enabled')
+            }
           />
         </StatTile>
         <StatTile index={1} label="Scale">
@@ -276,7 +282,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
                   <tr key={i} className={rowCls}>
                     <td className="px-3 py-2 font-mono text-sm text-text">{src.name}</td>
                     <td className="px-3 py-2">
-                      <Badge variant={src.status === 'True' ? 'success' : src.status === 'False' ? 'danger' : 'default'}>
+                      <Badge variant={statusVariant(src.status)}>
                         {src.status}
                       </Badge>
                     </td>

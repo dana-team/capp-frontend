@@ -16,6 +16,7 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { LABEL_BACKUP_TO_GIT } from '../src/types/capp';
+import { cappConditions } from './conditions';
 import type {
   BareCappResponse,
   CappRequest,
@@ -323,7 +324,7 @@ export class MockStore {
     const { customResources, name, namespace: _ns, ...rest } = req;
     const resources = customResources ?? (req.size ? SIZES[req.size] : undefined);
     const state = req.state ?? 'enabled';
-    return {
+    const capp: CappResponse = {
       ...rest,
       name,
       namespace: ns,
@@ -336,19 +337,12 @@ export class MockStore {
       ...(prev?.labels ? { labels: prev.labels } : {}),
       ...(prev?.annotations ? { annotations: prev.annotations } : {}),
       status: {
-        conditions: [
-          {
-            source: 'capp',
-            type: 'Ready',
-            status: 'True',
-            reason: 'Reconciled',
-            message: 'Capp is ready',
-            lastTransitionTime: now,
-          },
-        ],
+        conditions: [],
         stateStatus: { state, lastChange: now },
       },
     };
+    capp.status.conditions = cappConditions(capp, now);
+    return capp;
   }
 
   /** Throws NotFoundError (no namespace) / ConflictError (duplicate). `undefined` if cluster unknown. */
