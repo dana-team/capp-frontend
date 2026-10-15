@@ -24,6 +24,7 @@ import type { SecretResponse } from '../src/types/secret';
 import type { NamespaceItem } from '../src/api/namespaces';
 import { ANNOTATION_MESSAGE, LABEL_BACKUP_TO_GIT } from '../src/types/capp';
 import { buildDockerConfigJson, DOCKER_CONFIG_JSON_KEY, DOCKER_CONFIG_JSON_TYPE } from '../src/utils/dockerConfig';
+import { cappConditions, failuresFor, progressing, requiredCapabilities } from './conditions';
 import { REVISION_HISTORY_LIMIT, SIZES, toRevision, type MockStore } from './store';
 
 const dns = (s: string) =>
@@ -110,30 +111,20 @@ function genConfigMap(ns: string, name: string, rv: string, now: number): Config
   };
 }
 
-function genConditions(now: number): ConditionResponse[] {
-  const roll = faker.number.float();
+/** 70% ready, 15% failed on a random capability, 15% rolling out. A failing source forces Eventing. */
+function genConditions(capp: CappResponse, now: number, eventingFailed: boolean): ConditionResponse[] {
   const t = iso(now, faker.number.int({ min: 1, max: 60 * 48 }));
-  if (roll < 0.7) {
-    return [
-      { source: 'capp', type: 'Ready', status: 'True', reason: 'Reconciled', message: 'Capp is ready', lastTransitionTime: t },
-      { source: 'knative', type: 'ConfigurationsReady', status: 'True', lastTransitionTime: t },
-      { source: 'knative', type: 'RoutesReady', status: 'True', lastTransitionTime: t },
-    ];
+  const caps = requiredCapabilities(capp);
+  if (eventingFailed && caps.includes('Eventing')) {
+    return cappConditions(capp, t, failuresFor(capp, 'Eventing')[0]);
   }
+  const roll = faker.number.float();
+  if (roll < 0.7 || caps.length === 0) return cappConditions(capp, t);
   if (roll < 0.85) {
-    const [reason, message] = faker.helpers.arrayElement([
-      ['RevisionFailed', 'Revision failed: container exited with code 1'],
-      ['ImagePullBackOff', 'Back-off pulling image'],
-      ['QuotaExceeded', 'exceeded quota: compute-resources'],
-    ]);
-    return [
-      { source: 'capp', type: 'Ready', status: 'False', reason, message, lastTransitionTime: t },
-      { source: 'knative', type: 'ConfigurationsReady', status: 'False', reason, message, lastTransitionTime: t },
-    ];
+    const cap = faker.helpers.arrayElement(caps.includes('Serving') ? [...caps, 'Serving', 'Serving'] as const : caps);
+    return cappConditions(capp, t, faker.helpers.arrayElement(failuresFor(capp, cap)));
   }
-  return [
-    { source: 'capp', type: 'Ready', status: 'Unknown', reason: 'Progressing', message: 'Waiting for revision to become ready', lastTransitionTime: t },
-  ];
+  return cappConditions(capp, t, caps.includes('Serving') ? progressing(capp) : undefined);
 }
 
 interface NsObjects {
@@ -203,7 +194,7 @@ function genCapp(
     resources,
     env,
     status: {
-      conditions: genConditions(now),
+      conditions: [],
       stateStatus: { state, lastChange: iso(now, faker.number.int({ min: 1, max: 60 * 24 * 10 })) },
     },
   };
@@ -271,6 +262,7 @@ function genCapp(
     capp.configMapVolumes = [{ name: `config-${m.name}`.slice(0, 50), configMapName: m.name, mountPath: `/etc/config/${m.name}` }];
   }
 
+  let eventingFailed = false;
   if (faker.datatype.boolean({ probability: 0.3 })) {
     const sources: SourceConfig[] = [];
     const eventing: EventingStatusResponse = { eventSources: [] };
@@ -283,6 +275,7 @@ function genCapp(
     }
     if (objs.secrets.length && faker.datatype.boolean()) {
       const ok = faker.datatype.boolean({ probability: 0.7 });
+      eventingFailed = !ok;
       sources.push({
         name: 'orders',
         kafkaSourceConfiguration: {
@@ -310,6 +303,7 @@ function genCapp(
     capp.imagePullSecrets = [faker.helpers.arrayElement(objs.pullSecrets).name];
   }
 
+  capp.status.conditions = genConditions(capp, now, eventingFailed);
   return capp;
 }
 

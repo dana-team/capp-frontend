@@ -7,6 +7,7 @@ import '@fontsource-variable/manrope/index.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import './lib/monacoSetup';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import App from './App';
 import './index.css';
 
@@ -23,7 +24,9 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <TooltipProvider delayDuration={300}>
+        <App />
+      </TooltipProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   </React.StrictMode>

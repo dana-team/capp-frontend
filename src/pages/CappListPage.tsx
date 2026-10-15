@@ -122,7 +122,7 @@ export const CappListPage: React.FC = () => {
 
   const totalCapps = capps?.length ?? 0;
   const counts = useMemo(() => {
-    const c: Record<CappHealth, number> = { ready: 0, progressing: 0, failed: 0, disabled: 0 };
+    const c: Record<CappHealth, number> = { ready: 0, unknown: 0, failed: 0, disabled: 0 };
     capps?.forEach((x) => { c[cappHealth(x)] += 1; });
     return c;
   }, [capps]);
@@ -136,7 +136,7 @@ export const CappListPage: React.FC = () => {
   const topNamespaces = namespaceStats.slice(0, 4);
   const maxNsCount = topNamespaces[0]?.[1] ?? 1;
   const namespaceCount = namespaceStats.length;
-  const attention = counts.progressing + counts.failed;
+  const attention = counts.unknown + counts.failed;
 
   const filtered = useMemo(() => {
     if (!capps) return [];

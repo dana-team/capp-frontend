@@ -138,7 +138,6 @@ export interface CappRequest {
 // ── Response types ─────────────────────────────────────────────────────────
 
 export interface ConditionResponse {
-  source: string;
   type: string;
   status: 'True' | 'False' | 'Unknown';
   lastTransitionTime?: string;
