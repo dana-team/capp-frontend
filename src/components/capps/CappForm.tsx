@@ -12,7 +12,8 @@ import { Sheet } from "@/components/layout/Sheet";
 import { SectionIndex } from "./SectionIndex";
 import { useScrollContainer } from "@/components/layout/ScrollContainer";
 import { cn } from "@/lib/utils";
-import { DetailsSection } from "./sections/DetailsSection";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScaleSection } from "./sections/ScaleSection";
 import { ConfigurationSection } from "./sections/ConfigurationSection";
 import { RouteSection } from "./sections/RouteSection";
 import { LogSection } from "./sections/LogSection";
@@ -306,9 +307,9 @@ export type Tab = "form" | "yaml";
 
 // Form sections shown in the section index, and the fields that belong to each.
 const SECTION_FIELDS: Record<string, string[]> = {
-  name: ["name"],
-  details: ["scaleMetric", "state", "minReplicas", "maxReplicas", "scaleDelaySeconds", "sizingMode", "size", "cpuRequest", "cpuLimit", "memoryRequest", "memoryLimit"],
-  configuration: ["image", "containerName", "envVars"],
+  name: ["name", "state"],
+  configuration: ["image", "imagePullSecrets", "containerName", "sizingMode", "size", "cpuRequest", "cpuLimit", "memoryRequest", "memoryLimit", "envVars"],
+  scale: ["scaleMetric", "minReplicas", "maxReplicas", "scaleDelaySeconds"],
   route: ["hostname", "tlsEnabled", "routeTimeoutSeconds"],
   log: ["logType", "logHost", "logTarget", "logUser", "logPasswordSecret", "logPasswordKey"],
   volumes: ["nfsVolumes", "secretVolumes", "configMapVolumes", "volumeMounts"],
@@ -316,8 +317,8 @@ const SECTION_FIELDS: Record<string, string[]> = {
 };
 const SECTION_LABELS: Array<[string, string]> = [
   ["name", "Name"],
-  ["details", "Details"],
   ["configuration", "Configuration"],
+  ["scale", "Scale"],
   ["route", "Route"],
   ["log", "Logging"],
   ["volumes", "Volumes"],
@@ -596,7 +597,7 @@ export const CappForm: React.FC<CappFormProps> = ({
   }));
 
   // Presentation only: which sections are expanded, and which one is in view.
-  const [openSections, setOpenSections] = useState<string[]>(["details", "configuration"]);
+  const [openSections, setOpenSections] = useState<string[]>(["configuration"]);
   const [activeSection, setActiveSection] = useState("name");
   const scrollContainer = useScrollContainer();
   useEffect(() => {
@@ -685,7 +686,7 @@ export const CappForm: React.FC<CappFormProps> = ({
             </div>
             <div className="flex min-w-0 flex-col gap-4">
               {/* Name field */}
-              <Sheet as="section" id="section-name" className="scroll-mt-24 p-5">
+              <Sheet as="section" id="section-name" className="scroll-mt-24 grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
                 <Controller
                   name="name"
                   control={control}
@@ -702,6 +703,25 @@ export const CappForm: React.FC<CappFormProps> = ({
                     />
                   )}
                 />
+                <Controller
+                  name="state"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium text-text-secondary">State</label>
+                      <Select value={field.value as string} onValueChange={field.onChange}>
+                        <SelectTrigger className="w-full bg-card border-border">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="enabled">Enabled</SelectItem>
+                          <SelectItem value="disabled">Disabled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-text-muted">Enable or disable this Capp</p>
+                    </div>
+                  )}
+                />
               </Sheet>
 
               <Accordion
@@ -710,18 +730,15 @@ export const CappForm: React.FC<CappFormProps> = ({
                 onValueChange={setOpenSections}
                 className="flex flex-col gap-4"
               >
-                <DetailsSection
-                  control={control}
-                  watch={watch as (name: keyof CappFormValues) => unknown}
-                  quota={quota}
-                />
                 <ConfigurationSection
                   control={control}
                   errors={errors}
                   namespace={namespace}
                   watch={watch as (name: keyof CappFormValues) => unknown}
                   setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
+                  quota={quota}
                 />
+                <ScaleSection control={control} />
                 <RouteSection
                   control={control}
                   watch={watch as (name: keyof CappFormValues) => unknown}
