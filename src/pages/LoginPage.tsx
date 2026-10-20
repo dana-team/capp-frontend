@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { fetchClusters } from '@/api/clusters'
+import { useLastLocationStore } from '@/store/lastLocation'
 import { getBackendUrl } from '@/lib/config'
 
 type AuthMode = 'detecting' | 'dex' | 'openshift' | 'passthrough' | 'jwt'
@@ -17,7 +18,10 @@ export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [token, setToken] = useState('')
-  const [cluster, setCluster] = useState('local')
+  // jwt/static mode: start from the cluster used last time on this backend.
+  const [cluster, setCluster] = useState(
+    () => useLastLocationStore.getState().byBackend[getBackendUrl()]?.cluster ?? 'local'
+  )
   const [showPassword, setShowPassword] = useState(false)
   const [showToken, setShowToken] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -40,7 +44,12 @@ export const LoginPage: React.FC = () => {
     if (clusters.length === 0) {
       throw new Error('No clusters configured on this backend')
     }
-    const defaultCluster = clusters.find((c) => c.healthy) ?? clusters[0]
+    // Back to the cluster used last time, if it is still there and healthy.
+    const lastCluster = useLastLocationStore.getState().byBackend[backendUrl]?.cluster
+    const defaultCluster =
+      clusters.find((c) => c.name === lastCluster && c.healthy)
+      ?? clusters.find((c) => c.healthy)
+      ?? clusters[0]
     setCredentials(defaultCluster.name, accessToken, refreshToken)
     navigate('/capps')
   }
