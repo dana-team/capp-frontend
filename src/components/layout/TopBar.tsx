@@ -123,8 +123,8 @@ export const TopBar: React.FC = () => {
 
   const handleLogout = () => { logout(); navigate('/login') }
   const handleClusterChange = (name: string) => {
+    // NamespaceProvider restores the namespace last used in the new cluster.
     setCredentials(name, token, refreshToken)
-    setSelectedNamespace(undefined)
   }
 
   const namespaceSelect = (
