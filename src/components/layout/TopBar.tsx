@@ -162,7 +162,7 @@ export const TopBar: React.FC = () => {
 
   const clusterControl = clusters && clusters.length > 1 ? (
     <Select value={cluster} onValueChange={handleClusterChange}>
-      <SelectTrigger aria-label="Cluster" className={cn(triggerCls, 'w-full')}>
+      <SelectTrigger aria-label="Cluster" className={cn(triggerCls, wide ? 'w-[170px]' : 'w-full')}>
         <div className="flex min-w-0 items-center gap-2">
           <span className={cn(
             'relative inline-flex h-2 w-2 shrink-0 rounded-full',
@@ -188,7 +188,7 @@ export const TopBar: React.FC = () => {
   ) : (
     <div className={cn(
       'flex h-8 items-center gap-2 rounded-[3px] border border-border px-2 text-xs font-mono text-text-muted',
-      'w-full'
+      wide ? 'max-w-[170px]' : 'w-full'
     )}>
       <span className="relative flex h-2 w-2 shrink-0">
         {currentCluster?.healthy !== false && (
@@ -216,7 +216,7 @@ export const TopBar: React.FC = () => {
   const quota = selectedNsItem?.quota
 
   return (
-    <header className="fixed left-1/2 top-4 z-20 flex h-14 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-5 rounded-full border border-border bg-card px-5 shadow-[0_10px_30px_-14px_hsl(var(--text)/0.35)]">
+    <header className="fixed left-1/2 top-4 z-20 flex h-14 w-[1440px] max-w-[calc(100vw-32px)] sm:max-w-[calc(100vw-64px)] -translate-x-1/2 items-center justify-between gap-5 rounded-full border border-border bg-card px-6 shadow-[0_10px_30px_-14px_hsl(var(--text)/0.35)]">
       {/* Brand */}
       <div className="flex min-w-0 shrink-0 items-center gap-2.5">
         <Seal />
@@ -259,6 +259,7 @@ export const TopBar: React.FC = () => {
       <div className="flex shrink-0 items-center gap-2">
         {wide && (
           <>
+            {clusterControl}
             {namespaceSelect}
             {settingsButton}
           </>
@@ -286,10 +287,12 @@ export const TopBar: React.FC = () => {
                 </div>
               )}
               {quota && <NamespaceQuotaBar quota={quota} />}
-              <div className="flex flex-col gap-1.5">
-                <SectionLabel>Cluster</SectionLabel>
-                {clusterControl}
-              </div>
+              {!wide && (
+                <div className="flex flex-col gap-1.5">
+                  <SectionLabel>Cluster</SectionLabel>
+                  {clusterControl}
+                </div>
+              )}
               <div className="border-t border-border-subtle" />
               {disconnect}
             </div>
