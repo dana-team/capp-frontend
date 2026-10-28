@@ -85,7 +85,7 @@ export const AppShell: React.FC = () => {
             exit="exit"
             className={cn(
               'mx-auto mt-24 mb-10 w-[calc(100%-32px)] sm:w-[calc(100%-64px)]',
-              dashboard ? 'max-w-[1120px]' : 'max-w-[1200px]'
+              dashboard ? 'max-w-[1360px]' : 'max-w-[1440px]'
             )}
           >
             {dashboard ? <Outlet /> : <Sheet><Outlet /></Sheet>}
