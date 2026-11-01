@@ -5,12 +5,14 @@ import { Plus, Trash } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SectionAccordion } from './SectionAccordion';
-import { CappFormValues, EnvVarFormEntry, EnvVarSource } from '../CappForm';
+import { CappFormValues, EnvVarFormEntry, EnvVarSource, SizingMode } from '../CappForm';
 import { useSecrets } from '@/hooks/useSecrets';
 import { useConfigmaps } from '@/hooks/useConfigmaps';
+import { useSizes } from '@/hooks/useCapps';
 import type { SecretResponse } from '@/types/secret';
 import type { ConfigMapResponse } from '@/types/configmap';
 import { DOCKER_CONFIG_JSON_TYPE } from '@/utils/dockerConfig';
+import { cn } from '@/lib/utils';
 
 interface ConfigurationSectionProps {
   control: Control<CappFormValues>;
@@ -19,6 +21,113 @@ interface ConfigurationSectionProps {
   watch: (name: keyof CappFormValues) => unknown;
   setValue: (name: keyof CappFormValues, value: unknown) => void;
 }
+
+function sizeDescription(sizes: ReturnType<typeof useSizes>['data'], size: string): string | undefined {
+  if (!sizes || !size) return undefined;
+  const s = sizes[size as keyof typeof sizes];
+  if (!s) return undefined;
+  return `CPU: ${s.requests.cpu} / ${s.limits.cpu} — Memory: ${s.requests.memory} / ${s.limits.memory}`;
+}
+
+// Resource sizing — preset or custom
+const ResourcesField: React.FC<{ control: Control<CappFormValues>; cpuRequestError?: string }> = ({ control, cpuRequestError }) => {
+  const sizingMode = useWatch({ control, name: 'sizingMode' }) as SizingMode;
+  const selectedSize = useWatch({ control, name: 'size' }) as string;
+  const { data: sizes } = useSizes();
+
+  return (
+    <div className="flex flex-col gap-3">
+      <label className="text-sm font-medium text-text-secondary">Resources</label>
+      <Controller
+        name="sizingMode"
+        control={control}
+        render={({ field }) => (
+          <div className="flex gap-1 rounded-lg bg-surface border border-border p-1 w-fit">
+            {([
+              { value: 'preset', label: 'Preset size' },
+              { value: 'custom', label: 'Custom' },
+            ] as const).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => field.onChange(opt.value)}
+                className={cn(
+                  'rounded-md px-4 py-1.5 text-sm font-medium transition-all',
+                  field.value === opt.value
+                    ? 'bg-card text-text shadow-sm'
+                    : 'text-text-muted hover:text-text',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+      />
+
+      {sizingMode === 'preset' ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Controller
+            name="size"
+            control={control}
+            render={({ field }) => (
+              <div className="flex flex-col gap-1.5">
+                <Select
+                  value={field.value === '' || field.value == null ? '__none__' : field.value as string}
+                  onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
+                >
+                  <SelectTrigger className="w-full bg-card border-border">
+                    <SelectValue placeholder="None (no preset)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None (no preset)</SelectItem>
+                    <SelectItem value="small">Small</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="large">Large</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-text-muted">
+                  {sizeDescription(sizes, selectedSize) ?? 'Container resource preset (CPU + memory requests/limits)'}
+                </p>
+              </div>
+            )}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Controller
+            name="cpuRequest"
+            control={control}
+            render={({ field }) => (
+              <Input label="CPU Request" placeholder="e.g. 100m" hint="Minimum CPU allocation" error={cpuRequestError} {...field} />
+            )}
+          />
+          <Controller
+            name="cpuLimit"
+            control={control}
+            render={({ field }) => (
+              <Input label="CPU Limit" placeholder="e.g. 500m" hint="Maximum CPU allocation" {...field} />
+            )}
+          />
+          <Controller
+            name="memoryRequest"
+            control={control}
+            render={({ field }) => (
+              <Input label="Memory Request" placeholder="e.g. 128Mi" hint="Minimum memory allocation" {...field} />
+            )}
+          />
+          <Controller
+            name="memoryLimit"
+            control={control}
+            render={({ field }) => (
+              <Input label="Memory Limit" placeholder="e.g. 512Mi" hint="Maximum memory allocation" {...field} />
+            )}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 const NO_PULL_SECRET = '__none__';
 
@@ -296,6 +405,8 @@ export const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({
             />
           )}
         />
+
+        <ResourcesField control={control} cpuRequestError={errors.cpuRequest?.message} />
 
         <div className="flex flex-col gap-2">
           <label className="text-xs font-medium text-text-secondary">Environment Variables</label>

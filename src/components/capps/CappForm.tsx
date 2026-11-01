@@ -12,7 +12,8 @@ import { Sheet } from "@/components/layout/Sheet";
 import { SectionIndex } from "./SectionIndex";
 import { useScrollContainer } from "@/components/layout/ScrollContainer";
 import { cn } from "@/lib/utils";
-import { DetailsSection } from "./sections/DetailsSection";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScaleSection } from "./sections/ScaleSection";
 import { ConfigurationSection } from "./sections/ConfigurationSection";
 import { RouteSection } from "./sections/RouteSection";
 import { LogSection } from "./sections/LogSection";
@@ -306,36 +307,40 @@ export type Tab = "form" | "yaml";
 
 // Form sections shown in the section index, and the fields that belong to each.
 const SECTION_FIELDS: Record<string, string[]> = {
-  name: ["name"],
-  details: ["scaleMetric", "state", "minReplicas", "maxReplicas", "scaleDelaySeconds", "sizingMode", "size", "cpuRequest", "cpuLimit", "memoryRequest", "memoryLimit"],
-  configuration: ["image", "containerName", "envVars"],
+  name: ["name", "state"],
+  configuration: ["image", "imagePullSecrets", "containerName", "sizingMode", "size", "cpuRequest", "cpuLimit", "memoryRequest", "memoryLimit", "envVars"],
+  scale: ["scaleMetric", "minReplicas", "maxReplicas", "scaleDelaySeconds"],
   route: ["hostname", "tlsEnabled", "routeTimeoutSeconds"],
   log: ["logType", "logHost", "logTarget", "logUser", "logPasswordSecret", "logPasswordKey"],
   volumes: ["nfsVolumes", "secretVolumes", "configMapVolumes", "volumeMounts"],
   eventSources: ["eventSources"],
 };
 const SECTION_LABELS: Array<[string, string]> = [
-  ["name", "Name"],
-  ["details", "Details"],
+  ["name", "General"],
   ["configuration", "Configuration"],
+  ["scale", "Scale"],
   ["route", "Route"],
   ["log", "Logging"],
   ["volumes", "Volumes"],
   ["eventSources", "Event Sources"],
 ];
 
-function computeImpactPct(value: string | undefined, quotaLimit: string | undefined): number | null {
-  const v = parseResource(value);
+// ResourceQuota charges requests × pods. Without a max replica count the impact is unbounded.
+function computeImpactPct(request: string | undefined, maxReplicas: number | undefined, quotaLimit: string | undefined): number | null {
+  const r = parseResource(request);
   const q = parseResource(quotaLimit);
-  if (v === null || q === null || q === 0) return null;
-  return Math.round((v / q) * 100);
+  if (r === null || q === null || q === 0 || !maxReplicas) return null;
+  return Math.round(((r * maxReplicas) / q) * 100);
 }
 
 const QuotaBanner: React.FC<{ quota?: import('@/api/namespaces').QuotaInfo; control: Control<CappFormValues> }> = ({ quota, control }) => {
   const sizingMode = useWatch({ control, name: 'sizingMode' }) as SizingMode;
   const selectedSize = useWatch({ control, name: 'size' }) as string;
+  const cpuRequest = useWatch({ control, name: 'cpuRequest' }) as string;
   const cpuLimit = useWatch({ control, name: 'cpuLimit' }) as string;
+  const memoryRequest = useWatch({ control, name: 'memoryRequest' }) as string;
   const memoryLimit = useWatch({ control, name: 'memoryLimit' }) as string;
+  const maxReplicas = useWatch({ control, name: 'maxReplicas' }) as number | undefined;
   const { data: sizes } = useSizes();
 
   if (!quota || (!quota.cpu && !quota.memory && quota.pods == null)) return null;
@@ -346,12 +351,13 @@ const QuotaBanner: React.FC<{ quota?: import('@/api/namespaces').QuotaInfo; cont
   if (sizingMode === 'preset' && selectedSize && sizes) {
     const s = sizes[selectedSize as keyof typeof sizes];
     if (s) {
-      cpuPct = computeImpactPct(s.limits.cpu, quota.cpu);
-      memPct = computeImpactPct(s.limits.memory, quota.memory);
+      cpuPct = computeImpactPct(s.requests.cpu, maxReplicas, quota.cpu);
+      memPct = computeImpactPct(s.requests.memory, maxReplicas, quota.memory);
     }
   } else if (sizingMode === 'custom') {
-    cpuPct = computeImpactPct(cpuLimit, quota.cpu);
-    memPct = computeImpactPct(memoryLimit, quota.memory);
+    // Kubernetes defaults a missing request to its limit.
+    cpuPct = computeImpactPct(cpuRequest || cpuLimit, maxReplicas, quota.cpu);
+    memPct = computeImpactPct(memoryRequest || memoryLimit, maxReplicas, quota.memory);
   }
 
   const hasImpact = cpuPct !== null || memPct !== null;
@@ -596,7 +602,7 @@ export const CappForm: React.FC<CappFormProps> = ({
   }));
 
   // Presentation only: which sections are expanded, and which one is in view.
-  const [openSections, setOpenSections] = useState<string[]>(["details", "configuration"]);
+  const [openSections, setOpenSections] = useState<string[]>(["configuration"]);
   const [activeSection, setActiveSection] = useState("name");
   const scrollContainer = useScrollContainer();
   useEffect(() => {
@@ -685,7 +691,7 @@ export const CappForm: React.FC<CappFormProps> = ({
             </div>
             <div className="flex min-w-0 flex-col gap-4">
               {/* Name field */}
-              <Sheet as="section" id="section-name" className="scroll-mt-24 p-5">
+              <Sheet as="section" id="section-name" className="scroll-mt-24 grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
                 <Controller
                   name="name"
                   control={control}
@@ -702,6 +708,25 @@ export const CappForm: React.FC<CappFormProps> = ({
                     />
                   )}
                 />
+                <Controller
+                  name="state"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium text-text-secondary">State</label>
+                      <Select value={field.value as string} onValueChange={field.onChange}>
+                        <SelectTrigger className="h-9 w-full bg-card border-border">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="enabled">Enabled</SelectItem>
+                          <SelectItem value="disabled">Disabled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-text-muted">Enable or disable this Capp</p>
+                    </div>
+                  )}
+                />
               </Sheet>
 
               <Accordion
@@ -710,11 +735,6 @@ export const CappForm: React.FC<CappFormProps> = ({
                 onValueChange={setOpenSections}
                 className="flex flex-col gap-4"
               >
-                <DetailsSection
-                  control={control}
-                  watch={watch as (name: keyof CappFormValues) => unknown}
-                  quota={quota}
-                />
                 <ConfigurationSection
                   control={control}
                   errors={errors}
@@ -722,6 +742,7 @@ export const CappForm: React.FC<CappFormProps> = ({
                   watch={watch as (name: keyof CappFormValues) => unknown}
                   setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
                 />
+                <ScaleSection control={control} />
                 <RouteSection
                   control={control}
                   watch={watch as (name: keyof CappFormValues) => unknown}
