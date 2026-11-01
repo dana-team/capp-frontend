@@ -9,8 +9,6 @@ import { CappFormValues, EnvVarFormEntry, EnvVarSource, SizingMode } from '../Ca
 import { useSecrets } from '@/hooks/useSecrets';
 import { useConfigmaps } from '@/hooks/useConfigmaps';
 import { useSizes } from '@/hooks/useCapps';
-import { parseResource } from '@/components/layout/NamespaceQuotaBar';
-import { QuotaInfo } from '@/api/namespaces';
 import type { SecretResponse } from '@/types/secret';
 import type { ConfigMapResponse } from '@/types/configmap';
 import { DOCKER_CONFIG_JSON_TYPE } from '@/utils/dockerConfig';
@@ -22,7 +20,6 @@ interface ConfigurationSectionProps {
   namespace: string;
   watch: (name: keyof CappFormValues) => unknown;
   setValue: (name: keyof CappFormValues, value: unknown) => void;
-  quota?: QuotaInfo;
 }
 
 function sizeDescription(sizes: ReturnType<typeof useSizes>['data'], size: string): string | undefined {
@@ -32,36 +29,11 @@ function sizeDescription(sizes: ReturnType<typeof useSizes>['data'], size: strin
   return `CPU: ${s.requests.cpu} / ${s.limits.cpu} — Memory: ${s.requests.memory} / ${s.limits.memory}`;
 }
 
-function quotaImpact(valueCpu: string | undefined, valueMem: string | undefined, quota: QuotaInfo): { cpu: number | null; memory: number | null } {
-  const cpuVal = parseResource(valueCpu);
-  const cpuQuota = parseResource(quota.cpu);
-  const memVal = parseResource(valueMem);
-  const memQuota = parseResource(quota.memory);
-  return {
-    cpu: cpuVal !== null && cpuQuota !== null && cpuQuota > 0 ? Math.round((cpuVal / cpuQuota) * 100) : null,
-    memory: memVal !== null && memQuota !== null && memQuota > 0 ? Math.round((memVal / memQuota) * 100) : null,
-  };
-}
-
 // Resource sizing — preset or custom
-const ResourcesField: React.FC<{ control: Control<CappFormValues>; quota?: QuotaInfo }> = ({ control, quota }) => {
+const ResourcesField: React.FC<{ control: Control<CappFormValues>; cpuRequestError?: string }> = ({ control, cpuRequestError }) => {
   const sizingMode = useWatch({ control, name: 'sizingMode' }) as SizingMode;
   const selectedSize = useWatch({ control, name: 'size' }) as string;
-  const cpuLimit = useWatch({ control, name: 'cpuLimit' }) as string;
-  const memoryLimit = useWatch({ control, name: 'memoryLimit' }) as string;
   const { data: sizes } = useSizes();
-
-  const impact = (() => {
-    if (!quota) return null;
-    if (sizingMode === 'preset' && selectedSize && sizes) {
-      const s = sizes[selectedSize as keyof typeof sizes];
-      if (s) return quotaImpact(s.limits.cpu, s.limits.memory, quota);
-    }
-    if (sizingMode === 'custom') {
-      return quotaImpact(cpuLimit, memoryLimit, quota);
-    }
-    return null;
-  })();
 
   return (
     <div className="flex flex-col gap-3">
@@ -127,7 +99,7 @@ const ResourcesField: React.FC<{ control: Control<CappFormValues>; quota?: Quota
             name="cpuRequest"
             control={control}
             render={({ field }) => (
-              <Input label="CPU Request" placeholder="e.g. 100m" hint="Minimum CPU allocation" {...field} />
+              <Input label="CPU Request" placeholder="e.g. 100m" hint="Minimum CPU allocation" error={cpuRequestError} {...field} />
             )}
           />
           <Controller
@@ -151,29 +123,6 @@ const ResourcesField: React.FC<{ control: Control<CappFormValues>; quota?: Quota
               <Input label="Memory Limit" placeholder="e.g. 512Mi" hint="Maximum memory allocation" {...field} />
             )}
           />
-        </div>
-      )}
-
-      {impact && (impact.cpu !== null || impact.memory !== null) && (
-        <div className="flex items-center gap-3 rounded-md border border-border bg-surface/50 px-3 py-2 text-xs text-text-muted">
-          <span className="font-medium text-text-secondary">Quota impact:</span>
-          {impact.cpu !== null && (
-            <span>
-              CPU{' '}
-              <span className={cn('font-mono font-medium', impact.cpu >= 80 ? 'text-danger' : impact.cpu >= 50 ? 'text-warning' : 'text-text')}>
-                ~{impact.cpu}%
-              </span>
-            </span>
-          )}
-          {impact.memory !== null && (
-            <span>
-              Memory{' '}
-              <span className={cn('font-mono font-medium', impact.memory >= 80 ? 'text-danger' : impact.memory >= 50 ? 'text-warning' : 'text-text')}>
-                ~{impact.memory}%
-              </span>
-            </span>
-          )}
-          <span className="text-text-muted/60">of namespace limit</span>
         </div>
       )}
     </div>
@@ -404,7 +353,6 @@ export const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({
   namespace,
   watch,
   setValue,
-  quota,
 }) => {
   const envVars = watch('envVars') as EnvVarFormEntry[];
 
@@ -458,7 +406,7 @@ export const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({
           )}
         />
 
-        <ResourcesField control={control} quota={quota} />
+        <ResourcesField control={control} cpuRequestError={errors.cpuRequest?.message} />
 
         <div className="flex flex-col gap-2">
           <label className="text-xs font-medium text-text-secondary">Environment Variables</label>

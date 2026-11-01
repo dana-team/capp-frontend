@@ -316,7 +316,7 @@ const SECTION_FIELDS: Record<string, string[]> = {
   eventSources: ["eventSources"],
 };
 const SECTION_LABELS: Array<[string, string]> = [
-  ["name", "Name"],
+  ["name", "General"],
   ["configuration", "Configuration"],
   ["scale", "Scale"],
   ["route", "Route"],
@@ -325,18 +325,22 @@ const SECTION_LABELS: Array<[string, string]> = [
   ["eventSources", "Event Sources"],
 ];
 
-function computeImpactPct(value: string | undefined, quotaLimit: string | undefined): number | null {
-  const v = parseResource(value);
+// ResourceQuota charges requests × pods. Without a max replica count the impact is unbounded.
+function computeImpactPct(request: string | undefined, maxReplicas: number | undefined, quotaLimit: string | undefined): number | null {
+  const r = parseResource(request);
   const q = parseResource(quotaLimit);
-  if (v === null || q === null || q === 0) return null;
-  return Math.round((v / q) * 100);
+  if (r === null || q === null || q === 0 || !maxReplicas) return null;
+  return Math.round(((r * maxReplicas) / q) * 100);
 }
 
 const QuotaBanner: React.FC<{ quota?: import('@/api/namespaces').QuotaInfo; control: Control<CappFormValues> }> = ({ quota, control }) => {
   const sizingMode = useWatch({ control, name: 'sizingMode' }) as SizingMode;
   const selectedSize = useWatch({ control, name: 'size' }) as string;
+  const cpuRequest = useWatch({ control, name: 'cpuRequest' }) as string;
   const cpuLimit = useWatch({ control, name: 'cpuLimit' }) as string;
+  const memoryRequest = useWatch({ control, name: 'memoryRequest' }) as string;
   const memoryLimit = useWatch({ control, name: 'memoryLimit' }) as string;
+  const maxReplicas = useWatch({ control, name: 'maxReplicas' }) as number | undefined;
   const { data: sizes } = useSizes();
 
   if (!quota || (!quota.cpu && !quota.memory && quota.pods == null)) return null;
@@ -347,12 +351,13 @@ const QuotaBanner: React.FC<{ quota?: import('@/api/namespaces').QuotaInfo; cont
   if (sizingMode === 'preset' && selectedSize && sizes) {
     const s = sizes[selectedSize as keyof typeof sizes];
     if (s) {
-      cpuPct = computeImpactPct(s.limits.cpu, quota.cpu);
-      memPct = computeImpactPct(s.limits.memory, quota.memory);
+      cpuPct = computeImpactPct(s.requests.cpu, maxReplicas, quota.cpu);
+      memPct = computeImpactPct(s.requests.memory, maxReplicas, quota.memory);
     }
   } else if (sizingMode === 'custom') {
-    cpuPct = computeImpactPct(cpuLimit, quota.cpu);
-    memPct = computeImpactPct(memoryLimit, quota.memory);
+    // Kubernetes defaults a missing request to its limit.
+    cpuPct = computeImpactPct(cpuRequest || cpuLimit, maxReplicas, quota.cpu);
+    memPct = computeImpactPct(memoryRequest || memoryLimit, maxReplicas, quota.memory);
   }
 
   const hasImpact = cpuPct !== null || memPct !== null;
@@ -710,7 +715,7 @@ export const CappForm: React.FC<CappFormProps> = ({
                     <div className="flex flex-col gap-1.5">
                       <label className="text-sm font-medium text-text-secondary">State</label>
                       <Select value={field.value as string} onValueChange={field.onChange}>
-                        <SelectTrigger className="w-full bg-card border-border">
+                        <SelectTrigger className="h-9 w-full bg-card border-border">
                           <SelectValue placeholder="Select..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -736,7 +741,6 @@ export const CappForm: React.FC<CappFormProps> = ({
                   namespace={namespace}
                   watch={watch as (name: keyof CappFormValues) => unknown}
                   setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
-                  quota={quota}
                 />
                 <ScaleSection control={control} />
                 <RouteSection
