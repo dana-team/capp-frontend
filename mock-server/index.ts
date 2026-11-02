@@ -14,6 +14,7 @@ import type {
   UpdateNamespaceRequest,
 } from '../src/api/namespaces';
 import { store, ConflictError, NotFoundError } from './store';
+import { benchmarkStatus, triggerBenchmark } from './benchmarks';
 import { seedStore } from './seed';
 import * as auth from './auth';
 
@@ -441,6 +442,27 @@ route('POST', `${REV}/:revision/rollback`, ({ res, params }) => {
   if (n === undefined) return;
   const r = store.rollbackCapp(params.cluster, params.namespace, params.name, n);
   r.ok ? send(res, 200, r.data) : error(res, 404, 'NOT_FOUND', r.message);
+});
+
+// ── Benchmarks ───────────────────────────────────────────────────────────────
+
+function headerValue(req: IncomingMessage, name: string): string {
+  const value = req.headers[name];
+  return (Array.isArray(value) ? value[0] : value) ?? '';
+}
+
+route('GET', `${CAPP}/:name/benchmark`, ({ res, params }) => {
+  if (!store.getCapp(params.cluster, params.namespace, params.name)) return cappNotFound(res, params.name);
+  send(res, 200, benchmarkStatus(params.cluster, params.namespace, params.name));
+});
+
+route('POST', `${CAPP}/:name/benchmark`, ({ req, res, params, body }) => {
+  if (!store.getCapp(params.cluster, params.namespace, params.name)) return cappNotFound(res, params.name);
+  const outcome = headerValue(req, 'x-mock-benchmark-outcome') === 'failed' ? 'failed' : 'completed';
+  const result = triggerBenchmark(params.cluster, params.namespace, params.name, body.type, outcome);
+  if (result.ok) return send(res, 201, result.body);
+  if (result.status === 409) return error(res, 409, 'CONFLICT', result.message);
+  badRequest(res, result.message);
 });
 
 // ── Server ───────────────────────────────────────────────────────────────────
