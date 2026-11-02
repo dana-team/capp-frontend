@@ -2,19 +2,19 @@ import { backendClient, clusterBase } from './client';
 import { SecretListResponse, SecretRequest, SecretResponse, SecretUpdateRequest } from '@/types/secret';
 
 /** List all Secrets across all namespaces in the selected cluster. */
-export function listSecrets(): Promise<SecretListResponse> {
-  return backendClient<SecretListResponse>(`${clusterBase()}/secrets`);
+export function listSecrets(cluster: string): Promise<SecretListResponse> {
+  return backendClient<SecretListResponse>(`${clusterBase(cluster)}/secrets`);
 }
 
-export function listSecretsInNamespace(namespace: string): Promise<SecretListResponse> {
+export function listSecretsInNamespace(cluster: string, namespace: string): Promise<SecretListResponse> {
   return backendClient<SecretListResponse>(
-    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/secrets`
+    `${clusterBase(cluster)}/namespaces/${encodeURIComponent(namespace)}/secrets`
   );
 }
 
-export function getSecret(namespace: string, name: string): Promise<SecretResponse> {
+export function getSecret(cluster: string, namespace: string, name: string): Promise<SecretResponse> {
   return backendClient<SecretResponse>(
-    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/secrets/${encodeURIComponent(name)}`
+    `${clusterBase(cluster)}/namespaces/${encodeURIComponent(namespace)}/secrets/${encodeURIComponent(name)}`
   );
 }
 

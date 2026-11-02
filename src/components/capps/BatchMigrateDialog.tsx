@@ -19,6 +19,7 @@ import { BackendApiError } from '@/api/client';
 import { getBackendUrl } from '@/lib/config';
 import { cn } from '@/lib/utils';
 import type { CappResponse } from '@/types/capp';
+import { refreshQueries } from '@/lib/query';
 
 interface BatchResult {
   name: string;
@@ -163,10 +164,9 @@ export const BatchMigrateDialog: React.FC<BatchMigrateDialogProps> = ({
     }
 
     const backendUrl = getBackendUrl();
-    queryClient.invalidateQueries({ queryKey: ['capps', backendUrl, currentCluster] });
-    queryClient.invalidateQueries({ queryKey: ['capps', backendUrl, currentCluster, namespace] });
+    // Marked stale only: no need to wait for a cluster the user is not viewing.
     queryClient.invalidateQueries({ queryKey: ['capps', backendUrl, targetCluster] });
-    queryClient.invalidateQueries({ queryKey: ['capps', backendUrl, targetCluster, targetNamespace] });
+    await refreshQueries(queryClient, ['capps', backendUrl, currentCluster]);
 
     setIsSubmitting(false);
 

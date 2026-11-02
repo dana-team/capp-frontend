@@ -10,6 +10,7 @@ import {
 import { SecretRequest, SecretUpdateRequest } from "@/types/secret";
 import { useAuthStore } from "@/store/auth";
 import { getBackendUrl } from "@/lib/config";
+import { NO_AUTO_REFETCH, refreshQueries } from "@/lib/query";
 import { useNamespaceContext } from "@/context/NamespaceContext";
 
 export function useSecrets(namespace?: string) {
@@ -18,22 +19,23 @@ export function useSecrets(namespace?: string) {
   return useQuery({
     queryKey: ["secrets", getBackendUrl(), cluster, namespace ?? "all"],
     queryFn: () =>
-      namespace ? listSecretsInNamespace(namespace) : listSecrets(),
+      namespace ? listSecretsInNamespace(cluster, namespace) : listSecrets(cluster),
     select: (data) => data.items,
     enabled: Boolean(cluster) && (Boolean(namespace) || allNamespacesEnabled),
-    refetchInterval: 8000,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
-    staleTime: 3000,
   });
 }
 
-export function useSecret(namespace: string, name: string) {
+export function useSecret(
+  namespace: string,
+  name: string,
+  options?: typeof NO_AUTO_REFETCH,
+) {
   const cluster = useAuthStore((s) => s.cluster);
   return useQuery({
     queryKey: ["secret", getBackendUrl(), cluster, namespace, name],
-    queryFn: () => getSecret(namespace, name),
+    queryFn: () => getSecret(cluster, namespace, name),
     enabled: Boolean(cluster && namespace && name),
+    ...options,
   });
 }
 
@@ -49,14 +51,8 @@ export function useCreateSecret() {
       namespace: string;
       req: SecretRequest;
     }) => createSecret(namespace, req),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["secrets", getBackendUrl(), cluster],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["secrets", getBackendUrl(), cluster, variables.namespace],
-      });
-    },
+    onSuccess: () =>
+      refreshQueries(queryClient, ["secrets", getBackendUrl(), cluster]),
   });
 }
 
@@ -74,20 +70,12 @@ export function useUpdateSecret() {
       name: string;
       req: SecretUpdateRequest;
     }) => updateSecret(namespace, name, req),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["secrets", getBackendUrl(), cluster],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [
-          "secret",
-          getBackendUrl(),
-          cluster,
-          variables.namespace,
-          variables.name,
-        ],
-      });
-    },
+    onSuccess: (_data, variables) =>
+      refreshQueries(
+        queryClient,
+        ["secrets", getBackendUrl(), cluster],
+        ["secret", getBackendUrl(), cluster, variables.namespace, variables.name],
+      ),
   });
 }
 
@@ -98,18 +86,11 @@ export function useDeleteSecret() {
   return useMutation({
     mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
       deleteSecret(namespace, name),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["secrets", getBackendUrl(), cluster],
-      });
+    onSuccess: async (_data, variables) => {
+      await refreshQueries(queryClient, ["secrets", getBackendUrl(), cluster]);
+      // Gone now: refetching these would only return a 404.
       queryClient.removeQueries({
-        queryKey: [
-          "secret",
-          getBackendUrl(),
-          cluster,
-          variables.namespace,
-          variables.name,
-        ],
+        queryKey: ["secret", getBackendUrl(), cluster, variables.namespace, variables.name],
       });
     },
   });

@@ -10,9 +10,5 @@ export function useClusters() {
     queryFn: listClusters,
     select: (data) => data.items,
     enabled: isAuthenticated,
-    refetchInterval: 8000,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
-    staleTime: 3000,
   });
 }
