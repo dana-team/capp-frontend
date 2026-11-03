@@ -12,17 +12,14 @@ import { listCapps } from '@/api/capps';
 import { BackendApiError } from '@/api/client';
 import { useAuthStore } from '@/store/auth';
 import { getBackendUrl } from '@/lib/config';
+import { NO_AUTO_REFETCH, refreshQueries } from '@/lib/query';
 
 export function useNamespaces() {
     const cluster = useAuthStore((s) => s.cluster);
     return useQuery({
         queryKey: ["namespaces", getBackendUrl(), cluster],
-        queryFn: () => listNamespaces(),
+        queryFn: () => listNamespaces(cluster),
         enabled: Boolean(cluster),
-        refetchInterval: 8000,
-        refetchIntervalInBackground: true,
-        refetchOnWindowFocus: true,
-        staleTime: 3000,
     });
 }
 
@@ -40,7 +37,7 @@ export function useCanListAllNamespaces() {
         queryKey: ["canListAllNamespaces", backendUrl, cluster],
         queryFn: async () => {
             try {
-                const capps = await listCapps();
+                const capps = await listCapps(cluster);
                 // Hand the result to the Capp list so it does not fetch it again.
                 queryClient.setQueryData(["capps", backendUrl, cluster, "all"], capps);
                 return true;
@@ -52,6 +49,7 @@ export function useCanListAllNamespaces() {
         enabled: Boolean(cluster),
         staleTime: Infinity,
         retry: false,
+        ...NO_AUTO_REFETCH,
     });
 }
 
@@ -68,7 +66,12 @@ function useNamespaceInvalidator() {
     const queryClient = useQueryClient();
     const cluster = useAuthStore((s) => s.cluster);
     const backendUrl = getBackendUrl();
-    return () => queryClient.invalidateQueries({ queryKey: ['namespaces', backendUrl, cluster] });
+    return () =>
+        refreshQueries(
+            queryClient,
+            ['namespaces', backendUrl, cluster],
+            ['namespacesForCluster', backendUrl, cluster],
+        );
 }
 
 export function useCreateNamespace() {

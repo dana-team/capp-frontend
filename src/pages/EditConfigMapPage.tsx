@@ -7,12 +7,13 @@ import { DetailCrumbs } from '@/components/layout/DetailParts';
 import { Sheet } from '@/components/layout/Sheet';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { NO_AUTO_REFETCH } from '@/lib/query';
 
 export const EditConfigMapPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>();
   const navigate = useNavigate();
 
-  const { data: configmap, isLoading, error: loadError } = useConfigMap(namespace, name);
+  const { data: configmap, isLoading, error: loadError } = useConfigMap(namespace, name, NO_AUTO_REFETCH);
   const { mutateAsync: updateConfigmap, isPending, error: updateError } = useUpdateConfigmap();
 
   const handleSubmit = async (values: ConfigMapFormValues) => {

@@ -8,12 +8,13 @@ import { DetailCrumbs } from '@/components/layout/DetailParts';
 import { Sheet } from '@/components/layout/Sheet';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { NO_AUTO_REFETCH } from '@/lib/query';
 
 export const EditSecretPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>();
   const navigate = useNavigate();
 
-  const { data: secret, isLoading, error: loadError } = useSecret(namespace, name);
+  const { data: secret, isLoading, error: loadError } = useSecret(namespace, name, NO_AUTO_REFETCH);
   const { mutateAsync: updateSecret, isPending, error: updateError } = useUpdateSecret();
 
   const handleSubmit = async (values: SecretFormValues) => {

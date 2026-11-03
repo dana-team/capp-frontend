@@ -3,21 +3,21 @@ import { ConfigMapListResponse, ConfigMapRequest, ConfigMapResponse, ConfigMapUp
 
 
 /** List all ConfigMaps across all namespaces in the selected cluster. */
-export function listConfigMaps(): Promise<ConfigMapListResponse> {
-  return backendClient<ConfigMapListResponse>(`${clusterBase()}/configmaps`);
+export function listConfigMaps(cluster: string): Promise<ConfigMapListResponse> {
+  return backendClient<ConfigMapListResponse>(`${clusterBase(cluster)}/configmaps`);
 }
 
 
-export function listConfigMapsInNamespace(namespace: string): Promise<ConfigMapListResponse> {
+export function listConfigMapsInNamespace(cluster: string, namespace: string): Promise<ConfigMapListResponse> {
   return backendClient<ConfigMapListResponse>(
-    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/configmaps`
+    `${clusterBase(cluster)}/namespaces/${encodeURIComponent(namespace)}/configmaps`
   );
 }
 
 
-export function getConfigMap(namespace: string, name: string): Promise<ConfigMapResponse> {
+export function getConfigMap(cluster: string, namespace: string, name: string): Promise<ConfigMapResponse> {
   return backendClient<ConfigMapResponse>(
-    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/configmaps/${encodeURIComponent(name)}`
+    `${clusterBase(cluster)}/namespaces/${encodeURIComponent(namespace)}/configmaps/${encodeURIComponent(name)}`
   );
 }
 

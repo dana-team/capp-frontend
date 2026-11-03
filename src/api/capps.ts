@@ -7,20 +7,20 @@ export function fetchSizes(): Promise<CappSizesResponse> {
 }
 
 /** List all Capps across all namespaces in the selected cluster. */
-export function listCapps(): Promise<CappListResponse> {
-  return backendClient<CappListResponse>(`${clusterBase()}/capps`);
+export function listCapps(cluster: string): Promise<CappListResponse> {
+  return backendClient<CappListResponse>(`${clusterBase(cluster)}/capps`);
 }
 
 /** List Capps in a specific namespace. */
-export function listCappsInNamespace(namespace: string): Promise<CappListResponse> {
+export function listCappsInNamespace(cluster: string, namespace: string): Promise<CappListResponse> {
   return backendClient<CappListResponse>(
-    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps`
+    `${clusterBase(cluster)}/namespaces/${encodeURIComponent(namespace)}/capps`
   );
 }
 
-export function getCapp(namespace: string, name: string): Promise<CappResponse> {
+export function getCapp(cluster: string, namespace: string, name: string): Promise<CappResponse> {
   return backendClient<CappResponse>(
-    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}`
+    `${clusterBase(cluster)}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}`
   );
 }
 
@@ -79,9 +79,9 @@ export function migrateCapp(
 }
 
 /** Revisions of a Capp, newest first. */
-export function listCappRevisions(namespace: string, name: string): Promise<CappRevisionListResponse> {
+export function listCappRevisions(cluster: string, namespace: string, name: string): Promise<CappRevisionListResponse> {
   return backendClient<CappRevisionListResponse>(
-    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/revisions`
+    `${clusterBase(cluster)}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/revisions`
   );
 }
 

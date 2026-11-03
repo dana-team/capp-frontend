@@ -9,12 +9,13 @@ import { Sheet } from '@/components/layout/Sheet';
 import { DetailHeader } from '@/components/layout/DetailParts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { hasBackupLabel, WarningNavState } from '@/types/capp';
+import { NO_AUTO_REFETCH } from '@/lib/query';
 
 export const EditCappPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>();
   const navigate = useNavigate();
 
-  const { data: capp, isLoading, error: loadError } = useCapp(namespace, name);
+  const { data: capp, isLoading, error: loadError } = useCapp(namespace, name, NO_AUTO_REFETCH);
   const { mutateAsync: updateCapp, isPending, error: updateError } = useUpdateCapp();
   const { data: namespacesData } = useNamespaces();
   const nsQuota = namespacesData?.items?.find((ns) => ns.name === namespace)?.quota;

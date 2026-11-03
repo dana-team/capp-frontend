@@ -16,6 +16,7 @@ import {
 import { CappRequest, MigrateRequest, SyncToGitResponse } from "@/types/capp";
 import { useAuthStore } from "@/store/auth";
 import { getBackendUrl } from "@/lib/config";
+import { NO_AUTO_REFETCH, refreshQueries } from "@/lib/query";
 import { useNamespaceContext } from "@/context/NamespaceContext";
 
 export function useCapps(namespace?: string) {
@@ -23,22 +24,23 @@ export function useCapps(namespace?: string) {
   const { allNamespacesEnabled } = useNamespaceContext();
   return useQuery({
     queryKey: ["capps", getBackendUrl(), cluster, namespace ?? "all"],
-    queryFn: () => (namespace ? listCappsInNamespace(namespace) : listCapps()),
+    queryFn: () => (namespace ? listCappsInNamespace(cluster, namespace) : listCapps(cluster)),
     select: (data) => data.items,
     enabled: Boolean(cluster) && (Boolean(namespace) || allNamespacesEnabled),
-    refetchInterval: 8000,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
-    staleTime: 3000,
   });
 }
 
-export function useCapp(namespace: string, name: string) {
+export function useCapp(
+  namespace: string,
+  name: string,
+  options?: typeof NO_AUTO_REFETCH,
+) {
   const cluster = useAuthStore((s) => s.cluster);
   return useQuery({
     queryKey: ["capp", getBackendUrl(), cluster, namespace, name],
-    queryFn: () => getCapp(namespace, name),
+    queryFn: () => getCapp(cluster, namespace, name),
     enabled: Boolean(cluster && namespace && name),
+    ...options,
   });
 }
 
@@ -49,14 +51,8 @@ export function useCreateCapp() {
   return useMutation({
     mutationFn: ({ namespace, req }: { namespace: string; req: CappRequest }) =>
       createCapp(namespace, req),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["capps", getBackendUrl(), cluster],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["capps", getBackendUrl(), cluster, variables.namespace],
-      });
-    },
+    onSuccess: () =>
+      refreshQueries(queryClient, ["capps", getBackendUrl(), cluster]),
   });
 }
 
@@ -74,20 +70,13 @@ export function useUpdateCapp() {
       name: string;
       req: CappRequest;
     }) => updateCapp(namespace, name, req),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["capps", getBackendUrl(), cluster],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [
-          "capp",
-          getBackendUrl(),
-          cluster,
-          variables.namespace,
-          variables.name,
-        ],
-      });
-    },
+    onSuccess: (_data, variables) =>
+      refreshQueries(
+        queryClient,
+        ["capps", getBackendUrl(), cluster],
+        ["capp", getBackendUrl(), cluster, variables.namespace, variables.name],
+        ["capp-revisions", getBackendUrl(), cluster, variables.namespace, variables.name],
+      ),
   });
 }
 
@@ -100,20 +89,12 @@ function useGitSyncMutation(
   return useMutation({
     mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
       mutate(namespace, name),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["capps", getBackendUrl(), cluster],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [
-          "capp",
-          getBackendUrl(),
-          cluster,
-          variables.namespace,
-          variables.name,
-        ],
-      });
-    },
+    onSuccess: (_data, variables) =>
+      refreshQueries(
+        queryClient,
+        ["capps", getBackendUrl(), cluster],
+        ["capp", getBackendUrl(), cluster, variables.namespace, variables.name],
+      ),
   });
 }
 
@@ -132,18 +113,14 @@ export function useDeleteCapp() {
   return useMutation({
     mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
       deleteCapp(namespace, name),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["capps", getBackendUrl(), cluster],
+    onSuccess: async (_data, variables) => {
+      await refreshQueries(queryClient, ["capps", getBackendUrl(), cluster]);
+      // Gone now: refetching these would only return a 404.
+      queryClient.removeQueries({
+        queryKey: ["capp", getBackendUrl(), cluster, variables.namespace, variables.name],
       });
-      queryClient.invalidateQueries({
-        queryKey: [
-          "capp",
-          getBackendUrl(),
-          cluster,
-          variables.namespace,
-          variables.name,
-        ],
+      queryClient.removeQueries({
+        queryKey: ["capp-revisions", getBackendUrl(), cluster, variables.namespace, variables.name],
       });
     },
   });
@@ -154,6 +131,7 @@ export function useSizes() {
     queryKey: ["sizes", getBackendUrl()],
     queryFn: fetchSizes,
     staleTime: Infinity,
+    ...NO_AUTO_REFETCH,
   });
 }
 
@@ -173,18 +151,16 @@ export function useMigrateCapp() {
     }) => migrateCapp(namespace, name, req),
     onSuccess: (data, variables) => {
       const backendUrl = getBackendUrl();
-      queryClient.invalidateQueries({
-        queryKey: ["capps", backendUrl, cluster],
-      });
+      // Not awaited: the source Capp may be gone, and this would then wait out a
+      // 404 and its retry.
       queryClient.invalidateQueries({
         queryKey: ["capp", backendUrl, cluster, variables.namespace, variables.name],
       });
+      // Marked stale only: no need to wait for a cluster the user is not viewing.
       queryClient.invalidateQueries({
         queryKey: ["capps", backendUrl, data.targetCluster],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["capps", backendUrl, data.targetCluster, data.targetNamespace],
-      });
+      return refreshQueries(queryClient, ["capps", backendUrl, cluster]);
     },
   });
 }
@@ -193,7 +169,7 @@ export function useCappRevisions(namespace: string, name: string) {
   const cluster = useAuthStore((s) => s.cluster);
   return useQuery({
     queryKey: ["capp-revisions", getBackendUrl(), cluster, namespace, name],
-    queryFn: () => listCappRevisions(namespace, name),
+    queryFn: () => listCappRevisions(cluster, namespace, name),
     select: (data) => data.items,
     enabled: Boolean(cluster && namespace && name),
   });
@@ -213,17 +189,12 @@ export function useRollbackCapp() {
       name: string;
       revision: number;
     }) => rollbackCapp(namespace, name, revision),
-    onSuccess: (_data, variables) => {
-      const backendUrl = getBackendUrl();
-      queryClient.invalidateQueries({
-        queryKey: ["capps", backendUrl, cluster],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["capp", backendUrl, cluster, variables.namespace, variables.name],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["capp-revisions", backendUrl, cluster, variables.namespace, variables.name],
-      });
-    },
+    onSuccess: (_data, variables) =>
+      refreshQueries(
+        queryClient,
+        ["capps", getBackendUrl(), cluster],
+        ["capp", getBackendUrl(), cluster, variables.namespace, variables.name],
+        ["capp-revisions", getBackendUrl(), cluster, variables.namespace, variables.name],
+      ),
   });
 }

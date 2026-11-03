@@ -144,7 +144,7 @@ export async function backendClient<T>(
 export const k8sClient = backendClient;
 export { BackendApiError as K8sApiError };
 
-export function clusterBase(): string {
-  const { cluster } = useAuthStore.getState();
+/** Defaults to the selected cluster. Queries pass theirs, as it can change before they run. */
+export function clusterBase(cluster = useAuthStore.getState().cluster): string {
   return `/api/v1/clusters/${encodeURIComponent(cluster)}`;
 }

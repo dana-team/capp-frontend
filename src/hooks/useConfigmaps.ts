@@ -10,6 +10,7 @@ import {
 import { ConfigMapRequest, ConfigMapUpdateRequest } from "@/types/configmap";
 import { useAuthStore } from "@/store/auth";
 import { getBackendUrl } from "@/lib/config";
+import { NO_AUTO_REFETCH, refreshQueries } from "@/lib/query";
 import { useNamespaceContext } from "@/context/NamespaceContext";
 
 export function useConfigmaps(namespace?: string) {
@@ -18,22 +19,23 @@ export function useConfigmaps(namespace?: string) {
   return useQuery({
     queryKey: ["configmaps", getBackendUrl(), cluster, namespace ?? "all"],
     queryFn: () =>
-      namespace ? listConfigMapsInNamespace(namespace) : listConfigMaps(),
+      namespace ? listConfigMapsInNamespace(cluster, namespace) : listConfigMaps(cluster),
     select: (data) => data.items,
     enabled: Boolean(cluster) && (Boolean(namespace) || allNamespacesEnabled),
-    refetchInterval: 8000,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
-    staleTime: 3000,
   });
 }
 
-export function useConfigMap(namespace: string, name: string) {
+export function useConfigMap(
+  namespace: string,
+  name: string,
+  options?: typeof NO_AUTO_REFETCH,
+) {
   const cluster = useAuthStore((s) => s.cluster);
   return useQuery({
     queryKey: ["configmap", getBackendUrl(), cluster, namespace, name],
-    queryFn: () => getConfigMap(namespace, name),
+    queryFn: () => getConfigMap(cluster, namespace, name),
     enabled: Boolean(cluster && namespace && name),
+    ...options,
   });
 }
 
@@ -49,14 +51,8 @@ export function useCreateConfigmap() {
       namespace: string;
       req: ConfigMapRequest;
     }) => createConfigMap(namespace, req),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["configmaps", getBackendUrl(), cluster],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["configmaps", getBackendUrl(), cluster, variables.namespace],
-      });
-    },
+    onSuccess: () =>
+      refreshQueries(queryClient, ["configmaps", getBackendUrl(), cluster]),
   });
 }
 
@@ -74,20 +70,12 @@ export function useUpdateConfigmap() {
       name: string;
       req: ConfigMapUpdateRequest;
     }) => updateConfigMap(namespace, name, req),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["configmaps", getBackendUrl(), cluster],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [
-          "configmap",
-          getBackendUrl(),
-          cluster,
-          variables.namespace,
-          variables.name,
-        ],
-      });
-    },
+    onSuccess: (_data, variables) =>
+      refreshQueries(
+        queryClient,
+        ["configmaps", getBackendUrl(), cluster],
+        ["configmap", getBackendUrl(), cluster, variables.namespace, variables.name],
+      ),
   });
 }
 
@@ -98,18 +86,11 @@ export function useDeleteConfigmap() {
   return useMutation({
     mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
       deleteConfigMap(namespace, name),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["configmaps", getBackendUrl(), cluster],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [
-          "configmap",
-          getBackendUrl(),
-          cluster,
-          variables.namespace,
-          variables.name,
-        ],
+    onSuccess: async (_data, variables) => {
+      await refreshQueries(queryClient, ["configmaps", getBackendUrl(), cluster]);
+      // Gone now: refetching these would only return a 404.
+      queryClient.removeQueries({
+        queryKey: ["configmap", getBackendUrl(), cluster, variables.namespace, variables.name],
       });
     },
   });
