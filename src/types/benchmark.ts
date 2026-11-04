@@ -16,3 +16,36 @@ export interface BenchmarkTriggerResponse {
   jobName: string
   type: BenchmarkType
 }
+
+export interface DashboardQuery {
+  legend: string
+  query: string
+}
+
+export interface Dashboard {
+  id: string
+  title: string
+  description: string
+  unit: string
+  queries: DashboardQuery[]
+}
+
+export interface DashboardsResponse {
+  dashboards: Dashboard[]
+}
+
+/** Prometheus HTTP API matrix from GET .../metrics/query_range. */
+export interface PrometheusRangeResponse {
+  status?: string
+  data?: {
+    resultType?: string
+    result?: PrometheusMatrixSeries[]
+  }
+  error?: string
+  errorType?: string
+}
+
+export interface PrometheusMatrixSeries {
+  metric?: Record<string, string>
+  values?: [number, string][]
+}
