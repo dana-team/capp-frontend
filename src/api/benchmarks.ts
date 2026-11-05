@@ -3,6 +3,8 @@ import type {
   BenchmarkStatusResponse,
   BenchmarkTriggerResponse,
   BenchmarkType,
+  DashboardsResponse,
+  PrometheusRangeResponse,
 } from '@/types/benchmark'
 
 function cappPath(namespace: string, name: string): string {
@@ -27,4 +29,27 @@ export function triggerBenchmark(
     method: 'POST',
     body: JSON.stringify({ type }),
   })
+}
+
+export function getBenchmarkDashboards(namespace: string, name: string): Promise<DashboardsResponse> {
+  return backendClient<DashboardsResponse>(`${cappPath(namespace, name)}/metrics/dashboards`)
+}
+
+export function queryBenchmarkRange(
+  namespace: string,
+  name: string,
+  query: string,
+  start: number,
+  end: number,
+  step: number,
+): Promise<PrometheusRangeResponse> {
+  const params = new URLSearchParams({
+    query,
+    start: String(start),
+    end: String(end),
+    step: String(step),
+  })
+  return backendClient<PrometheusRangeResponse>(
+    `${cappPath(namespace, name)}/metrics/query_range?${params.toString()}`,
+  )
 }

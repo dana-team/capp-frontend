@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ConditionsTable } from './ConditionsTable'
+import { BenchmarkDashboards } from './benchmark/BenchmarkDashboards'
 import { BenchmarkPanel } from './benchmark/BenchmarkPanel'
 import { CappResponse, hasBackupLabel, SyncToGitResponse } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
@@ -204,6 +205,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
       </StatBand>
 
       <BenchmarkPanel namespace={namespace} name={capp.name} />
+      <BenchmarkDashboards namespace={namespace} name={capp.name} />
 
       {/* Container */}
       <SectionSheet title="Container">

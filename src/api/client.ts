@@ -17,7 +17,25 @@ interface BackendErrorBody {
   error?: {
     code?: string;
     message?: string;
-  };
+  } | string;
+  message?: string;
+}
+
+/** Reads a capp-backend error envelope, or a Prometheus `{ "error": "..." }` body. */
+function readError(body: unknown, fallback: string): { message: string; code?: string } {
+  if (!body || typeof body !== 'object') return { message: fallback };
+  const record = body as BackendErrorBody;
+  if (typeof record.error === 'string' && record.error.trim()) {
+    return { message: record.error };
+  }
+  if (record.error && typeof record.error === 'object') {
+    const message = record.error.message?.trim() ? record.error.message : fallback;
+    return { message, code: record.error.code };
+  }
+  if (typeof record.message === 'string' && record.message.trim()) {
+    return { message: record.message };
+  }
+  return { message: fallback };
 }
 
 let isRefreshing = false
@@ -105,12 +123,9 @@ export async function backendClient<T>(
     const retryHeaders: Record<string, string> = { ...headers, Authorization: `Bearer ${newToken}` }
     const retryResponse = await fetch(url, { ...options, headers: retryHeaders })
     if (!retryResponse.ok) {
-      const retryData = await retryResponse.json().catch(() => ({})) as Record<string, unknown>
-      const retryMsg = (retryData as { error?: { message?: string }; message?: string })?.error?.message
-        ?? (retryData as { message?: string })?.message
-        ?? retryResponse.statusText
-      const retryCode = (retryData as { error?: { code?: string } })?.error?.code ?? 'UNKNOWN'
-      throw new BackendApiError(retryMsg, retryResponse.status, retryCode)
+      const retryData = await retryResponse.json().catch(() => ({}))
+      const parsed = readError(retryData, retryResponse.statusText || `HTTP ${retryResponse.status}`)
+      throw new BackendApiError(parsed.message, retryResponse.status, parsed.code ?? 'UNKNOWN')
     }
     if (retryResponse.status === 204) {
       return undefined as unknown as T
@@ -123,9 +138,9 @@ export async function backendClient<T>(
     let code: string | undefined;
 
     try {
-      const body: BackendErrorBody = await response.json();
-      if (body.error?.message) message = body.error.message;
-      code = body.error?.code;
+      const parsed = readError(await response.json(), message);
+      message = parsed.message;
+      code = parsed.code;
     } catch {
       // ignore JSON parse errors
     }

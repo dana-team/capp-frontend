@@ -14,7 +14,7 @@ import type {
   UpdateNamespaceRequest,
 } from '../src/api/namespaces';
 import { store, ConflictError, NotFoundError } from './store';
-import { benchmarkStatus, triggerBenchmark } from './benchmarks';
+import { benchmarkDashboards, benchmarkStatus, queryBenchmarkRange, triggerBenchmark } from './benchmarks';
 import { seedStore } from './seed';
 import * as auth from './auth';
 
@@ -35,6 +35,7 @@ interface Ctx {
   req: IncomingMessage;
   res: ServerResponse;
   params: Record<string, string>;
+  query: URLSearchParams;
   body: Body;
 }
 
@@ -465,6 +466,18 @@ route('POST', `${CAPP}/:name/benchmark`, ({ req, res, params, body }) => {
   badRequest(res, result.message);
 });
 
+route('GET', `${CAPP}/:name/metrics/dashboards`, ({ res, params }) => {
+  if (!store.getCapp(params.cluster, params.namespace, params.name)) return cappNotFound(res, params.name);
+  send(res, 200, { dashboards: benchmarkDashboards(params.namespace, params.name) });
+});
+
+route('GET', `${CAPP}/:name/metrics/query_range`, ({ res, params, query }) => {
+  if (!store.getCapp(params.cluster, params.namespace, params.name)) return cappNotFound(res, params.name);
+  const result = queryBenchmarkRange(query);
+  if (!result.ok) return badRequest(res, result.message);
+  send(res, 200, result.body);
+});
+
 // ── Server ───────────────────────────────────────────────────────────────────
 
 async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -506,7 +519,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
         return badRequest(res, (e as Error).message);
       }
     }
-    return r.handler({ req, res, params, body });
+    return r.handler({ req, res, params, query: url.searchParams, body });
   }
 
   console.warn(`[mock] no route for ${method} ${path}`);
