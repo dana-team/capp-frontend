@@ -25,6 +25,7 @@ import type { NamespaceItem } from '../src/api/namespaces';
 import { ANNOTATION_MESSAGE, LABEL_BACKUP_TO_GIT } from '../src/types/capp';
 import { buildDockerConfigJson, DOCKER_CONFIG_JSON_KEY, DOCKER_CONFIG_JSON_TYPE } from '../src/utils/dockerConfig';
 import { cappConditions, failuresFor, progressing, requiredCapabilities } from './conditions';
+import { seedRollout, type RolloutScenario } from './rollouts';
 import { REVISION_HISTORY_LIMIT, SIZES, toRevision, type MockStore } from './store';
 
 const dns = (s: string) =>
@@ -431,6 +432,26 @@ export function seedStore(store: MockStore, seed?: number, now: number = Date.no
         const capp = genCapp(name, ns, meta.name, { secrets, configMaps, pullSecrets }, store.allocResourceVersion(), now, volNames);
         store.putCapp(meta.name, capp);
         store.putRevisions(meta.name, ns, name, genRevisions(capp, now));
+      }
+
+      // One capp per rollout state in the first namespace, named so they are easy to find.
+      if (nsIndex === 0) {
+        const scenarios: Array<[string, RolloutScenario]> = [
+          ['rollout-canary', 'progressing'],
+          ['rollout-holding', 'holding'],
+          ['rollout-failed', 'failed'],
+          ['rollout-rolled-back', 'rolledBack'],
+          ['rollout-stable', 'stable'],
+        ];
+        for (const [name, scenario] of scenarios) {
+          const capp = genCapp(name, ns, meta.name, { secrets, configMaps, pullSecrets }, store.allocResourceVersion(), now, volNames);
+          capp.state = 'enabled';
+          capp.status.stateStatus = { state: 'enabled', lastChange: iso(now, 30) };
+          seedRollout(capp, scenario, now);
+          capp.status.conditions = cappConditions(capp, iso(now, 30));
+          store.putCapp(meta.name, capp);
+          store.putRevisions(meta.name, ns, name, genRevisions(capp, now));
+        }
       }
     });
   }

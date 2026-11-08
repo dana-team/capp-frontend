@@ -7,6 +7,7 @@ import '@fontsource-variable/manrope/index.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import './lib/monacoSetup';
+import { DEFAULT_REFETCH_MS } from '@/lib/query';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import App from './App';
 import './index.css';
@@ -16,7 +17,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       staleTime: 3_000,
-      refetchInterval: 8_000,
+      refetchInterval: DEFAULT_REFETCH_MS,
       refetchIntervalInBackground: true,
       refetchOnWindowFocus: true,
     },

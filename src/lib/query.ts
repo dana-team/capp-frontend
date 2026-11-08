@@ -1,5 +1,9 @@
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 
+export const DEFAULT_REFETCH_MS = 8_000;
+/** A Capp mid-rollout changes quickly, so its page polls faster. */
+export const ROLLOUT_REFETCH_MS = 5_000;
+
 /**
  * Turns off the automatic refetching set in the QueryClient defaults. For one-off
  * lookups, and for pages holding unsaved input: their form is replaced by an error

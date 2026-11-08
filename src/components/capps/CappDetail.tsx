@@ -16,6 +16,8 @@ import { CopyButton } from '@/components/ui/CopyButton'
 import { ConditionsTable } from './ConditionsTable'
 import { BenchmarkDashboards } from './benchmark/BenchmarkDashboards'
 import { BenchmarkPanel } from './benchmark/BenchmarkPanel'
+import { RolloutStrip } from './rollout/RolloutStrip'
+import { RolloutStrategySection } from './rollout/RolloutStrategySection'
 import { CappResponse, hasBackupLabel, SyncToGitResponse } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
 import { SizeBadge } from '@/components/ui/SizeBadge'
@@ -140,6 +142,8 @@ export const CappDetail: React.FC<CappDetailProps> = ({
           <span>Git sync failed: {syncError}</span>
         </div>
       )}
+
+      <RolloutStrip capp={capp} />
 
       {/* Key facts */}
       <StatBand className="lg:grid-cols-5">
@@ -299,6 +303,8 @@ export const CappDetail: React.FC<CappDetailProps> = ({
           )}
         </div>
       </SectionSheet>
+
+      <RolloutStrategySection capp={capp} />
 
       {/* Log */}
       {capp.logSpec && (
