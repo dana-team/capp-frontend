@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useForm, Controller, useWatch, Control, Resolver } from "react-hook-form";
+import { useLocation } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import yaml from "js-yaml";
@@ -16,11 +17,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScaleSection } from "./sections/ScaleSection";
 import { ConfigurationSection } from "./sections/ConfigurationSection";
 import { RouteSection } from "./sections/RouteSection";
+import { RolloutSection } from "./sections/RolloutSection";
 import { LogSection } from "./sections/LogSection";
 import { VolumesSection } from "./sections/VolumesSection";
 import { EventSourcesSection } from "./sections/EventSourcesSection";
-import { buildCappResource, cappToYaml } from "@/utils/cappBuilder";
-import { ScaleMetric, CappState, CappSize } from "@/types/capp";
+import { buildCappResource, cappToYaml, rolloutFormValues } from "@/utils/cappBuilder";
+import { ScaleMetric, CappState, CappSize, RolloutStrategy } from "@/types/capp";
+import { DURATION_RE } from "@/utils/rollout";
 import { CappYamlEditor } from "./CappYamlEditor";
 import { useSizes } from "@/hooks/useCapps";
 import { parseResource } from "@/components/layout/NamespaceQuotaBar";
@@ -79,6 +82,11 @@ export interface EventSourceFormEntry {
 
 export type SizingMode = 'preset' | 'custom';
 
+export interface RolloutStageFormValue {
+  percent?: number;
+  duration: string;
+}
+
 export interface CappFormValues {
   name: string;
   scaleMetric: ScaleMetric | "";
@@ -99,6 +107,9 @@ export interface CappFormValues {
   hostname: string;
   tlsEnabled?: boolean;
   routeTimeoutSeconds?: number;
+  rolloutStages: RolloutStageFormValue[];
+  rolloutAutoRollback: boolean;
+  rolloutProgressDeadline: string;
   logType: LogType | "";
   logHost: string;
   logTarget: string;
@@ -157,6 +168,27 @@ const schema = z.object({
   hostname: z.string().optional(),
   tlsEnabled: z.boolean().optional(),
   routeTimeoutSeconds: z.number().optional(),
+  // Percent order is left to the operator webhook, whose message is shown on save.
+  rolloutStages: z.array(z.object({
+    percent: z.number().optional(),
+    duration: z.string(),
+  })).default([]).superRefine((stages, ctx) => {
+    stages.forEach(({ percent, duration }, i) => {
+      if (percent === undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Required', path: [i, 'percent'] });
+      } else if (!Number.isInteger(percent) || percent < 0 || percent > 100) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: '0 to 100', path: [i, 'percent'] });
+      }
+      if (i === stages.length - 1) return;
+      if (!duration) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Required', path: [i, 'duration'] });
+      } else if (!DURATION_RE.test(duration)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use e.g. 5m or 1h30m', path: [i, 'duration'] });
+      }
+    });
+  }),
+  rolloutAutoRollback: z.boolean().default(false),
+  rolloutProgressDeadline: z.string().regex(new RegExp(`^$|${DURATION_RE.source}`), 'Use e.g. 10m or 1h30m').default(''),
   logType: z.enum(["", "elastic", "elastic-datastream"]).optional(),
   logHost: z.string().optional(),
   logTarget: z.string().optional(),
@@ -276,6 +308,9 @@ const defaultValues: CappFormValues = {
   hostname: "",
   tlsEnabled: undefined,
   routeTimeoutSeconds: undefined,
+  rolloutStages: [],
+  rolloutAutoRollback: false,
+  rolloutProgressDeadline: "",
   logType: "",
   logHost: "",
   logTarget: "",
@@ -311,6 +346,7 @@ const SECTION_FIELDS: Record<string, string[]> = {
   configuration: ["image", "imagePullSecrets", "containerName", "sizingMode", "size", "cpuRequest", "cpuLimit", "memoryRequest", "memoryLimit", "envVars"],
   scale: ["scaleMetric", "minReplicas", "maxReplicas", "scaleDelaySeconds"],
   route: ["hostname", "tlsEnabled", "routeTimeoutSeconds"],
+  rollout: ["rolloutStages", "rolloutAutoRollback", "rolloutProgressDeadline"],
   log: ["logType", "logHost", "logTarget", "logUser", "logPasswordSecret", "logPasswordKey"],
   volumes: ["nfsVolumes", "secretVolumes", "configMapVolumes", "volumeMounts"],
   eventSources: ["eventSources"],
@@ -320,6 +356,7 @@ const SECTION_LABELS: Array<[string, string]> = [
   ["configuration", "Configuration"],
   ["scale", "Scale"],
   ["route", "Route"],
+  ["rollout", "Rollout"],
   ["log", "Logging"],
   ["volumes", "Volumes"],
   ["eventSources", "Event Sources"],
@@ -530,6 +567,7 @@ export const CappForm: React.FC<CappFormProps> = ({
             routeTimeoutSeconds: route?.routeTimeoutSeconds as
               | number
               | undefined,
+            ...rolloutFormValues(route?.rolloutStrategy as RolloutStrategy | undefined),
             logType:
               log?.type === "elastic" || log?.type === "elastic-datastream"
                 ? log.type
@@ -602,9 +640,21 @@ export const CappForm: React.FC<CappFormProps> = ({
   }));
 
   // Presentation only: which sections are expanded, and which one is in view.
-  const [openSections, setOpenSections] = useState<string[]>(["configuration"]);
+  const { hash } = useLocation();
+  const [openSections, setOpenSections] = useState<string[]>(
+    hash === "#rollout" ? ["configuration", "rollout"] : ["configuration"],
+  );
   const [activeSection, setActiveSection] = useState("name");
   const scrollContainer = useScrollContainer();
+  // Arriving from "Edit" on the Capp page's strategy section.
+  useEffect(() => {
+    if (hash !== "#rollout") return;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document.getElementById("section-rollout")?.scrollIntoView({ block: "start" }),
+      ),
+    );
+  }, [hash]);
   useEffect(() => {
     if (activeTab !== "form") return;
     // The section whose top has most recently crossed ~35% of the viewport.
@@ -746,6 +796,13 @@ export const CappForm: React.FC<CappFormProps> = ({
                 <RouteSection
                   control={control}
                   watch={watch as (name: keyof CappFormValues) => unknown}
+                />
+                <RolloutSection
+                  control={control}
+                  errors={errors}
+                  watch={watch as (name: keyof CappFormValues) => unknown}
+                  setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
+                  hasExistingStrategy={isEdit && (initialValues?.rolloutStages?.length ?? 0) > 0}
                 />
                 <LogSection control={control} />
                 <VolumesSection

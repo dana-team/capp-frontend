@@ -358,7 +358,7 @@ export const CappListPage: React.FC = () => {
             {/* Sort header, aligned with the row columns */}
             <div className="flex items-center gap-4 border-b border-border-subtle px-4 py-2 pr-20">
               {selectedNamespace ? (
-                <label className="flex w-10 shrink-0 items-center justify-center">
+                <label className="-ml-4 mr-2 flex w-10 shrink-0 items-center justify-center">
                   <input
                     type="checkbox"
                     checked={isAllSelected}

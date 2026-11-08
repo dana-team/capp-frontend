@@ -16,7 +16,17 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { LABEL_BACKUP_TO_GIT } from '../src/types/capp';
+import { ANNOTATION_ROLLOUT } from '../src/types/capp';
 import { cappConditions } from './conditions';
+import {
+  initialRollout,
+  normalizeStrategy,
+  removeStrategy,
+  requestRolloutAction,
+  rolloutActionError,
+  tickRollout,
+  updateRollout,
+} from './rollouts';
 import type {
   BareCappResponse,
   CappRequest,
@@ -26,6 +36,7 @@ import type {
   ClusterMeta,
   MigrateRequest,
   MigrateResponse,
+  RolloutActionRequest,
   SyncToGitResponse,
 } from '../src/types/capp';
 import type {
@@ -313,10 +324,42 @@ export class MockStore {
   listCapps(cluster: string, ns?: string): CappResponse[] | undefined {
     const c = this.cluster(cluster);
     if (!c || (ns !== undefined && !c.namespaces.has(ns))) return undefined;
-    return inNamespace(c.capps, ns);
+    const capps = inNamespace(c.capps, ns);
+    capps.forEach((capp) => this.tick(capp));
+    return capps;
   }
   getCapp(cluster: string, ns: string, name: string): CappResponse | undefined {
-    return this.cluster(cluster)?.capps.get(key(ns, name));
+    const capp = this.cluster(cluster)?.capps.get(key(ns, name));
+    if (capp) this.tick(capp);
+    return capp;
+  }
+
+  /** Plays out rollout progress due by now; the operator would have done it in the background. */
+  private tick(capp: CappResponse): void {
+    if (tickRollout(capp, Date.now())) capp.resourceVersion = this.nextRV();
+  }
+
+  /** Throws ConflictError when status shows the action cannot apply. `undefined` if not found. */
+  rolloutAction(cluster: string, ns: string, name: string, req: RolloutActionRequest): CappResponse | undefined {
+    const capp = this.getCapp(cluster, ns, name);
+    if (!capp) return undefined;
+    const problem = rolloutActionError(capp, req.action, req.revision);
+    if (problem) throw new ConflictError(problem);
+    requestRolloutAction(capp, req.action, req.revision);
+    capp.resourceVersion = this.nextRV();
+    return capp;
+  }
+
+  /** `undefined` if not found. A capp with no strategy is returned unchanged. */
+  removeRolloutStrategy(cluster: string, ns: string, name: string): CappResponse | undefined {
+    const c = this.cluster(cluster);
+    const capp = this.getCapp(cluster, ns, name);
+    if (!c || !capp) return undefined;
+    if (!capp.routeSpec?.rolloutStrategy) return capp;
+    removeStrategy(capp);
+    capp.resourceVersion = this.nextRV();
+    this.recordRevision(c, capp);
+    return capp;
   }
 
   private buildCapp(ns: string, req: CappRequest, prev?: CappResponse): CappResponse {
@@ -341,6 +384,9 @@ export class MockStore {
         stateStatus: { state, lastChange: now },
       },
     };
+    // Omitting the strategy keeps it: only DELETE .../rollout/strategy removes one.
+    const strategy = req.routeSpec?.rolloutStrategy ?? prev?.routeSpec?.rolloutStrategy;
+    if (strategy) capp.routeSpec = { ...req.routeSpec, rolloutStrategy: normalizeStrategy(strategy) };
     capp.status.conditions = cappConditions(capp, now);
     return capp;
   }
@@ -352,6 +398,7 @@ export class MockStore {
     this.requireNs(c, ns);
     if (c.capps.has(key(ns, req.name))) throw new ConflictError(`capp "${req.name}" already exists`);
     const capp = this.buildCapp(ns, req);
+    initialRollout(capp);
     c.capps.set(key(ns, req.name), capp);
     this.recordRevision(c, capp);
     return capp;
@@ -362,6 +409,7 @@ export class MockStore {
     const prev = c?.capps.get(key(ns, name));
     if (!c || !prev) return undefined;
     const capp = this.buildCapp(ns, { ...req, name }, prev);
+    updateRollout(prev, capp, Date.now());
     c.capps.set(key(ns, name), capp);
     this.recordRevision(c, capp);
     return capp;
@@ -516,6 +564,8 @@ export class MockStore {
     if (!live) return { ok: false, error: 'capp_not_found', message: `Capp "${cappName}" not found` };
 
     const { labels: revLabels, ...tmpl } = structuredClone(cappTemplate(rev));
+    // A past rollout action must not be replayed.
+    if (tmpl.annotations) delete tmpl.annotations[ANNOTATION_ROLLOUT];
     const labels = { ...revLabels };
     delete labels[LABEL_BACKUP_TO_GIT];
     const backup = live.labels?.[LABEL_BACKUP_TO_GIT];

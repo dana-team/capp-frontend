@@ -12,11 +12,14 @@ import {
   migrateCapp,
   listCappRevisions,
   rollbackCapp,
+  rolloutAction,
+  removeRolloutStrategy,
 } from "@/api/capps";
-import { CappRequest, MigrateRequest, SyncToGitResponse } from "@/types/capp";
+import { CappRequest, MigrateRequest, RolloutActionRequest, SyncToGitResponse } from "@/types/capp";
 import { useAuthStore } from "@/store/auth";
 import { getBackendUrl } from "@/lib/config";
-import { NO_AUTO_REFETCH, refreshQueries } from "@/lib/query";
+import { DEFAULT_REFETCH_MS, NO_AUTO_REFETCH, ROLLOUT_REFETCH_MS, refreshQueries } from "@/lib/query";
+import { rolloutIsActive } from "@/utils/rollout";
 import { useNamespaceContext } from "@/context/NamespaceContext";
 
 export function useCapps(namespace?: string) {
@@ -40,6 +43,8 @@ export function useCapp(
     queryKey: ["capp", getBackendUrl(), cluster, namespace, name],
     queryFn: () => getCapp(cluster, namespace, name),
     enabled: Boolean(cluster && namespace && name),
+    refetchInterval: (query) =>
+      query.state.data && rolloutIsActive(query.state.data) ? ROLLOUT_REFETCH_MS : DEFAULT_REFETCH_MS,
     ...options,
   });
 }
@@ -162,6 +167,46 @@ export function useMigrateCapp() {
       });
       return refreshQueries(queryClient, ["capps", backendUrl, cluster]);
     },
+  });
+}
+
+export function useRolloutAction() {
+  const queryClient = useQueryClient();
+  const cluster = useAuthStore((s) => s.cluster);
+
+  return useMutation({
+    mutationFn: ({
+      namespace,
+      name,
+      req,
+    }: {
+      namespace: string;
+      name: string;
+      req: RolloutActionRequest;
+    }) => rolloutAction(namespace, name, req),
+    onSuccess: (_data, variables) =>
+      refreshQueries(
+        queryClient,
+        ["capps", getBackendUrl(), cluster],
+        ["capp", getBackendUrl(), cluster, variables.namespace, variables.name],
+      ),
+  });
+}
+
+export function useRemoveRolloutStrategy() {
+  const queryClient = useQueryClient();
+  const cluster = useAuthStore((s) => s.cluster);
+
+  return useMutation({
+    mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
+      removeRolloutStrategy(namespace, name),
+    onSuccess: (_data, variables) =>
+      refreshQueries(
+        queryClient,
+        ["capps", getBackendUrl(), cluster],
+        ["capp", getBackendUrl(), cluster, variables.namespace, variables.name],
+        ["capp-revisions", getBackendUrl(), cluster, variables.namespace, variables.name],
+      ),
   });
 }
 

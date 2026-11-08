@@ -1,5 +1,5 @@
 import { backendClient, clusterBase } from './client';
-import { CappRequest, CappResponse, CappListResponse, CappRevisionListResponse, CappSizesResponse, SyncToGitResponse, DeleteCappResponse, MigrateRequest, MigrateResponse } from '@/types/capp';
+import { CappRequest, CappResponse, CappListResponse, CappRevisionListResponse, CappSizesResponse, SyncToGitResponse, DeleteCappResponse, MigrateRequest, MigrateResponse, RolloutActionRequest } from '@/types/capp';
 
 /** Fetch the configured t-shirt size definitions (no auth required). */
 export function fetchSizes(): Promise<CappSizesResponse> {
@@ -75,6 +75,26 @@ export function migrateCapp(
   return backendClient<MigrateResponse>(
     `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/migrate`,
     { method: 'POST', body: JSON.stringify(req) }
+  );
+}
+
+/** Answers 202: the operator applies the action asynchronously and may still refuse it. */
+export function rolloutAction(
+  namespace: string,
+  name: string,
+  req: RolloutActionRequest
+): Promise<CappResponse> {
+  return backendClient<CappResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/rollout`,
+    { method: 'POST', body: JSON.stringify(req) }
+  );
+}
+
+/** Moves live traffic: the operator promotes a Ready candidate, otherwise pins to stable. */
+export function removeRolloutStrategy(namespace: string, name: string): Promise<CappResponse> {
+  return backendClient<CappResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/rollout/strategy`,
+    { method: 'DELETE' }
   );
 }
 

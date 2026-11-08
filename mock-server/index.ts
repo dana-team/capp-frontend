@@ -5,7 +5,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { CappRequest, MigrateRequest } from '../src/types/capp';
+import type { CappRequest, MigrateRequest, RolloutActionRequest, RolloutStrategy } from '../src/types/capp';
 import type { ConfigMapRequest, ConfigMapUpdateRequest } from '../src/types/configmap';
 import type { SecretRequest, SecretUpdateRequest } from '../src/types/secret';
 import type {
@@ -15,6 +15,7 @@ import type {
 } from '../src/api/namespaces';
 import { store, ConflictError, NotFoundError } from './store';
 import { benchmarkDashboards, benchmarkStatus, queryBenchmarkRange, triggerBenchmark } from './benchmarks';
+import { strategyError } from './rollouts';
 import { seedStore } from './seed';
 import * as auth from './auth';
 
@@ -200,6 +201,13 @@ function checkCapp(res: ServerResponse, req: Body, requireName: boolean): boolea
       }
       seen.add(n);
     }
+  }
+  const strategy = (req.routeSpec as { rolloutStrategy?: RolloutStrategy } | undefined)?.rolloutStrategy;
+  const denied = strategy && strategyError(strategy);
+  if (denied) {
+    // The backend returns the operator webhook's denial message as a 403.
+    error(res, 403, 'FORBIDDEN', denied);
+    return false;
   }
   return true;
 }
@@ -414,9 +422,26 @@ route('POST', `${CAPP}/:name/migrate`, ({ res, params, body }) => {
   error(res, 404, r.error === 'source_not_found' ? 'CAPP_NOT_FOUND' : r.error === 'target_cluster_not_found' ? 'CLUSTER_NOT_FOUND' : 'NOT_FOUND', r.message);
 });
 
+route('POST', `${CAPP}/:name/rollout`, ({ res, params, body }) => {
+  const { action, revision } = body;
+  if (action !== 'promote' && action !== 'abort' && action !== 'retry') {
+    return badRequest(res, 'action must be one of promote, abort, retry');
+  }
+  if (typeof revision !== 'string' || !revision) return badRequest(res, 'revision is required');
+  guarded(res, () => {
+    const req: RolloutActionRequest = { action, revision };
+    const r = store.rolloutAction(params.cluster, params.namespace, params.name, req);
+    r ? send(res, 202, r) : cappNotFound(res, params.name);
+  });
+});
+route('DELETE', `${CAPP}/:name/rollout/strategy`, ({ res, params }) => {
+  const r = store.removeRolloutStrategy(params.cluster, params.namespace, params.name);
+  r ? send(res, 200, r) : cappNotFound(res, params.name);
+});
+
 // ── Capp revisions ───────────────────────────────────────────────────────────
 
-const REV = `${CAPP}/:name/revisions`;
+const REV =`${CAPP}/:name/revisions`;
 
 /** Parses :revision like the backend; replies 400 and returns undefined when invalid. */
 function revisionNumber(res: ServerResponse, param: string): number | undefined {

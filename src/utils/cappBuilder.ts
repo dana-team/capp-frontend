@@ -1,6 +1,30 @@
 import yaml from 'js-yaml';
-import { CappRequest, CappResponse, LegacyCapp, LegacyCappSpec, ScaleMetric, CappState, CappSize, ResourceSpec, ResourceQuantities } from '@/types/capp';
+import { CappRequest, CappResponse, LegacyCapp, LegacyCappSpec, ScaleMetric, CappState, CappSize, ResourceSpec, ResourceQuantities, RolloutStrategy } from '@/types/capp';
 import { CappFormValues, EventSourceFormEntry } from '@/components/capps/CappForm';
+import { shortDuration } from '@/utils/rollout';
+
+/** Undefined when no stages are set, which keeps any strategy the Capp already has. */
+function buildRolloutStrategy(values: CappFormValues): RolloutStrategy | undefined {
+  if (values.rolloutStages.length === 0) return undefined;
+  return {
+    stages: values.rolloutStages.map((s, i) => ({
+      percent: s.percent as number,
+      ...(i < values.rolloutStages.length - 1 && s.duration ? { duration: s.duration } : {}),
+    })),
+    ...(values.rolloutAutoRollback ? { autoRollback: true } : {}),
+    ...(values.rolloutProgressDeadline ? { progressDeadline: values.rolloutProgressDeadline } : {}),
+  };
+}
+
+export function rolloutFormValues(
+  strategy: RolloutStrategy | undefined,
+): Pick<CappFormValues, 'rolloutStages' | 'rolloutAutoRollback' | 'rolloutProgressDeadline'> {
+  return {
+    rolloutStages: (strategy?.stages ?? []).map((s) => ({ percent: s.percent, duration: shortDuration(s.duration) })),
+    rolloutAutoRollback: strategy?.autoRollback ?? false,
+    rolloutProgressDeadline: shortDuration(strategy?.progressDeadline),
+  };
+}
 
 // ── Backend request builder ────────────────────────────────────────────────
 // Used by CreateCappPage and EditCappPage to build the CappRequest sent to
@@ -48,12 +72,14 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
     });
   }
 
-  const hasRoute = values.hostname || values.tlsEnabled !== undefined || values.routeTimeoutSeconds !== undefined;
+  const rolloutStrategy = buildRolloutStrategy(values);
+  const hasRoute = values.hostname || values.tlsEnabled !== undefined || values.routeTimeoutSeconds !== undefined || rolloutStrategy;
   if (hasRoute) {
     req.routeSpec = {
       ...(values.hostname ? { hostname: values.hostname } : {}),
       ...(values.tlsEnabled !== undefined ? { tlsEnabled: values.tlsEnabled } : {}),
       ...(values.routeTimeoutSeconds !== undefined ? { routeTimeoutSeconds: Number(values.routeTimeoutSeconds) } : {}),
+      ...(rolloutStrategy ? { rolloutStrategy } : {}),
     };
   }
 
@@ -185,6 +211,7 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     hostname: capp.routeSpec?.hostname ?? '',
     tlsEnabled: capp.routeSpec?.tlsEnabled,
     routeTimeoutSeconds: capp.routeSpec?.routeTimeoutSeconds ?? undefined,
+    ...rolloutFormValues(capp.routeSpec?.rolloutStrategy),
     logType: capp.logSpec?.type ?? '',
     logHost: capp.logSpec?.host ?? '',
     logTarget: capp.logSpec?.target ?? '',
@@ -308,12 +335,14 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
   if (values.state) spec.state = values.state as CappState;
   if (values.sizingMode === 'preset' && values.size) spec.size = values.size as CappSize;
 
-  const hasRoute = values.hostname || values.tlsEnabled !== undefined || values.routeTimeoutSeconds !== undefined;
+  const rolloutStrategy = buildRolloutStrategy(values);
+  const hasRoute = values.hostname || values.tlsEnabled !== undefined || values.routeTimeoutSeconds !== undefined || rolloutStrategy;
   if (hasRoute) {
     spec.routeSpec = {
       ...(values.hostname ? { hostname: values.hostname } : {}),
       ...(values.tlsEnabled !== undefined ? { tlsEnabled: values.tlsEnabled } : {}),
       ...(values.routeTimeoutSeconds !== undefined ? { routeTimeoutSeconds: Number(values.routeTimeoutSeconds) } : {}),
+      ...(rolloutStrategy ? { rolloutStrategy } : {}),
     };
   }
 
@@ -399,6 +428,7 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     hostname: capp.spec.routeSpec?.hostname ?? '',
     tlsEnabled: capp.spec.routeSpec?.tlsEnabled,
     routeTimeoutSeconds: capp.spec.routeSpec?.routeTimeoutSeconds,
+    ...rolloutFormValues(capp.spec.routeSpec?.rolloutStrategy),
     logType: capp.spec.logSpec?.type ?? '',
     logHost: capp.spec.logSpec?.host ?? '',
     logTarget: capp.spec.logSpec?.target ?? '',

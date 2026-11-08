@@ -35,6 +35,62 @@ export interface RouteSpec {
   hostname?: string;
   tlsEnabled?: boolean;
   routeTimeoutSeconds?: number | null;
+  /** Omitting it on update keeps the current strategy; removal has its own endpoint. */
+  rolloutStrategy?: RolloutStrategy;
+}
+
+// ── Staged rollouts ────────────────────────────────────────────────────────
+
+export interface RolloutStage {
+  /** The candidate revision's share of traffic. 0 is valid (blue-green). */
+  percent: number;
+  /** Minimum time to hold the stage, e.g. "5m". Unset on the last stage. */
+  duration?: string;
+}
+
+export interface RolloutStrategy {
+  stages: RolloutStage[];
+  autoRollback?: boolean;
+  progressDeadline?: string;
+}
+
+export type RolloutPhase =
+  | 'Stable'
+  | 'Progressing'
+  | 'Holding'
+  | 'Promoting'
+  | 'Failed'
+  | 'RolledBack'
+  | 'Aborted';
+
+export interface RevisionTraffic {
+  revisionName: string;
+  percent: number;
+  tag: string;
+}
+
+export interface RolloutStatusResponse {
+  stableRevision?: string;
+  candidateRevision?: string;
+  /** Set when the strategy was removed before the candidate was promoted. */
+  pinnedRevision?: string;
+  phase?: RolloutPhase;
+  stageIndex: number;
+  /** The candidate's share while a strategy change holds the rollout. */
+  heldPercent?: number;
+  stageStartTime?: string;
+  candidateSince?: string;
+  candidateReadyOnce?: boolean;
+  traffic?: RevisionTraffic[];
+  message?: string;
+}
+
+export type RolloutAction = 'promote' | 'abort' | 'retry';
+
+export interface RolloutActionRequest {
+  action: RolloutAction;
+  /** Must be the current candidate, which binds the action to one rollout. */
+  revision: string;
 }
 
 export interface LogSpec {
@@ -154,6 +210,8 @@ export interface CappStatusResponse {
   conditions: ConditionResponse[];
   eventingStatus?: EventingStatusResponse;
   stateStatus: StateStatusResponse;
+  /** Absent when the operator reports no rollout. */
+  rollout?: RolloutStatusResponse;
 }
 
 /** Capp metadata and spec, without status. Shared by CappResponse and CappRevisionResponse. */
@@ -250,6 +308,9 @@ export const LABEL_BACKUP_TO_GIT = 'rcs.dana.io/backup-to-git';
 /** Free-text message shown as a banner on the Capp page. */
 export const ANNOTATION_MESSAGE = 'rcs.dana.io/message';
 
+/** Holds `<action>:<revision>` until the operator consumes the rollout action. */
+export const ANNOTATION_ROLLOUT = 'rcs.dana.io/rollout';
+
 export function hasBackupLabel(labels?: Record<string, string>): boolean {
   return labels != null && labels[LABEL_BACKUP_TO_GIT] === 'true';
 }
@@ -311,6 +372,7 @@ export interface LegacyCappSpec {
     hostname?: string;
     tlsEnabled?: boolean;
     routeTimeoutSeconds?: number;
+    rolloutStrategy?: RolloutStrategy;
   };
   logSpec?: LogSpec;
   volumesSpec?: {

@@ -76,7 +76,7 @@ export const ResourceRow: React.FC<ResourceRowProps> = ({
         to={to}
         className={cn(
           'flex min-w-0 flex-1 items-center gap-4 py-3 pr-20 outline-none transition-colors hover:bg-primary/[0.05] focus-visible:bg-primary/[0.07] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-          selectable ? '' : 'px-4',
+          !selectable && 'pl-4',
         )}
       >
         {content}
