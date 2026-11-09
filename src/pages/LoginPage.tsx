@@ -12,7 +12,7 @@ import { fetchClusters } from '@/api/clusters'
 import { useLastLocationStore } from '@/store/lastLocation'
 import { getBackendUrl } from '@/lib/config'
 
-type AuthMode = 'detecting' | 'dex' | 'openshift' | 'passthrough' | 'jwt'
+type AuthMode = 'detecting' | 'dex' | 'ldap' | 'openshift' | 'passthrough' | 'jwt'
 
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('')
@@ -89,8 +89,8 @@ export const LoginPage: React.FC = () => {
           setAuthMode('dex')
           return
         }
-      } else if (mode === 'dex') {
-        setAuthMode('dex')
+      } else if (mode === 'dex' || mode === 'ldap') {
+        setAuthMode(mode)
       } else if (mode === 'jwt' || mode === 'static') {
         setAuthMode('jwt')
       } else {
@@ -223,9 +223,9 @@ export const LoginPage: React.FC = () => {
       }
       const { accessToken, refreshToken } = await loginRes.json() as {
         accessToken: string
-        refreshToken: string
+        refreshToken?: string
       }
-      await finishLogin(accessToken, refreshToken)
+      await finishLogin(accessToken, authMode === 'ldap' ? '' : refreshToken ?? '')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in')
     } finally {
@@ -287,7 +287,7 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
-        {authMode === 'dex' && (
+        {(authMode === 'dex' || authMode === 'ldap') && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
             <div className="relative">
