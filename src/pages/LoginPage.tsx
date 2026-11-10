@@ -12,16 +12,12 @@ import { fetchClusters } from '@/api/clusters'
 import { useLastLocationStore } from '@/store/lastLocation'
 import { getBackendUrl } from '@/lib/config'
 
-type AuthMode = 'detecting' | 'dex' | 'ldap' | 'openshift' | 'passthrough' | 'jwt'
+type AuthMode = 'detecting' | 'error' | 'ldap' | 'openshift' | 'passthrough'
 
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [token, setToken] = useState('')
-  // jwt/static mode: start from the cluster used last time on this backend.
-  const [cluster, setCluster] = useState(
-    () => useLastLocationStore.getState().byBackend[getBackendUrl()]?.cluster ?? 'local'
-  )
   const [showPassword, setShowPassword] = useState(false)
   const [showToken, setShowToken] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -55,11 +51,12 @@ export const LoginPage: React.FC = () => {
   }
 
   const detectAuthMode = async () => {
+    setAuthMode('detecting')
     try {
       const res = await fetch(`${base}/api/v1/auth/mode`, {
         headers: { Accept: 'application/json', ...devHeaders },
       })
-      if (!res.ok) { setAuthMode('dex'); return }
+      if (!res.ok) throw new Error('Unable to detect authentication mode. Check the backend connection and retry.')
       const { mode } = await res.json() as { mode: string }
 
       if (mode === 'openshift') {
@@ -85,20 +82,18 @@ export const LoginPage: React.FC = () => {
           setAuthMode('openshift')
           return
         } catch {
-          setError('Failed to initialize OpenShift authentication, falling back to standard login.')
-          setAuthMode('dex')
+          setError('Unable to initialize OpenShift authentication. Retry to connect again.')
+          setAuthMode('error')
           return
         }
-      } else if (mode === 'dex' || mode === 'ldap') {
+      } else if (mode === 'ldap' || mode === 'passthrough') {
         setAuthMode(mode)
-      } else if (mode === 'jwt' || mode === 'static') {
-        setAuthMode('jwt')
       } else {
-        // passthrough: token is used directly, no login endpoint
-        setAuthMode('passthrough')
+        throw new Error('Unsupported authentication mode. Contact your backend administrator.')
       }
-    } catch {
-      setAuthMode('dex')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to detect authentication mode. Retry to connect again.')
+      setAuthMode('error')
     }
   }
 
@@ -147,7 +142,7 @@ export const LoginPage: React.FC = () => {
     })()
   }, []) 
 
-  // Effect 2: detect auth mode by probing the openshift authorize endpoint
+  // Effect 2: discover the backend authentication mode
   useEffect(() => {
     if (searchParams.get('code')) return // Effect 1 handles this case and calls detectAuthMode on failure
     detectAuthMode()
@@ -163,39 +158,6 @@ export const LoginPage: React.FC = () => {
       await finishLogin(token.trim(), '')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // jwt/static mode: exchange cluster + token for a session JWT
-  const handleJwtSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!cluster.trim()) { setError('Cluster is required'); return }
-    if (!token.trim()) { setError('Token is required'); return }
-    setIsLoading(true)
-    setError('')
-    try {
-      const loginRes = await fetch(`${base}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...devHeaders },
-        body: JSON.stringify({ cluster: cluster.trim(), token: token.trim() }),
-      })
-      if (!loginRes.ok) {
-        let message = 'Invalid credentials'
-        try {
-          const data = await loginRes.json() as { error?: { message?: string }; message?: string }
-          message = data.error?.message ?? data.message ?? message
-        } catch { /* ignore */ }
-        throw new Error(message)
-      }
-      const { accessToken, refreshToken } = await loginRes.json() as {
-        accessToken: string
-        refreshToken: string
-      }
-      await finishLogin(accessToken, refreshToken)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in')
     } finally {
       setIsLoading(false)
     }
@@ -221,11 +183,8 @@ export const LoginPage: React.FC = () => {
         } catch { /* ignore */ }
         throw new Error(message)
       }
-      const { accessToken, refreshToken } = await loginRes.json() as {
-        accessToken: string
-        refreshToken?: string
-      }
-      await finishLogin(accessToken, authMode === 'ldap' ? '' : refreshToken ?? '')
+      const { accessToken } = await loginRes.json() as { accessToken: string }
+      await finishLogin(accessToken, '')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in')
     } finally {
@@ -268,6 +227,18 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
+        {authMode === 'error' && (
+          <div className="flex flex-col gap-3">
+            <Alert variant="destructive">
+              <WarningCircleIcon size={14} />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <Button onClick={() => { setError(''); void detectAuthMode() }} className="w-full">
+              Retry
+            </Button>
+          </div>
+        )}
+
         {authMode === 'openshift' && (
           <div className="flex flex-col gap-2">
             {authorizeUrl && (
@@ -287,7 +258,7 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
-        {(authMode === 'dex' || authMode === 'ldap') && (
+        {authMode === 'ldap' && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
             <div className="relative">
@@ -351,42 +322,6 @@ export const LoginPage: React.FC = () => {
           </form>
         )}
 
-        {authMode === 'jwt' && (
-          <form onSubmit={handleJwtSubmit} className="flex flex-col gap-3">
-            <Input
-              label="Cluster"
-              value={cluster}
-              onChange={(e) => setCluster(e.target.value)}
-              required
-            />
-            <div className="relative">
-              <Input
-                label="Token"
-                type={showPassword ? 'text' : 'password'}
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 bottom-2 text-text-muted hover:text-text"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeSlashIcon size={15} /> : <EyeIcon size={15} />}
-              </button>
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <WarningCircleIcon size={14} />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" variant="default" loading={isLoading} className="w-full mt-1">
-              Continue →
-            </Button>
-          </form>
-        )}
         </motion.div>
       </div>
     </div>

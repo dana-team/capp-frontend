@@ -2,11 +2,11 @@
 
 `capp-frontend` is a web management console for managing [**Capp**](https://github.com/dana-team/container-app-operator) (ContainerApp) custom resources on Kubernetes clusters. It communicates exclusively with [`capp-backend`](https://github.com/dana-team/capp-backend) — it never talks to the Kubernetes API directly.
 
-It provides a clean, dark-themed UI for signing in with a username and password, then performing full lifecycle management of `Capp` resources — create, view, edit, and delete — without needing `kubectl` or deep Kubernetes knowledge.
+It provides a clean, dark-themed UI for signing in with a bearer token, OpenShift OAuth, or LDAP credentials, then performing full lifecycle management of `Capp` resources — create, view, edit, and delete — without needing `kubectl` or deep Kubernetes knowledge.
 
 ## Features
 
-- **Username / Password Sign-In** — Authenticate against a [Dex](https://dexidp.io/) OIDC provider via the `capp-backend`. Short-lived access tokens are automatically refreshed in the background.
+- **Authentication** — Supports the `capp-backend` v0.12.1 modes: `passthrough` bearer tokens, `openshift` OAuth, and `ldap` username/password login. OpenShift sessions refresh automatically; expired LDAP sessions require signing in again.
 - **Multi-Cluster Support** — The backend exposes multiple clusters; the UI selects a default healthy cluster on login and allows switching from the navigation bar.
 - **Capp List View** — Browse, search, sort, and paginate `Capp` resources across namespaces.
 - **Capp Detail View** — Inspect the full spec and live conditions (Knative, logging, routing, certificate) of a `Capp`.
@@ -96,8 +96,8 @@ Sign in with any token (default `passthrough` mode) and keep the default backend
 |---|---|---|
 | `PORT` | `8080` | Listen port |
 | `MOCK_SEED` | random | Integer seed; the same value gives identical data (the seed in use is logged on boot) |
-| `MOCK_AUTH_MODE` | `passthrough` | `passthrough`, `jwt`, `static`, `dex` or `openshift` |
-| `MOCK_TOKEN_TTL` | `900` | Access-token lifetime in seconds (refresh tokens last 24h); set to `2` to exercise refresh-and-retry |
+| `MOCK_AUTH_MODE` | `passthrough` | `passthrough`, `openshift` or `ldap` |
+| `MOCK_TOKEN_TTL` | `900` | Access-token lifetime in seconds (OpenShift refresh tokens last 24h); set to `2` to exercise OpenShift refresh or LDAP expiry |
 | `MOCK_LATENCY_MS` | `0` | Artificial delay per request |
 | `MOCK_NAMESPACE_SCOPED` | unset | `1` simulates a user with access to only the first 2 namespaces of each cluster: other namespaces are hidden and return 403, as do the all-namespaces lists |
 | `MOCK_FRONTEND_URL` | `http://localhost:3000` | Where the `openshift` authorize URL redirects back to |
@@ -105,11 +105,10 @@ Sign in with any token (default `passthrough` mode) and keep the default backend
 Auth modes:
 
 - `passthrough`: no login; any non-empty Bearer token is accepted.
-- `jwt` / `static`: login with `cluster` + any token (unknown cluster gives 400); returns an opaque access/refresh pair.
-- `dex`: login with any username and password, except password `wrong` which returns 401.
+- `ldap`: login with any username and password, except password `wrong` which returns 401. Returns an access token without a refresh token.
 - `openshift`: `/auth/openshift/authorize` redirects straight back to `/login?code=mock-code&state=...`, then `/callback` exchanges it for a token pair.
 
-In non-passthrough modes expired or unknown access tokens get 401, and `/auth/refresh` rotates the pair. One cluster is always unhealthy (503 on its resources). Data and sessions live in memory only and reset on every restart.
+In non-passthrough modes expired or unknown access tokens get 401, and `/auth/refresh` rotates the pair only in OpenShift mode. LDAP sessions require signing in again after expiry. One cluster is always unhealthy (503 on its resources). Data and sessions live in memory only and reset on every restart.
 
 ## Project Structure
 
