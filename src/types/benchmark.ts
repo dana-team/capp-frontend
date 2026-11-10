@@ -9,12 +9,24 @@ export type BenchmarkJobStatus = '' | 'running' | 'completed' | 'failed'
 export interface BenchmarkStatusResponse {
   jobName: string
   status: BenchmarkJobStatus
+  runId?: string
+  /** Why a running Job's pod has not started, or why a failed Job failed. */
+  reason?: string
+}
+
+/** Body of POST /benchmark. Omit path and headers when the user leaves them empty. */
+export interface BenchmarkTarget {
+  type: BenchmarkType
+  /** Must start with a single `/`. */
+  path?: string
+  headers?: Record<string, string>
 }
 
 export interface BenchmarkTriggerResponse {
   cappName: string
   jobName: string
   type: BenchmarkType
+  runId: string
 }
 
 export interface DashboardQuery {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { PlayIcon } from '@phosphor-icons/react'
+import React, { useRef, useState } from 'react'
+import { PlayIcon, PlusIcon, XIcon } from '@phosphor-icons/react'
 import { BackendApiError } from '@/api/client'
 import { isBenchmarkUnavailable } from '@/api/benchmarks'
 import { SectionSheet } from '@/components/layout/DetailParts'
@@ -13,9 +13,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { useBenchmarkStatus, useTriggerBenchmark } from '@/hooks/useBenchmarks'
 import { cn } from '@/lib/utils'
-import { BENCHMARK_TYPES, type BenchmarkJobStatus, type BenchmarkType } from '@/types/benchmark'
+import {
+  BENCHMARK_TYPES,
+  type BenchmarkJobStatus,
+  type BenchmarkTarget,
+  type BenchmarkType,
+} from '@/types/benchmark'
 
 const TYPE_DETAILS: Record<BenchmarkType, { label: string; description: string }> = {
   latency: {
@@ -39,17 +45,38 @@ const STATUS_BADGE: Record<BenchmarkJobStatus, { label: string; variant: 'defaul
   failed: { label: 'Failed', variant: 'danger' },
 }
 
-function statusDetail(status: BenchmarkJobStatus, jobName: string): string {
-  if (status === 'running') return jobName ? `Job ${jobName} is running.` : 'A benchmark is running.'
+interface HeaderRow {
+  id: number
+  name: string
+  value: string
+}
+
+/** Builds the POST body. Empty path and header names are left out of the request. */
+function buildTarget(type: BenchmarkType, path: string, headers: HeaderRow[]): BenchmarkTarget {
+  const target: BenchmarkTarget = { type }
+  const trimmedPath = path.trim()
+  if (trimmedPath) target.path = trimmedPath
+  const named = headers.filter((row) => row.name.trim())
+  if (named.length > 0) {
+    target.headers = Object.fromEntries(named.map((row) => [row.name.trim(), row.value]))
+  }
+  return target
+}
+
+function statusDetail(status: BenchmarkJobStatus, jobName: string, reason?: string): string {
+  const detail = reason ? ` ${reason}` : ''
+  if (status === 'running') {
+    return (jobName ? `Job ${jobName} is running.` : 'A benchmark is running.') + detail
+  }
   if (status === 'completed') {
-    return jobName
+    return (jobName
       ? `Job ${jobName} finished. Starting another run replaces it.`
-      : 'The last benchmark finished. Starting another run replaces it.'
+      : 'The last benchmark finished. Starting another run replaces it.') + detail
   }
   if (status === 'failed') {
-    return jobName
+    return (jobName
       ? `Job ${jobName} failed. You can start another run.`
-      : 'The last benchmark failed. You can start another run.'
+      : 'The last benchmark failed. You can start another run.') + detail
   }
   return 'Run a latency, throughput, or scale benchmark against this Capp.'
 }
@@ -59,6 +86,9 @@ export const BenchmarkPanel: React.FC<{ namespace: string; name: string }> = ({ 
   const trigger = useTriggerBenchmark(namespace, name)
   const [open, setOpen] = useState(false)
   const [type, setType] = useState<BenchmarkType>('latency')
+  const [path, setPath] = useState('')
+  const [headers, setHeaders] = useState<HeaderRow[]>([])
+  const nextHeaderId = useRef(0)
   const [error, setError] = useState<string | null>(null)
 
   if (statusQuery.isPending) return null
@@ -66,6 +96,7 @@ export const BenchmarkPanel: React.FC<{ namespace: string; name: string }> = ({ 
 
   const status = statusQuery.data?.status ?? ''
   const jobName = statusQuery.data?.jobName ?? ''
+  const reason = statusQuery.data?.reason
   const running = status === 'running'
   const badge = statusQuery.isError
     ? { label: 'Unavailable', variant: 'danger' as const }
@@ -75,13 +106,28 @@ export const BenchmarkPanel: React.FC<{ namespace: string; name: string }> = ({ 
   const close = () => {
     setOpen(false)
     setError(null)
+    setPath('')
+    setHeaders([])
+  }
+
+  const addHeader = () => {
+    nextHeaderId.current += 1
+    setHeaders((rows) => [...rows, { id: nextHeaderId.current, name: '', value: '' }])
+  }
+
+  const updateHeader = (id: number, field: 'name' | 'value', text: string) => {
+    setHeaders((rows) => rows.map((row) => (row.id === id ? { ...row, [field]: text } : row)))
+  }
+
+  const removeHeader = (id: number) => {
+    setHeaders((rows) => rows.filter((row) => row.id !== id))
   }
 
   const handleRun = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
     try {
-      await trigger.mutateAsync(type)
+      await trigger.mutateAsync(buildTarget(type, path, headers))
       close()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The benchmark could not be started.')
@@ -99,7 +145,7 @@ export const BenchmarkPanel: React.FC<{ namespace: string; name: string }> = ({ 
           <p className={cn('text-sm', status === 'failed' || statusQuery.isError ? 'text-danger' : 'text-text-secondary')} aria-live="polite">
             {statusQuery.isError
               ? statusQuery.error.message
-              : statusDetail(status, jobName)}
+              : statusDetail(status, jobName, reason)}
           </p>
         </div>
         <Button
@@ -151,6 +197,56 @@ export const BenchmarkPanel: React.FC<{ namespace: string; name: string }> = ({ 
                   </label>
                 )
               })}
+            </fieldset>
+
+            <Input
+              id="benchmark-path"
+              label="Path"
+              placeholder="/"
+              value={path}
+              onChange={(event) => setPath(event.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-sm font-medium text-text-secondary">Headers</legend>
+              {headers.map((row) => (
+                <div key={row.id} className="flex items-center gap-2">
+                  <Input
+                    aria-label="Header name"
+                    placeholder="Name"
+                    value={row.name}
+                    onChange={(event) => updateHeader(row.id, 'name', event.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="font-mono"
+                  />
+                  <Input
+                    type="password"
+                    aria-label="Header value"
+                    placeholder="Value"
+                    value={row.value}
+                    onChange={(event) => updateHeader(row.id, 'value', event.target.value)}
+                    autoComplete="new-password"
+                    className="font-mono"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Remove header"
+                    onClick={() => removeHeader(row.id)}
+                  >
+                    <XIcon size={14} />
+                  </Button>
+                </div>
+              ))}
+              <div>
+                <Button type="button" variant="outline" size="sm" onClick={addHeader} icon={<PlusIcon size={14} />}>
+                  Add header
+                </Button>
+              </div>
             </fieldset>
 
             {error && <p className="text-sm text-danger">{error}</p>}

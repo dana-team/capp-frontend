@@ -1,8 +1,8 @@
 import { BackendApiError, backendClient, clusterBase } from '@/api/client'
 import type {
   BenchmarkStatusResponse,
+  BenchmarkTarget,
   BenchmarkTriggerResponse,
-  BenchmarkType,
   DashboardsResponse,
   PrometheusRangeResponse,
 } from '@/types/benchmark'
@@ -23,11 +23,11 @@ export function getBenchmarkStatus(namespace: string, name: string): Promise<Ben
 export function triggerBenchmark(
   namespace: string,
   name: string,
-  type: BenchmarkType,
+  target: BenchmarkTarget,
 ): Promise<BenchmarkTriggerResponse> {
   return backendClient<BenchmarkTriggerResponse>(`${cappPath(namespace, name)}/benchmark`, {
     method: 'POST',
-    body: JSON.stringify({ type }),
+    body: JSON.stringify(target),
   })
 }
 

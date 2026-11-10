@@ -8,7 +8,7 @@ import {
 } from '@/api/benchmarks'
 import { getBackendUrl } from '@/lib/config'
 import { useAuthStore } from '@/store/auth'
-import type { BenchmarkType } from '@/types/benchmark'
+import type { BenchmarkTarget } from '@/types/benchmark'
 import { rangeWindow, type BenchmarkRange } from '@/utils/benchmarkSeries'
 
 export function benchmarkStatusKey(cluster: string, namespace: string, name: string) {
@@ -32,11 +32,12 @@ export function useTriggerBenchmark(namespace: string, name: string) {
   const cluster = useAuthStore((s) => s.cluster)
 
   return useMutation({
-    mutationFn: (type: BenchmarkType) => triggerBenchmark(namespace, name, type),
+    mutationFn: (target: BenchmarkTarget) => triggerBenchmark(namespace, name, target),
     onSuccess: (result) => {
       queryClient.setQueryData(benchmarkStatusKey(cluster, namespace, name), {
         jobName: result.jobName,
         status: 'running' as const,
+        runId: result.runId,
       })
       void queryClient.invalidateQueries({ queryKey: benchmarkStatusKey(cluster, namespace, name) })
       void queryClient.invalidateQueries({
