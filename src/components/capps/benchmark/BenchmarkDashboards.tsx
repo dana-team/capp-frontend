@@ -25,7 +25,7 @@ function readToken(token: string, fallback: string): string {
   return raw ? `hsl(${raw})` : fallback
 }
 
-function useChartTheme() {
+export function useChartTheme() {
   const read = () => ({
     series: SERIES_TOKENS.map((token) => readToken(token, 'hsl(166 39% 55%)')),
     grid: readToken('--border-subtle', 'hsl(167 13% 14%)'),

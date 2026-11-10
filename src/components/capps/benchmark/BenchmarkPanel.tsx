@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { BenchmarkResults } from './BenchmarkResults'
 import { useBenchmarkStatus, useTriggerBenchmark } from '@/hooks/useBenchmarks'
 import { cn } from '@/lib/utils'
 import {
@@ -95,6 +96,7 @@ export const BenchmarkPanel: React.FC<{ namespace: string; name: string }> = ({ 
   if (isBenchmarkUnavailable(statusQuery.error)) return null
 
   const status = statusQuery.data?.status ?? ''
+  const finishedRunId = status === 'completed' || status === 'failed' ? statusQuery.data?.runId : undefined
   const jobName = statusQuery.data?.jobName ?? ''
   const reason = statusQuery.data?.reason
   const running = status === 'running'
@@ -260,6 +262,8 @@ export const BenchmarkPanel: React.FC<{ namespace: string; name: string }> = ({ 
           </form>
         </DialogContent>
       </Dialog>
+
+      <BenchmarkResults namespace={namespace} name={name} awaitedRunId={finishedRunId} />
     </SectionSheet>
   )
 }

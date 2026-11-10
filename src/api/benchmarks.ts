@@ -1,5 +1,7 @@
 import { BackendApiError, backendClient, clusterBase } from '@/api/client'
 import type {
+  BenchmarkRunDetail,
+  BenchmarkRunsResponse,
   BenchmarkStatusResponse,
   BenchmarkTarget,
   BenchmarkTriggerResponse,
@@ -18,6 +20,16 @@ export function isBenchmarkUnavailable(error: unknown): boolean {
 
 export function getBenchmarkStatus(namespace: string, name: string): Promise<BenchmarkStatusResponse> {
   return backendClient<BenchmarkStatusResponse>(`${cappPath(namespace, name)}/benchmark`)
+}
+
+export function listBenchmarkRuns(namespace: string, name: string): Promise<BenchmarkRunsResponse> {
+  return backendClient<BenchmarkRunsResponse>(`${cappPath(namespace, name)}/benchmark/runs`)
+}
+
+export function getBenchmarkRun(namespace: string, name: string, runId: string): Promise<BenchmarkRunDetail> {
+  return backendClient<BenchmarkRunDetail>(
+    `${cappPath(namespace, name)}/benchmark/runs/${encodeURIComponent(runId)}`,
+  )
 }
 
 export function triggerBenchmark(
