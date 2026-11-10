@@ -38,11 +38,18 @@ function readError(body: unknown, fallback: string): { message: string; code?: s
   return { message: fallback };
 }
 
+const HTTP_STATUS_UNAUTHORIZED = 401
+const API_ERROR_UNAUTHORIZED = 'UNAUTHORIZED'
+
 let isRefreshing = false
 let refreshQueue: Array<{ resolve: (token: string) => void; reject: (err: Error) => void }> = []
 
 async function doRefresh(): Promise<string> {
   const { refreshToken, updateTokens, logout } = useAuthStore.getState()
+  if (!refreshToken) {
+    logout()
+    throw new BackendApiError('Session expired. Please sign in again.', HTTP_STATUS_UNAUTHORIZED, API_ERROR_UNAUTHORIZED)
+  }
   const backendUrl = getBackendUrl()
   const base = import.meta.env.DEV ? '' : backendUrl.replace(/\/$/, '')
   const headers: Record<string, string> = {
@@ -58,7 +65,7 @@ async function doRefresh(): Promise<string> {
   })
   if (!res.ok) {
     logout()
-    throw new BackendApiError('Session expired. Please sign in again.', res.status, 'UNAUTHORIZED')
+    throw new BackendApiError('Session expired. Please sign in again.', res.status, API_ERROR_UNAUTHORIZED)
   }
   const pair = await res.json() as { accessToken: string; refreshToken: string }
   updateTokens(pair.accessToken, pair.refreshToken)
@@ -96,7 +103,7 @@ export async function backendClient<T>(
 
   const response = await fetch(url, { ...options, headers });
 
-  if (response.status === 401) {
+  if (response.status === HTTP_STATUS_UNAUTHORIZED) {
     const newToken = await (isRefreshing
       ? new Promise<string>((resolve, reject) => {
           refreshQueue.push({ resolve, reject })
