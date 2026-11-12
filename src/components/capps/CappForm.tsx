@@ -22,7 +22,7 @@ import { LogSection } from "./sections/LogSection";
 import { VolumesSection } from "./sections/VolumesSection";
 import { EventSourcesSection } from "./sections/EventSourcesSection";
 import { buildCappResource, cappToYaml, rolloutFormValues } from "@/utils/cappBuilder";
-import { ScaleMetric, CappState, CappSize, RolloutStrategy } from "@/types/capp";
+import { ScaleMetric, CappState, CappSize, RolloutStrategy, ROLLOUT_ON_BOUND_CHANGE_ANNOTATION } from "@/types/capp";
 import { DURATION_RE } from "@/utils/rollout";
 import { CappYamlEditor } from "./CappYamlEditor";
 import { useSizes } from "@/hooks/useCapps";
@@ -103,6 +103,8 @@ export interface CappFormValues {
   image: string;
   containerName: string;
   imagePullSecrets: string[];
+  /** Roll out when a Secret or ConfigMap this Capp uses is updated. */
+  reloadOnBoundResourceChange: boolean;
   envVars: EnvVarFormEntry[];
   hostname: string;
   tlsEnabled?: boolean;
@@ -149,6 +151,7 @@ const schema = z.object({
   image: z.string().min(1, "Container image is required"),
   containerName: z.string().optional(),
   imagePullSecrets: z.array(z.string()).default([]),
+  reloadOnBoundResourceChange: z.boolean().default(false),
   envVars: z.array(z.object({
     name: z.string().min(1, 'Name is required'),
     source: z.enum(['literal', 'secretKeyRef', 'configMapKeyRef']),
@@ -304,6 +307,7 @@ const defaultValues: CappFormValues = {
   image: "",
   containerName: "",
   imagePullSecrets: [],
+  reloadOnBoundResourceChange: false,
   envVars: [],
   hostname: "",
   tlsEnabled: undefined,
@@ -342,7 +346,7 @@ export type Tab = "form" | "yaml";
 
 // Form sections shown in the section index, and the fields that belong to each.
 const SECTION_FIELDS: Record<string, string[]> = {
-  name: ["name", "state"],
+  name: ["name", "state", "reloadOnBoundResourceChange"],
   configuration: ["image", "imagePullSecrets", "containerName", "sizingMode", "size", "cpuRequest", "cpuLimit", "memoryRequest", "memoryLimit", "envVars"],
   scale: ["scaleMetric", "minReplicas", "maxReplicas", "scaleDelaySeconds"],
   route: ["hostname", "tlsEnabled", "routeTimeoutSeconds"],
@@ -547,6 +551,8 @@ export const CappForm: React.FC<CappFormProps> = ({
             imagePullSecrets: (
               (podSpec?.imagePullSecrets as Array<{ name: string }>) ?? []
             ).map((s) => s.name),
+            reloadOnBoundResourceChange:
+              (meta?.annotations as Record<string, string> | undefined)?.[ROLLOUT_ON_BOUND_CHANGE_ANNOTATION] === "true",
             envVars: (
               (container.env as Array<{
                 name: string;
@@ -774,6 +780,42 @@ export const CappForm: React.FC<CappFormProps> = ({
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-text-muted">Enable or disable this Capp</p>
+                    </div>
+                  )}
+                />
+                <Controller
+                  name="reloadOnBoundResourceChange"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex items-start gap-3 rounded-lg border border-border-subtle bg-background/40 px-3.5 py-3 sm:col-span-2">
+                      <button
+                        type="button"
+                        role="switch"
+                        id="reload-on-bound-change"
+                        aria-checked={field.value}
+                        aria-describedby="reload-on-bound-change-hint"
+                        onClick={() => field.onChange(!field.value)}
+                        className={cn(
+                          "relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                          field.value ? "bg-primary" : "bg-border",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "pointer-events-none block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                            field.value ? "translate-x-4" : "translate-x-0",
+                          )}
+                        />
+                      </button>
+                      <div className="min-w-0">
+                        <label htmlFor="reload-on-bound-change" className="cursor-pointer text-sm font-medium text-text-secondary">
+                          Roll out on Secret / ConfigMap change
+                        </label>
+                        <p id="reload-on-bound-change-hint" className="mt-0.5 text-xs text-text-muted">
+                          Start a new revision whenever a Secret or ConfigMap this Capp uses in its
+                          environment, volumes or image pull secrets is updated.
+                        </p>
+                      </div>
                     </div>
                   )}
                 />

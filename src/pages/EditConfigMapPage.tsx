@@ -8,6 +8,8 @@ import { Sheet } from '@/components/layout/Sheet';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { NO_AUTO_REFETCH } from '@/lib/query';
+import { useBoundSaveGuard } from '@/hooks/useBoundCapps';
+import { ConfirmBoundUpdateDialog } from '@/components/bound/ConfirmBoundUpdateDialog';
 
 export const EditConfigMapPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>();
@@ -16,7 +18,7 @@ export const EditConfigMapPage: React.FC = () => {
   const { data: configmap, isLoading, error: loadError } = useConfigMap(namespace, name, NO_AUTO_REFETCH);
   const { mutateAsync: updateConfigmap, isPending, error: updateError } = useUpdateConfigmap();
 
-  const handleSubmit = async (values: ConfigMapFormValues) => {
+  const save = async (values: ConfigMapFormValues) => {
     await updateConfigmap({
       namespace,
       name,
@@ -26,6 +28,8 @@ export const EditConfigMapPage: React.FC = () => {
     });
     navigate(`/configmaps/${namespace}/${name}`);
   };
+
+  const guard = useBoundSaveGuard<ConfigMapFormValues>('configmap', namespace, name, save);
 
   if (isLoading) {
     return (
@@ -66,13 +70,25 @@ export const EditConfigMapPage: React.FC = () => {
 
       <ConfigMapForm
         initialValues={initialValues}
-        onSubmit={handleSubmit}
-        isLoading={isPending}
+        onSubmit={guard.handleSubmit}
+        isLoading={isPending || guard.isChecking}
         error={updateError ? (updateError as Error).message : undefined}
         submitLabel="Save Changes"
         isEdit
         namespace={namespace}
         onCancel={() => navigate(`/configmaps/${namespace}/${name}`)}
+      />
+
+      <ConfirmBoundUpdateDialog
+        kind="configmap"
+        namespace={namespace}
+        name={name}
+        open={guard.check !== null}
+        bound={guard.check?.bound}
+        error={guard.check?.error}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
+        isSaving={isPending}
       />
     </div>
   );

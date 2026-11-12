@@ -189,7 +189,16 @@ export interface CappRequest {
   /** Names of kubernetes.io/dockerconfigjson Secrets used to pull the image. */
   imagePullSecrets?: string[];
   eventSourcesSpec?: EventSourcesSpec;
+  /** Roll out when a Secret or ConfigMap the Capp uses is updated. Omitting it on update turns it off. */
+  reloadOnBoundResourceChange?: boolean;
 }
+
+/** Capp annotation the backend stores reloadOnBoundResourceChange in. */
+export const ROLLOUT_ON_BOUND_CHANGE_ANNOTATION = 'rcs.dana.io/rollout-on-bound-resource-change';
+/** Informational annotations the backend writes when it rolls a Capp out for a bound resource. */
+export const RESTARTED_AT_ANNOTATION = 'capp.dana.io/restarted-at';
+/** "<Kind>/<name>" of the Secret or ConfigMap behind the last such rollout. */
+export const RESTART_REASON_ANNOTATION = 'capp.dana.io/restart-reason';
 
 // ── Response types ─────────────────────────────────────────────────────────
 
@@ -238,6 +247,7 @@ export interface BareCappResponse {
   configMapVolumes?: ConfigMapVolume[];
   imagePullSecrets?: string[];
   eventSourcesSpec?: EventSourcesSpec;
+  reloadOnBoundResourceChange?: boolean;
 }
 
 export interface CappResponse extends BareCappResponse {

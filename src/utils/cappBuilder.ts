@@ -1,5 +1,5 @@
 import yaml from 'js-yaml';
-import { CappRequest, CappResponse, LegacyCapp, LegacyCappSpec, ScaleMetric, CappState, CappSize, ResourceSpec, ResourceQuantities, RolloutStrategy } from '@/types/capp';
+import { CappRequest, CappResponse, LegacyCapp, LegacyCappSpec, ScaleMetric, CappState, CappSize, ResourceSpec, ResourceQuantities, RolloutStrategy, ROLLOUT_ON_BOUND_CHANGE_ANNOTATION } from '@/types/capp';
 import { CappFormValues, EventSourceFormEntry } from '@/components/capps/CappForm';
 import { shortDuration } from '@/utils/rollout';
 
@@ -52,6 +52,8 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
   // Omitted when empty: the backend replaces the list on update, so this clears it.
   const pullSecrets = values.imagePullSecrets.filter(Boolean);
   if (pullSecrets.length > 0) req.imagePullSecrets = pullSecrets;
+  // Omitting it on update turns it off, so false needs no field.
+  if (values.reloadOnBoundResourceChange) req.reloadOnBoundResourceChange = true;
 
   if (values.sizingMode === 'custom') {
     const customResources = buildCustomResources(values.cpuRequest, values.cpuLimit, values.memoryRequest, values.memoryLimit);
@@ -193,6 +195,7 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     image: capp.image,
     containerName: capp.containerName ?? '',
     imagePullSecrets: capp.imagePullSecrets ?? [],
+    reloadOnBoundResourceChange: capp.reloadOnBoundResourceChange ?? false,
     sizingMode: hasPresetSize ? 'preset' : (capp.resources ? 'custom' : 'preset'),
     size: (capp.size ?? '') as CappSize | '',
     cpuRequest: capp.resources?.requests?.cpu ?? '',
@@ -388,7 +391,13 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
   return {
     apiVersion: 'rcs.dana.io/v1alpha1',
     kind: 'Capp',
-    metadata: { name: values.name, namespace },
+    metadata: {
+      name: values.name,
+      namespace,
+      ...(values.reloadOnBoundResourceChange
+        ? { annotations: { [ROLLOUT_ON_BOUND_CHANGE_ANNOTATION]: 'true' } }
+        : {}),
+    },
     spec,
   };
 }
@@ -410,6 +419,7 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     image: container.image,
     containerName: container.name ?? '',
     imagePullSecrets: (capp.spec.configurationSpec.template.spec.imagePullSecrets ?? []).map((s) => s.name),
+    reloadOnBoundResourceChange: capp.metadata.annotations?.[ROLLOUT_ON_BOUND_CHANGE_ANNOTATION] === 'true',
     sizingMode: capp.spec.size ? 'preset' : (container.resources ? 'custom' : 'preset'),
     size: (capp.spec.size ?? '') as CappSize | '',
     cpuRequest: container.resources?.requests?.cpu ?? '',

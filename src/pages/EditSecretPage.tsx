@@ -9,6 +9,8 @@ import { Sheet } from '@/components/layout/Sheet';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { NO_AUTO_REFETCH } from '@/lib/query';
+import { useBoundSaveGuard } from '@/hooks/useBoundCapps';
+import { ConfirmBoundUpdateDialog } from '@/components/bound/ConfirmBoundUpdateDialog';
 
 export const EditSecretPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>();
@@ -17,7 +19,7 @@ export const EditSecretPage: React.FC = () => {
   const { data: secret, isLoading, error: loadError } = useSecret(namespace, name, NO_AUTO_REFETCH);
   const { mutateAsync: updateSecret, isPending, error: updateError } = useUpdateSecret();
 
-  const handleSubmit = async (values: SecretFormValues) => {
+  const save = async (values: SecretFormValues) => {
     await updateSecret({
       namespace,
       name,
@@ -27,6 +29,8 @@ export const EditSecretPage: React.FC = () => {
     });
     navigate(`/secrets/${namespace}/${name}`);
   };
+
+  const guard = useBoundSaveGuard<SecretFormValues>('secret', namespace, name, save);
 
   if (isLoading) {
     return (
@@ -74,13 +78,25 @@ export const EditSecretPage: React.FC = () => {
 
       <SecretForm
         initialValues={initialValues}
-        onSubmit={handleSubmit}
-        isLoading={isPending}
+        onSubmit={guard.handleSubmit}
+        isLoading={isPending || guard.isChecking}
         error={updateError ? (updateError as Error).message : undefined}
         submitLabel="Save Changes"
         isEdit
         namespace={namespace}
         onCancel={() => navigate(`/secrets/${namespace}/${name}`)}
+      />
+
+      <ConfirmBoundUpdateDialog
+        kind="secret"
+        namespace={namespace}
+        name={name}
+        open={guard.check !== null}
+        bound={guard.check?.bound}
+        error={guard.check?.error}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
+        isSaving={isPending}
       />
     </div>
   );
