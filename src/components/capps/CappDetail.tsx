@@ -9,7 +9,8 @@ import { PencilSimpleIcon,
   ArrowsLeftRightIcon,
   LightningIcon,
   KeyIcon,
-  ClockCounterClockwiseIcon } from '@phosphor-icons/react'
+  ClockCounterClockwiseIcon,
+  ArrowsClockwiseIcon } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/CopyButton'
@@ -18,6 +19,7 @@ import { BenchmarkDashboards } from './benchmark/BenchmarkDashboards'
 import { BenchmarkPanel } from './benchmark/BenchmarkPanel'
 import { RolloutStrip } from './rollout/RolloutStrip'
 import { RolloutStrategySection } from './rollout/RolloutStrategySection'
+import { BoundResourcesSection } from './BoundResourcesSection'
 import { CappResponse, hasBackupLabel, SyncToGitResponse } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
 import { SizeBadge } from '@/components/ui/SizeBadge'
@@ -67,11 +69,24 @@ export const CappDetail: React.FC<CappDetailProps> = ({
       {/* Header */}
       <DetailHeader
         title={capp.name}
-        badges={isSynced && (
-          <Badge variant="info" className="gap-1">
-            <GitBranchIcon size={12} /> Git sync on
-          </Badge>
-        )}
+        badges={
+          <>
+            {isSynced && (
+              <Badge variant="info" className="gap-1">
+                <GitBranchIcon size={12} /> Git sync on
+              </Badge>
+            )}
+            {capp.reloadOnBoundResourceChange && (
+              <Badge
+                variant="info"
+                className="gap-1"
+                title="Rolls out when a Secret or ConfigMap it uses is updated"
+              >
+                <ArrowsClockwiseIcon size={12} /> Rollout on config change
+              </Badge>
+            )}
+          </>
+        }
         meta={
           <>
             <span className="inline-flex items-center gap-2">
@@ -278,6 +293,8 @@ export const CappDetail: React.FC<CappDetailProps> = ({
           )}
         </div>
       </SectionSheet>
+
+      <BoundResourcesSection capp={capp} />
 
       {/* Status Conditions */}
       <SectionSheet title="Status conditions" aside={capp.status?.conditions?.length ? `${capp.status.conditions.length}` : undefined}>

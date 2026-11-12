@@ -21,6 +21,7 @@ import { getBackendUrl } from "@/lib/config";
 import { DEFAULT_REFETCH_MS, NO_AUTO_REFETCH, ROLLOUT_REFETCH_MS, refreshQueries } from "@/lib/query";
 import { rolloutIsActive } from "@/utils/rollout";
 import { useNamespaceContext } from "@/context/NamespaceContext";
+import { boundCappsPrefix } from "@/hooks/useBoundCapps";
 
 export function useCapps(namespace?: string) {
   const cluster = useAuthStore((s) => s.cluster);
@@ -57,7 +58,7 @@ export function useCreateCapp() {
     mutationFn: ({ namespace, req }: { namespace: string; req: CappRequest }) =>
       createCapp(namespace, req),
     onSuccess: () =>
-      refreshQueries(queryClient, ["capps", getBackendUrl(), cluster]),
+      refreshQueries(queryClient, ["capps", getBackendUrl(), cluster], boundCappsPrefix(cluster)),
   });
 }
 
@@ -81,6 +82,7 @@ export function useUpdateCapp() {
         ["capps", getBackendUrl(), cluster],
         ["capp", getBackendUrl(), cluster, variables.namespace, variables.name],
         ["capp-revisions", getBackendUrl(), cluster, variables.namespace, variables.name],
+        boundCappsPrefix(cluster),
       ),
   });
 }
@@ -119,7 +121,7 @@ export function useDeleteCapp() {
     mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
       deleteCapp(namespace, name),
     onSuccess: async (_data, variables) => {
-      await refreshQueries(queryClient, ["capps", getBackendUrl(), cluster]);
+      await refreshQueries(queryClient, ["capps", getBackendUrl(), cluster], boundCappsPrefix(cluster));
       // Gone now: refetching these would only return a 404.
       queryClient.removeQueries({
         queryKey: ["capp", getBackendUrl(), cluster, variables.namespace, variables.name],

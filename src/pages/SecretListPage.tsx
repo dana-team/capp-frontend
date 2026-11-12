@@ -7,21 +7,10 @@ import {
   PencilSimpleIcon,
   ArrowsDownUpIcon,
   WarningCircleIcon,
-  CircleNotchIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -39,6 +28,7 @@ import { StatTile } from "@/components/layout/StatTile";
 import { ResourceList, ResourceRow } from "@/components/layout/ResourceList";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useNamespaceContext } from "@/context/NamespaceContext";
+import { DeleteBoundResourceDialog } from "@/components/bound/DeleteBoundResourceDialog";
 import { relativeTime } from "@/utils/time";
 import { useSecrets, useDeleteSecret } from "@/hooks/useSecrets";
 import { SecretResponse } from "@/types/secret";
@@ -384,44 +374,15 @@ export const SecretListPage: React.FC = () => {
         )}
       </Sheet>
 
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => {
-          if (!open && isDeleting) return;
-          if (!open) setDeleteTarget(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Secret</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;?
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {deleteError && (
-            <Alert variant="destructive">
-              <WarningCircleIcon className="h-4 w-4" />
-              <AlertDescription>{deleteError}</AlertDescription>
-            </Alert>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteTarget(null)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleDelete()}
-              className="bg-danger hover:bg-danger/90 text-white"
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <CircleNotchIcon className="h-4 w-4 animate-spin" />
-              ) : null}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteBoundResourceDialog
+        kind="secret"
+        namespace={deleteTarget?.namespace ?? ""}
+        name={deleteTarget?.name ?? null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => handleDelete()}
+        isDeleting={isDeleting}
+        error={deleteError}
+      />
     </div>
   );
 };

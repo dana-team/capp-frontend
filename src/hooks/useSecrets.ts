@@ -75,6 +75,9 @@ export function useUpdateSecret() {
         queryClient,
         ["secrets", getBackendUrl(), cluster],
         ["secret", getBackendUrl(), cluster, variables.namespace, variables.name],
+        // An update rolls out opted-in Capps, so their pages are stale too.
+        ["capps", getBackendUrl(), cluster],
+        ["capp", getBackendUrl(), cluster],
       ),
   });
 }

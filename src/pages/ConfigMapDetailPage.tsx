@@ -1,16 +1,13 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { CircleNotch, WarningCircle } from '@phosphor-icons/react'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel,
-  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
-  AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { DetailCrumbs } from '@/components/layout/DetailParts'
 import { Sheet } from '@/components/layout/Sheet'
 import { useConfigMap, useDeleteConfigmap } from '@/hooks/useConfigmaps'
 import { ConfigMapDetail } from '@/components/configmaps/ConfigmapDetail'
+import { BoundCappsSection } from '@/components/bound/BoundCappsSection'
+import { DeleteBoundResourceDialog } from '@/components/bound/DeleteBoundResourceDialog'
 
 export const ConfigMapDetailPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>()
@@ -52,48 +49,29 @@ export const ConfigMapDetailPage: React.FC = () => {
         <div>
           <ConfigMapDetail
             configMap={configMap}
-            onDelete={() => setShowDeleteConfirm(true)}
+            onDelete={() => {
+              setDeleteError(null)
+              setShowDeleteConfirm(true)
+            }}
             isDeleting={isDeleting}
           />
 
-          <AlertDialog
-            open={showDeleteConfirm}
-            onOpenChange={(open) => {
-              if (open) {
-                setShowDeleteConfirm(true)
-                setDeleteError(null)
-              } else {
-                setShowDeleteConfirm(false)
-                setDeleteError(null)
-              }
+          <div className="mt-4">
+            <BoundCappsSection kind="configmap" namespace={namespace} name={name} />
+          </div>
+
+          <DeleteBoundResourceDialog
+            kind="configmap"
+            namespace={namespace}
+            name={showDeleteConfirm ? name : null}
+            onClose={() => {
+              setShowDeleteConfirm(false)
+              setDeleteError(null)
             }}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete ConfigMap</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete &quot;{name}&quot;? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              {deleteError && (
-                <Alert variant="destructive">
-                  <WarningCircle className="h-4 w-4" />
-                  <AlertDescription>{deleteError}</AlertDescription>
-                </Alert>
-              )}
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => handleDelete()}
-                  className="bg-danger hover:bg-danger/90 text-white"
-                  disabled={isDeleting}
-                >
-                  {isDeleting && <CircleNotch className="h-4 w-4 animate-spin" />}
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            onConfirm={() => handleDelete()}
+            isDeleting={isDeleting}
+            error={deleteError}
+          />
         </div>
       )}
     </div>
