@@ -2,14 +2,13 @@
  * Mock auth for the capp-backend mock. Tokens are opaque (the frontend never decodes them),
  * kept in an in-memory map, so a restart invalidates every session.
  *
- * MOCK_AUTH_MODE: passthrough (default) | jwt | static | dex | openshift
- * MOCK_TOKEN_TTL: access-token lifetime in seconds (default 900); refresh tokens live 24h.
+ * MOCK_AUTH_MODE: passthrough (default) | openshift | ldap
+ * MOCK_TOKEN_TTL: access-token lifetime in seconds (default 900); OpenShift refresh tokens live 24h.
  */
 import type { IncomingMessage } from 'node:http';
-import { store } from './store';
 
-export type AuthMode = 'passthrough' | 'jwt' | 'static' | 'dex' | 'openshift';
-const MODES: AuthMode[] = ['passthrough', 'jwt', 'static', 'dex', 'openshift'];
+export type AuthMode = 'passthrough' | 'openshift' | 'ldap';
+const MODES: AuthMode[] = ['passthrough', 'openshift', 'ldap'];
 
 const envMode = process.env.MOCK_AUTH_MODE as AuthMode | undefined;
 export const authMode: AuthMode = envMode && MODES.includes(envMode) ? envMode : 'passthrough';
@@ -35,7 +34,7 @@ const openshiftStates = new Set<string>();
 
 export interface TokenPair {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   expiresAt: string;
 }
 
@@ -54,8 +53,8 @@ function issue(user: string): TokenPair {
   const accessToken = `mock-access-${crypto.randomUUID()}`;
   const refreshToken = `mock-refresh-${crypto.randomUUID()}`;
   tokens.set(accessToken, { kind: 'access', expiresAt: now + ACCESS_TTL_MS, user });
-  tokens.set(refreshToken, { kind: 'refresh', expiresAt: now + REFRESH_TTL_MS, user });
-  return { accessToken, refreshToken, expiresAt: new Date(now + ACCESS_TTL_MS).toISOString() };
+  if (authMode === 'openshift') tokens.set(refreshToken, { kind: 'refresh', expiresAt: now + REFRESH_TTL_MS, user });
+  return { accessToken, ...(authMode === 'openshift' ? { refreshToken } : {}), expiresAt: new Date(now + ACCESS_TTL_MS).toISOString() };
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
@@ -63,14 +62,7 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 /** POST /auth/login. */
 export function login(body: Record<string, unknown>): AuthResult<TokenPair> {
   if (authMode === 'passthrough') return fail(404, 'NOT_FOUND', 'login is not available in passthrough auth mode');
-  if (authMode === 'jwt' || authMode === 'static') {
-    const cluster = str(body.cluster);
-    const token = str(body.token);
-    if (!cluster || !token) return fail(400, 'BAD_REQUEST', 'cluster and token are required');
-    if (!store.getCluster(cluster)) return fail(400, 'BAD_REQUEST', `unknown cluster "${cluster}"`);
-    return { ok: true, data: issue(`token@${cluster}`) };
-  }
-  // dex / openshift: username + password
+  // LDAP / OpenShift: username + password
   const username = str(body.username);
   const password = str(body.password);
   if (!username || !password) return fail(400, 'BAD_REQUEST', 'username and password are required');
@@ -80,6 +72,7 @@ export function login(body: Record<string, unknown>): AuthResult<TokenPair> {
 
 /** POST /auth/refresh: rotates the pair (old refresh token is consumed). */
 export function refresh(body: Record<string, unknown>): AuthResult<TokenPair> {
+  if (authMode !== 'openshift') return fail(501, 'NOT_SUPPORTED', 'refresh is only available in openshift auth mode');
   const rt = str(body.refreshToken);
   const info = tokens.get(rt);
   if (!info || info.kind !== 'refresh' || info.expiresAt <= Date.now()) {
