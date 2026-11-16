@@ -1,13 +1,13 @@
-import type { PrometheusRangeResponse } from '@/types/benchmark'
+import type { MetricQueryResponse, PrometheusMatrixSeries } from '@/types/metrics'
 
-export const BENCHMARK_RANGES = [
+export const METRIC_RANGES = [
   { id: '15m', label: '15m', seconds: 15 * 60, step: 15 },
   { id: '1h', label: '1h', seconds: 60 * 60, step: 30 },
   { id: '6h', label: '6h', seconds: 6 * 60 * 60, step: 60 },
   { id: '24h', label: '24h', seconds: 24 * 60 * 60, step: 120 },
 ] as const
 
-export type BenchmarkRange = (typeof BENCHMARK_RANGES)[number]
+export type MetricRange = (typeof METRIC_RANGES)[number]
 
 export interface NamedSeries {
   legend: string
@@ -19,7 +19,7 @@ export interface ChartPoint {
   [series: string]: number
 }
 
-export function rangeWindow(range: BenchmarkRange, now = Date.now()): { start: number; end: number } {
+export function rangeWindow(range: MetricRange, now = Date.now()): { start: number; end: number } {
   const end = Math.floor(now / 1000)
   return { start: end - range.seconds, end }
 }
@@ -76,16 +76,20 @@ function seriesLegend(
   return extra ? `${legend} (${extra})` : `${legend} ${index + 1}`
 }
 
-export function seriesFromMatrix(legend: string, body: PrometheusRangeResponse): NamedSeries[] {
-  const result = body.data?.result ?? []
-  return result.flatMap((series, index) => {
-    const samples = (series.values ?? []).flatMap(([time, raw]) => {
-      const value = Number(raw)
-      if (!Number.isFinite(time) || !Number.isFinite(value)) return []
-      return [{ time, value }]
+/** Flattens a range-query response into chart lines, one or more per legend. */
+export function seriesFromResponse(body: MetricQueryResponse): NamedSeries[] {
+  return (body.series ?? []).flatMap((entry) => {
+    if (entry.resultType !== 'matrix' || !Array.isArray(entry.result)) return []
+    const result = entry.result as PrometheusMatrixSeries[]
+    return result.flatMap((series, index) => {
+      const samples = (series.values ?? []).flatMap(([time, raw]) => {
+        const value = Number(raw)
+        if (!Number.isFinite(time) || !Number.isFinite(value)) return []
+        return [{ time, value }]
+      })
+      if (samples.length === 0) return []
+      return [{ legend: seriesLegend(entry.legend, series.metric, index, result.length), samples }]
     })
-    if (samples.length === 0) return []
-    return [{ legend: seriesLegend(legend, series.metric, index, result.length), samples }]
   })
 }
 

@@ -1,22 +1,20 @@
 import React, { useEffect, useState } from 'react'
 import { CircleNotchIcon } from '@phosphor-icons/react'
-import { useQueries } from '@tanstack/react-query'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { isBenchmarkUnavailable } from '@/api/benchmarks'
+import { isMetricsUnavailable } from '@/api/metrics'
 import { SectionSheet } from '@/components/layout/DetailParts'
 import { Button } from '@/components/ui/button'
-import { benchmarkRangeQuery, useBenchmarkDashboards } from '@/hooks/useBenchmarks'
-import { useAuthStore } from '@/store/auth'
-import type { Dashboard } from '@/types/benchmark'
+import { useCappMetricRange, useCappMetrics } from '@/hooks/useCappMetrics'
+import type { MetricInfo } from '@/types/metrics'
 import {
-  BENCHMARK_RANGES,
-  type BenchmarkRange,
+  METRIC_RANGES,
+  type MetricRange,
   formatAxisTick,
   formatChartTime,
   formatMetricValue,
   pointsForChart,
-  seriesFromMatrix,
-} from '@/utils/benchmarkSeries'
+  seriesFromResponse,
+} from '@/utils/metricSeries'
 
 const SERIES_TOKENS = ['--primary', '--warning', '--success', '--danger'] as const
 
@@ -44,34 +42,29 @@ function useChartTheme() {
   return theme
 }
 
-const DashboardChart: React.FC<{
+const MetricChart: React.FC<{
   namespace: string
   name: string
-  dashboard: Dashboard
-  range: BenchmarkRange
-}> = ({ namespace, name, dashboard, range }) => {
-  const cluster = useAuthStore((s) => s.cluster)
+  metric: MetricInfo
+  range: MetricRange
+}> = ({ namespace, name, metric, range }) => {
   const theme = useChartTheme()
-  const queries = dashboard.queries ?? []
-  const results = useQueries({
-    queries: queries.map((query) => benchmarkRangeQuery(cluster, namespace, name, query.query, range)),
-  })
+  const result = useCappMetricRange(namespace, name, metric.name, range)
+  const unit = metric.unit ?? ''
 
-  const series = results.flatMap((result, index) => (
-    result.data ? seriesFromMatrix(queries[index]?.legend ?? `series ${index + 1}`, result.data) : []
-  ))
+  const series = result.data ? seriesFromResponse(result.data) : []
   const points = pointsForChart(series)
   const legends = series.map((line) => line.legend)
-  const pending = results.some((result) => result.isPending)
-  const error = results.find((result) => result.isError)?.error
+  const pending = result.isPending
+  const error = result.error
 
   return (
     <div className="rounded-lg border border-border-subtle p-4">
       <div className="mb-1 flex items-baseline justify-between gap-3">
-        <h3 className="font-display text-base font-medium text-text">{dashboard.title}</h3>
-        <span className="text-xs text-text-muted">{dashboard.unit}</span>
+        <h3 className="font-display text-base font-medium text-text first-letter:uppercase">{metric.name}</h3>
+        {unit && <span className="text-xs text-text-muted">{unit}</span>}
       </div>
-      <p className="mb-3 text-xs text-text-muted">{dashboard.description}</p>
+      {metric.description && <p className="mb-3 text-xs text-text-muted">{metric.description}</p>}
 
       {pending && points.length === 0 && (
         <div className="flex h-[220px] items-center justify-center gap-2 text-sm text-text-muted">
@@ -87,7 +80,7 @@ const DashboardChart: React.FC<{
       )}
 
       {points.length > 0 && (
-        <div className="h-[260px] w-full min-w-0" role="img" aria-label={`${dashboard.title} chart`}>
+        <div className="h-[260px] w-full min-w-0" role="img" aria-label={`${metric.name} chart`}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={points} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
               <CartesianGrid stroke={theme.grid} vertical={false} />
@@ -102,12 +95,12 @@ const DashboardChart: React.FC<{
                 minTickGap={32}
               />
               <YAxis
-                tickFormatter={(value) => formatAxisTick(Number(value), dashboard.unit)}
+                tickFormatter={(value) => formatAxisTick(Number(value), unit)}
                 tick={{ fill: theme.tick, fontSize: 11 }}
                 stroke={theme.axis}
                 width={64}
                 domain={[0, 'auto']}
-                allowDecimals={dashboard.unit !== 'pods'}
+                allowDecimals={unit !== 'pods'}
               />
               <Tooltip
                 contentStyle={{
@@ -120,7 +113,7 @@ const DashboardChart: React.FC<{
                 labelStyle={{ color: theme.tick }}
                 itemStyle={{ color: theme.text }}
                 labelFormatter={(label) => formatChartTime(Number(label), range.seconds)}
-                formatter={(value) => formatMetricValue(Number(value), dashboard.unit)}
+                formatter={(value) => formatMetricValue(Number(value), unit)}
               />
               <Legend wrapperStyle={{ fontSize: 12, color: theme.tick }} />
               {legends.map((legend, index) => (
@@ -147,20 +140,22 @@ const DashboardChart: React.FC<{
   )
 }
 
-export const BenchmarkDashboards: React.FC<{ namespace: string; name: string }> = ({ namespace, name }) => {
-  const dashboards = useBenchmarkDashboards(namespace, name)
-  const [rangeId, setRangeId] = useState<BenchmarkRange['id']>('1h')
-  const range = BENCHMARK_RANGES.find((item) => item.id === rangeId) ?? BENCHMARK_RANGES[1]
+export const CappMetrics: React.FC<{ namespace: string; name: string }> = ({ namespace, name }) => {
+  const metrics = useCappMetrics(namespace, name)
+  const [rangeId, setRangeId] = useState<MetricRange['id']>('1h')
+  const range = METRIC_RANGES.find((item) => item.id === rangeId) ?? METRIC_RANGES[1]
 
-  if (dashboards.isPending) return null
-  if (isBenchmarkUnavailable(dashboards.error)) return null
+  if (metrics.isPending) return null
+  if (isMetricsUnavailable(metrics.error)) return null
+
+  const items = metrics.data?.items ?? []
 
   return (
-    <SectionSheet title="Performance">
+    <SectionSheet title="Metrics">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-text-secondary">Knative serving metrics for this Capp.</p>
+        <p className="text-sm text-text-secondary">Metrics for this Capp.</p>
         <div className="flex gap-1" role="group" aria-label="Time range">
-          {BENCHMARK_RANGES.map((item) => (
+          {METRIC_RANGES.map((item) => (
             <Button
               key={item.id}
               type="button"
@@ -174,22 +169,22 @@ export const BenchmarkDashboards: React.FC<{ namespace: string; name: string }> 
         </div>
       </div>
 
-      {dashboards.isError && (
-        <p className="text-sm text-danger">{dashboards.error.message}</p>
+      {metrics.isError && (
+        <p className="text-sm text-danger">{metrics.error.message}</p>
       )}
 
-      {dashboards.data && dashboards.data.dashboards.length === 0 && (
-        <p className="text-sm text-text-secondary">No charts are configured for this Capp.</p>
+      {metrics.data && items.length === 0 && (
+        <p className="text-sm text-text-secondary">No metrics are configured for this Capp.</p>
       )}
 
-      {dashboards.data && dashboards.data.dashboards.length > 0 && (
+      {items.length > 0 && (
         <div className="flex flex-col gap-4">
-          {dashboards.data.dashboards.map((dashboard) => (
-            <DashboardChart
-              key={dashboard.id}
+          {items.map((metric) => (
+            <MetricChart
+              key={metric.name}
               namespace={namespace}
               name={name}
-              dashboard={dashboard}
+              metric={metric}
               range={range}
             />
           ))}

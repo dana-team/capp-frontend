@@ -14,7 +14,7 @@ import type {
   UpdateNamespaceRequest,
 } from '../src/api/namespaces';
 import { store, ConflictError, NotFoundError } from './store';
-import { benchmarkDashboards, benchmarkStatus, queryBenchmarkRange, triggerBenchmark } from './benchmarks';
+import { listMetrics, queryMetric } from './metrics';
 import { strategyError } from './rollouts';
 import { seedStore } from './seed';
 import * as auth from './auth';
@@ -470,37 +470,19 @@ route('POST', `${REV}/:revision/rollback`, ({ res, params }) => {
   r.ok ? send(res, 200, r.data) : error(res, 404, 'NOT_FOUND', r.message);
 });
 
-// ── Benchmarks ───────────────────────────────────────────────────────────────
+// ── Metrics ──────────────────────────────────────────────────────────────────
 
-function headerValue(req: IncomingMessage, name: string): string {
-  const value = req.headers[name];
-  return (Array.isArray(value) ? value[0] : value) ?? '';
-}
-
-route('GET', `${CAPP}/:name/benchmark`, ({ res, params }) => {
+route('GET', `${CAPP}/:name/metrics`, ({ res, params }) => {
   if (!store.getCapp(params.cluster, params.namespace, params.name)) return cappNotFound(res, params.name);
-  send(res, 200, benchmarkStatus(params.cluster, params.namespace, params.name));
+  send(res, 200, { items: listMetrics() });
 });
 
-route('POST', `${CAPP}/:name/benchmark`, ({ req, res, params, body }) => {
+route('GET', `${CAPP}/:name/metrics/:metric`, ({ res, params, query }) => {
   if (!store.getCapp(params.cluster, params.namespace, params.name)) return cappNotFound(res, params.name);
-  const outcome = headerValue(req, 'x-mock-benchmark-outcome') === 'failed' ? 'failed' : 'completed';
-  const result = triggerBenchmark(params.cluster, params.namespace, params.name, body.type, outcome);
-  if (result.ok) return send(res, 201, result.body);
-  if (result.status === 409) return error(res, 409, 'CONFLICT', result.message);
+  const result = queryMetric(params.metric, query);
+  if (result.ok) return send(res, 200, result.body);
+  if (result.status === 404) return error(res, 404, 'NOT_FOUND', result.message);
   badRequest(res, result.message);
-});
-
-route('GET', `${CAPP}/:name/metrics/dashboards`, ({ res, params }) => {
-  if (!store.getCapp(params.cluster, params.namespace, params.name)) return cappNotFound(res, params.name);
-  send(res, 200, { dashboards: benchmarkDashboards(params.namespace, params.name) });
-});
-
-route('GET', `${CAPP}/:name/metrics/query_range`, ({ res, params, query }) => {
-  if (!store.getCapp(params.cluster, params.namespace, params.name)) return cappNotFound(res, params.name);
-  const result = queryBenchmarkRange(query);
-  if (!result.ok) return badRequest(res, result.message);
-  send(res, 200, result.body);
 });
 
 // ── Server ───────────────────────────────────────────────────────────────────

@@ -15,8 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ConditionsTable } from './ConditionsTable'
-import { BenchmarkDashboards } from './benchmark/BenchmarkDashboards'
-import { BenchmarkPanel } from './benchmark/BenchmarkPanel'
+import { CappMetrics } from './metrics/CappMetrics'
 import { RolloutStrip } from './rollout/RolloutStrip'
 import { RolloutStrategySection } from './rollout/RolloutStrategySection'
 import { BoundResourcesSection } from './BoundResourcesSection'
@@ -223,8 +222,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
         </StatTile>
       </StatBand>
 
-      <BenchmarkPanel namespace={namespace} name={capp.name} />
-      <BenchmarkDashboards namespace={namespace} name={capp.name} />
+      <CappMetrics namespace={namespace} name={capp.name} />
 
       {/* Container */}
       <SectionSheet title="Container">
