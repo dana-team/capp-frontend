@@ -1,6 +1,6 @@
 import yaml from 'js-yaml';
 import { CappRequest, CappResponse, LegacyCapp, LegacyCappSpec, ScaleMetric, CappState, CappSize, ResourceSpec, ResourceQuantities, RolloutStrategy, ROLLOUT_ON_BOUND_CHANGE_ANNOTATION } from '@/types/capp';
-import { CappFormValues, EventSourceFormEntry } from '@/components/capps/CappForm';
+import { CappFormValues } from '@/components/capps/CappForm';
 import { shortDuration } from '@/utils/rollout';
 
 /** Undefined when no stages are set, which keeps any strategy the Capp already has. */
@@ -128,31 +128,6 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
     }));
   }
 
-  if (values.eventSources && values.eventSources.length > 0) {
-    req.eventSourcesSpec = {
-      sources: values.eventSources.map((s: EventSourceFormEntry) => ({
-        name: s.name,
-        ...(s.uri ? { uri: s.uri } : {}),
-        ...(s.sourceType === 'ping'
-          ? {
-              pingSourceConfiguration: {
-                schedule: s.pingSchedule,
-                ...(s.pingData ? { data: s.pingData } : {}),
-              },
-            }
-          : {
-              kafkaSourceConfiguration: {
-                bootstrapServers: s.kafkaBootstrapServers.split(',').map((x) => x.trim()).filter(Boolean),
-                topics: s.kafkaTopics.split(',').map((x) => x.trim()).filter(Boolean),
-                secretRef: s.kafkaSecretRef,
-                ...(s.kafkaConsumerGroup ? { consumerGroup: s.kafkaConsumerGroup } : {}),
-                ...(s.kafkaConsumers !== undefined ? { consumers: s.kafkaConsumers } : {}),
-              },
-            }),
-      })),
-    };
-  }
-
   return req;
 }
 
@@ -252,35 +227,6 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
         .filter((v) => !ownedNames.has(v.name))
         .map((v) => ({ volumeName: v.name, mountPath: v.mountPath }));
     })(),
-    eventSources: (capp.eventSourcesSpec?.sources ?? []).map((s): EventSourceFormEntry => {
-      if (s.pingSourceConfiguration) {
-        return {
-          name: s.name,
-          uri: s.uri ?? '',
-          sourceType: 'ping',
-          pingSchedule: s.pingSourceConfiguration.schedule,
-          pingData: s.pingSourceConfiguration.data ?? '',
-          kafkaBootstrapServers: '',
-          kafkaTopics: '',
-          kafkaConsumerGroup: '',
-          kafkaConsumers: undefined,
-          kafkaSecretRef: '',
-        };
-      }
-      const k = s.kafkaSourceConfiguration;
-      return {
-        name: s.name,
-        uri: s.uri ?? '',
-        sourceType: 'kafka',
-        pingSchedule: '',
-        pingData: '',
-        kafkaBootstrapServers: k?.bootstrapServers.join(', ') ?? '',
-        kafkaTopics: k?.topics.join(', ') ?? '',
-        kafkaConsumerGroup: k?.consumerGroup ?? '',
-        kafkaConsumers: k?.consumers,
-        kafkaSecretRef: k?.secretRef ?? '',
-      };
-    }),
   };
 }
 
@@ -469,6 +415,5 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
       volumeName: v.name,
       mountPath: v.mountPath,
     })),
-    eventSources: [],
   };
 }

@@ -7,7 +7,6 @@ import { PencilSimpleIcon,
   GitBranchIcon,
   CheckCircleIcon,
   ArrowsLeftRightIcon,
-  LightningIcon,
   KeyIcon,
   ClockCounterClockwiseIcon,
   ArrowsClockwiseIcon } from '@phosphor-icons/react'
@@ -26,7 +25,7 @@ import { cn } from '@/lib/utils'
 import { StatBand } from '@/components/layout/StatBand'
 import { StatTile, toneDot } from '@/components/layout/StatTile'
 import { DetailHeader, SectionSheet, DataTable, rowCls } from '@/components/layout/DetailParts'
-import { cappHealth, HEALTH_LABEL, HEALTH_TEXT, HEALTH_TONE, statusVariant } from '@/utils/cappHealth'
+import { cappHealth, HEALTH_LABEL, HEALTH_TEXT, HEALTH_TONE } from '@/utils/cappHealth'
 
 interface CappDetailProps {
   capp: CappResponse
@@ -296,27 +295,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
 
       {/* Status Conditions */}
       <SectionSheet title="Status conditions" aside={capp.status?.conditions?.length ? `${capp.status.conditions.length}` : undefined}>
-        <div className="flex flex-col gap-5">
-          <ConditionsTable capp={capp} />
-          {capp.status?.eventingStatus?.eventSources && capp.status.eventingStatus.eventSources.length > 0 && (
-            <div>
-              <p className="mb-2 text-xs font-medium text-text-muted">Event Source Status</p>
-              <DataTable head={['Name', 'Status', 'Reason']}>
-                {capp.status.eventingStatus.eventSources.map((src, i) => (
-                  <tr key={i} className={rowCls}>
-                    <td className="px-3 py-2 font-mono text-sm text-text">{src.name}</td>
-                    <td className="px-3 py-2">
-                      <Badge variant={statusVariant(src.status)}>
-                        {src.status}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2 text-sm text-text-secondary">{src.reason ?? '—'}</td>
-                  </tr>
-                ))}
-              </DataTable>
-            </div>
-          )}
-        </div>
+        <ConditionsTable capp={capp} />
       </SectionSheet>
 
       <RolloutStrategySection capp={capp} />
@@ -351,43 +330,6 @@ export const CappDetail: React.FC<CappDetailProps> = ({
                 </p>
               </div>
             ))}
-          </div>
-        </SectionSheet>
-      )}
-
-      {/* Event Sources */}
-      {capp.eventSourcesSpec?.sources && capp.eventSourcesSpec.sources.length > 0 && (
-        <SectionSheet
-          title={<><LightningIcon size={16} className="text-text-muted" /> Event Sources</>}
-          aside={`${capp.eventSourcesSpec.sources.length}`}
-        >
-          <div className="flex flex-col gap-2">
-            {capp.eventSourcesSpec.sources.map((src) => {
-              const isPing = Boolean(src.pingSourceConfiguration);
-              return (
-                <div key={src.name} className="flex flex-col gap-1 rounded-lg border border-border-subtle p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-text">{src.name}</span>
-                    <Badge variant="info">{isPing ? 'Ping' : 'Kafka'}</Badge>
-                  </div>
-                  {src.uri && (
-                    <p className="break-all font-mono text-xs text-text-muted">URI: {src.uri}</p>
-                  )}
-                  {isPing && src.pingSourceConfiguration && (
-                    <p className="font-mono text-xs text-text-muted">
-                      Schedule: {src.pingSourceConfiguration.schedule}
-                      {src.pingSourceConfiguration.data && ` · data: ${src.pingSourceConfiguration.data}`}
-                    </p>
-                  )}
-                  {!isPing && src.kafkaSourceConfiguration && (
-                    <p className="break-all font-mono text-xs text-text-muted">
-                      Brokers: {src.kafkaSourceConfiguration.bootstrapServers.join(', ')}
-                      {' · '}Topics: {src.kafkaSourceConfiguration.topics.join(', ')}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
           </div>
         </SectionSheet>
       )}
