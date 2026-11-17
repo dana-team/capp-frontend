@@ -21,6 +21,9 @@ import { cn } from '@/lib/utils'
 
 /** Route patterns that render as dashboard pages (no default Sheet wrapper). */
 export const DASHBOARD_ROUTES: string[] = [
+  ...['/functions', '/pools'].flatMap((base) => [
+    base, `${base}/new`, `${base}/:namespace/:name`, `${base}/:namespace/:name/edit`,
+  ]),
   '/capps',
   '/secrets',
   '/configmaps',
@@ -42,7 +45,9 @@ export function isDashboardRoute(pathname: string): boolean {
 
 /** Where along the scroll painting a route sits (0..1). */
 export function stationForPath(pathname: string): number {
-  const base = pathname.startsWith('/secrets') ? 0.45
+  const base = pathname.startsWith('/functions') ? 0.2
+    : pathname.startsWith('/pools') ? 0.3
+    : pathname.startsWith('/secrets') ? 0.45
     : pathname.startsWith('/configmaps') ? 0.9
     : 0
   const segments = pathname.split('/').filter(Boolean)

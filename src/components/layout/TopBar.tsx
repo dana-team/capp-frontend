@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import {
   SignOutIcon, ShippingContainerIcon,
   BookOpenTextIcon, KeyIcon,
-  GearSixIcon, DotsThreeIcon,
+  GearSixIcon, DotsThreeIcon, LightningIcon,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import { useNamespaces } from '@/hooks/useNamespaces'
 import { useClusters } from '@/hooks/useClusters'
+import { useCfuncFeatures } from '@/hooks/useCfunc'
+import { BetaTag } from '@/components/cfunc/BetaTag'
 import { useNamespaceContext } from '@/context/NamespaceContext'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -19,8 +21,12 @@ import { NamespaceQuotaBar } from './NamespaceQuotaBar'
 import { CreateNamespaceDialog } from '@/components/namespace/CreateNamespaceDialog'
 import { NamespaceSettingsDialog } from '@/components/namespace/NamespaceSettingsDialog'
 
-const navItems = [
+/** The one Functions tab also holds the Pools pages. It shows only when the backend serves cfunc. */
+const CFUNC_PATHS = ['/functions', '/pools']
+
+const navItems: { to: string; label: string; Icon: typeof KeyIcon; cfunc?: boolean }[] = [
   { to: '/capps',      label: 'Capps',      Icon: ShippingContainerIcon },
+  { to: '/functions',  label: 'Functions',  Icon: LightningIcon, cfunc: true },
   { to: '/secrets',    label: 'Secrets',    Icon: KeyIcon },
   { to: '/configmaps', label: 'ConfigMaps', Icon: BookOpenTextIcon },
 ]
@@ -110,6 +116,10 @@ export const TopBar: React.FC = () => {
 
   const { data: namespaces } = useNamespaces()
   const { data: clusters } = useClusters()
+  const features = useCfuncFeatures()
+  const { pathname } = useLocation()
+  const onCfuncPage = CFUNC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  const visibleNavItems = navItems.filter((item) => !item.cfunc || features.pools)
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
@@ -227,17 +237,19 @@ export const TopBar: React.FC = () => {
 
       {/* Nav */}
       <nav className="flex items-center gap-0.5" aria-label="Primary">
-        {navItems.map(({ to, label, Icon }) => (
+        {visibleNavItems.map(({ to, label, Icon, cfunc }) => (
           <NavLink
             key={to}
-            to={to}
+            to={cfunc && !features.functions ? '/pools' : to}
             aria-label={label}
             className={({ isActive }) => cn(
               'group relative flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[13px] transition-colors duration-150',
-              isActive ? 'font-medium text-text' : 'text-text-secondary hover:text-text'
+              isActive || (cfunc && onCfuncPage) ? 'font-medium text-text' : 'text-text-secondary hover:text-text'
             )}
           >
-            {({ isActive }) => (
+            {({ isActive: linkActive }) => {
+              const isActive = linkActive || Boolean(cfunc && onCfuncPage)
+              return (
               <>
                 {isActive && <BrushMarker />}
                 <Icon
@@ -249,8 +261,10 @@ export const TopBar: React.FC = () => {
                   )}
                 />
                 <span className={cn(!wide && 'hidden md:inline')}>{label}</span>
+                {cfunc && <BetaTag className={cn(!wide && 'hidden md:inline-flex')} />}
               </>
-            )}
+              )
+            }}
           </NavLink>
         ))}
       </nav>

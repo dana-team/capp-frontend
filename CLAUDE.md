@@ -44,7 +44,10 @@ This is a **Kubernetes UI management console** for "Capps" — custom resources 
 /capps/new                      → CreateCappPage
 /capps/:namespace/:name         → CappDetailPage
 /capps/:namespace/:name/edit    → EditCappPage
+/functions[/new|/:namespace/:name[/edit]]  → cfunc Functions (list, create, detail, edit)
+/pools[/new|/:namespace/:name[/edit]]      → cfunc Pools, shown under the Functions tab
 ```
+cfunc has one top-bar tab, Functions. `CfuncHeader` (`src/components/cfunc/`) gives its two list pages the same title, both create buttons and the Functions | Pools switch. The tab shows only when the backend serves cfunc: `useCfuncFeatures` (`src/hooks/useCfunc.ts`) probes `/api/v1/cfunc/flavors` (a 404 hides the tab) and the functions list (a 404 leaves only the Pools view). Their code is in `src/components/cfunc/`, `src/api/cfunc.ts` and `src/types/cfunc.ts`. The mock server (`mock-server/cfunc.ts`) serves both; `MOCK_CFUNC=off` or `MOCK_CFUNC=pools` turns them off.
 All non-login routes are wrapped by `AppShell` (sidebar layout) and `NamespaceProvider`.
 
 ### Path Alias
