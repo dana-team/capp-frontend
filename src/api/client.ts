@@ -13,6 +13,10 @@ export class BackendApiError extends Error {
   }
 }
 
+export function isAccessDenied(error: unknown): boolean {
+  return error instanceof BackendApiError && error.status === 403;
+}
+
 interface BackendErrorBody {
   error?: {
     code?: string;

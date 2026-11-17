@@ -12,7 +12,7 @@ import { useClusters } from '@/hooks/useClusters';
 import { useNamespacesForCluster } from '@/hooks/useNamespaces';
 import { useMigrateCapp } from '@/hooks/useCapps';
 import { useAuthStore } from '@/store/auth';
-import { BackendApiError } from '@/api/client';
+import { BackendApiError, isAccessDenied } from '@/api/client';
 import { cn } from '@/lib/utils';
 import type { MigrateResponse } from '@/types/capp';
 
@@ -40,7 +40,8 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const { data: clusters } = useClusters();
-  const { data: namespaces, isLoading: namespacesLoading } = useNamespacesForCluster(targetCluster);
+  const { data: namespaces, isLoading: namespacesLoading, error: namespacesError } = useNamespacesForCluster(targetCluster);
+  const namespacesDenied = isAccessDenied(namespacesError);
 
   const healthyClusters = clusters?.filter((c) => c.healthy) ?? [];
 
@@ -107,6 +108,7 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
   const canSubmit =
     targetCluster !== '' &&
     targetNamespace !== '' &&
+    !namespacesDenied &&
     (!hostnameRequired || targetHostname !== '') &&
     !hostnameError;
   const isPartialFailure = result !== null && submittedDeleteSource && !result.sourceDeleted;
@@ -187,15 +189,19 @@ export const MigrateDialog: React.FC<MigrateDialogProps> = ({
                   ? 'Select a cluster first'
                   : namespacesLoading
                     ? 'Loading namespaces…'
-                    : filteredNamespaces.length === 0
-                      ? 'No accessible namespaces found'
-                      : 'Select a namespace'
+                    : namespacesError
+                      ? 'Unable to load namespaces'
+                      : filteredNamespaces.length === 0
+                        ? 'No accessible namespaces found'
+                        : 'Select a namespace'
               }
               options={filteredNamespaces.map((ns) => ({ value: ns.name, label: ns.name }))}
               value={targetNamespace}
               onChange={setTargetNamespace}
-              disabled={!targetCluster || namespacesLoading || filteredNamespaces.length === 0}
+              disabled={!targetCluster || namespacesLoading || namespacesDenied || filteredNamespaces.length === 0}
             />
+
+            {namespacesError && <p role="alert" className="text-sm text-danger">{namespacesError.message}</p>}
 
             {sourceHostname && (
               <Input

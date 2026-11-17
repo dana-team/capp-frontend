@@ -1,8 +1,22 @@
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
+import { isAccessDenied } from '@/api/client';
 
 export const DEFAULT_REFETCH_MS = 8_000;
 /** A Capp mid-rollout changes quickly, so its page polls faster. */
 export const ROLLOUT_REFETCH_MS = 5_000;
+
+export function createReadQueryPolicy(
+  isUnavailable: (error: unknown) => boolean = isAccessDenied,
+  interval = DEFAULT_REFETCH_MS,
+) {
+  const canRefetch = (query: { state: { error: Error | null } }) => !isUnavailable(query.state.error);
+  return {
+    retry: (failureCount: number, error: Error) => !isUnavailable(error) && failureCount < 1,
+    refetchInterval: (query: { state: { error: Error | null } }) => canRefetch(query) ? interval : false,
+    refetchOnWindowFocus: canRefetch,
+    refetchOnReconnect: canRefetch,
+  };
+}
 
 /**
  * Turns off the automatic refetching set in the QueryClient defaults. For one-off

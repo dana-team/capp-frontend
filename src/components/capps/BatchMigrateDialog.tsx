@@ -15,7 +15,7 @@ import { useClusters } from '@/hooks/useClusters';
 import { useNamespacesForCluster } from '@/hooks/useNamespaces';
 import { useAuthStore } from '@/store/auth';
 import { migrateCapp } from '@/api/capps';
-import { BackendApiError } from '@/api/client';
+import { BackendApiError, isAccessDenied } from '@/api/client';
 import { getBackendUrl } from '@/lib/config';
 import { cn } from '@/lib/utils';
 import type { CappResponse } from '@/types/capp';
@@ -70,7 +70,8 @@ export const BatchMigrateDialog: React.FC<BatchMigrateDialogProps> = ({
   const [hostnameMap, setHostnameMap] = useState<Record<string, string>>({});
 
   const { data: clusters } = useClusters();
-  const { data: namespaces, isLoading: namespacesLoading } = useNamespacesForCluster(targetCluster);
+  const { data: namespaces, isLoading: namespacesLoading, error: namespacesError } = useNamespacesForCluster(targetCluster);
+  const namespacesDenied = isAccessDenied(namespacesError);
 
   const healthyClusters = clusters?.filter((c) => c.healthy) ?? [];
 
@@ -100,6 +101,7 @@ export const BatchMigrateDialog: React.FC<BatchMigrateDialogProps> = ({
   const canSubmit =
     targetCluster !== '' &&
     targetNamespace !== '' &&
+    !namespacesDenied &&
     hostnameReady &&
     !isSubmitting;
 
@@ -282,15 +284,19 @@ export const BatchMigrateDialog: React.FC<BatchMigrateDialogProps> = ({
                   ? 'Select a cluster first'
                   : namespacesLoading
                     ? 'Loading namespaces…'
-                    : filteredNamespaces.length === 0
-                      ? 'No accessible namespaces found'
-                      : 'Select a namespace'
+                    : namespacesError
+                      ? 'Unable to load namespaces'
+                      : filteredNamespaces.length === 0
+                        ? 'No accessible namespaces found'
+                        : 'Select a namespace'
               }
               options={filteredNamespaces.map((ns) => ({ value: ns.name, label: ns.name }))}
               value={targetNamespace}
               onChange={setTargetNamespace}
-              disabled={!targetCluster || namespacesLoading || filteredNamespaces.length === 0}
+              disabled={!targetCluster || namespacesLoading || namespacesDenied || filteredNamespaces.length === 0}
             />
+
+            {namespacesError && <p role="alert" className="text-sm text-danger">{namespacesError.message}</p>}
 
             {cappsWithHostname.length > 0 && (
               <div className="flex flex-col gap-3">

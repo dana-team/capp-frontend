@@ -22,6 +22,7 @@ import { DEFAULT_REFETCH_MS, NO_AUTO_REFETCH, ROLLOUT_REFETCH_MS, refreshQueries
 import { rolloutIsActive } from "@/utils/rollout";
 import { useNamespaceContext } from "@/context/NamespaceContext";
 import { boundCappsPrefix } from "@/hooks/useBoundCapps";
+import { isAccessDenied } from "@/api/client";
 
 export function useCapps(namespace?: string) {
   const cluster = useAuthStore((s) => s.cluster);
@@ -44,8 +45,10 @@ export function useCapp(
     queryKey: ["capp", getBackendUrl(), cluster, namespace, name],
     queryFn: () => getCapp(cluster, namespace, name),
     enabled: Boolean(cluster && namespace && name),
-    refetchInterval: (query) =>
-      query.state.data && rolloutIsActive(query.state.data) ? ROLLOUT_REFETCH_MS : DEFAULT_REFETCH_MS,
+    refetchInterval: (query) => {
+      if (isAccessDenied(query.state.error)) return false;
+      return query.state.data && rolloutIsActive(query.state.data) ? ROLLOUT_REFETCH_MS : DEFAULT_REFETCH_MS;
+    },
     ...options,
   });
 }
