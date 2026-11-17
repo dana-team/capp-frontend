@@ -1,6 +1,7 @@
 /**
  * Mock capp-backend HTTP server (node:http, no framework).
- * Env: PORT (8080), MOCK_SEED, MOCK_AUTH_MODE, MOCK_TOKEN_TTL, MOCK_LATENCY_MS, MOCK_NAMESPACE_SCOPED.
+ * Env: PORT (8080), MOCK_SEED, MOCK_AUTH_MODE, MOCK_TOKEN_TTL, MOCK_LATENCY_MS, MOCK_NAMESPACE_SCOPED,
+ * MOCK_CFUNC (see cfunc.ts).
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
@@ -18,6 +19,7 @@ import { listMetrics, queryMetric } from './metrics';
 import { strategyError } from './rollouts';
 import { seedStore } from './seed';
 import * as auth from './auth';
+import { registerCfuncRoutes, seedCfunc } from './cfunc';
 
 const PORT = Number(process.env.PORT) || 8080;
 const LATENCY_MS = Number(process.env.MOCK_LATENCY_MS) || 0;
@@ -111,7 +113,7 @@ function accessibleNamespaces(cluster: string): Set<string> | undefined {
 }
 
 /** Cluster-wide lists of namespaced resources need cluster-scoped RBAC. */
-const CLUSTER_WIDE_LIST = /^\/api\/v1\/clusters\/[^/]+\/(capps|configmaps|secrets)\/?$/;
+const CLUSTER_WIDE_LIST = /^\/api\/v1\/clusters\/[^/]+\/(capps|configmaps|secrets|cfunc\/pools|cfunc\/functions)\/?$/;
 
 /** Returns true (after replying 403) when a namespace-scoped user oversteps, like Kubernetes RBAC would. */
 function rbacGuard(res: ServerResponse, method: string, path: string, params: Record<string, string>): boolean {
@@ -360,6 +362,15 @@ route('DELETE', `${SEC}/:name`, ({ res, params }) => {
     : notFound(res, `secret "${params.name}"`);
 });
 
+// ── cfunc ────────────────────────────────────────────────────────────────────
+
+registerCfuncRoutes({
+  route,
+  send,
+  error,
+  hasNamespace: (cluster, namespace) => Boolean(store.getNamespace(cluster, namespace)),
+});
+
 // ── Capps ────────────────────────────────────────────────────────────────────
 
 const CAPP = `${NS}/:namespace/capps`;
@@ -545,6 +556,9 @@ const server = createServer((req, res) => {
 });
 
 const seed = seedStore(store);
+for (const c of store.listClusters()) {
+  seedCfunc(c.name, (store.listNamespaces(c.name)?.items ?? []).map((ns) => ns.name));
+}
 server.listen(PORT, () => {
   console.log(`[mock] capp-backend mock listening on http://localhost:${PORT}`);
   console.log(`[mock] seed=${seed} (MOCK_SEED=${seed} to reproduce)  auth=${auth.authMode}  latency=${LATENCY_MS}ms`);

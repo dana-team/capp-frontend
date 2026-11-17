@@ -6,13 +6,15 @@ interface PageHeaderProps {
   description?: React.ReactNode
   /** Shown beside the title, e.g. a resource count. */
   count?: number
+  /** Shown after the count, e.g. a beta tag. */
+  badge?: React.ReactNode
   actions?: React.ReactNode
   className?: string
 }
 
 /** Page title block for dashboard pages that sit directly on the painting. */
 export const PageHeader: React.FC<PageHeaderProps> = ({
-  title, description, count, actions, className,
+  title, description, count, badge, actions, className,
 }) => (
   <header className={cn('flex flex-wrap items-end justify-between gap-x-6 gap-y-3', className)}>
     <div className="min-w-0 [text-shadow:0_0_12px_hsl(var(--background)),0_0_2px_hsl(var(--background))]">
@@ -21,6 +23,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         {count != null && (
           <span className="font-sans text-sm font-medium tabular-nums text-text-muted">{count}</span>
         )}
+        {badge && <span className="self-center [text-shadow:none]">{badge}</span>}
       </h1>
       {description && <p className="mt-1.5 text-sm text-text-secondary">{description}</p>}
     </div>

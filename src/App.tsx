@@ -25,6 +25,14 @@ import { SecretListPage } from '@/pages/SecretListPage';
 import { SecretDetailPage } from '@/pages/SecretDetailPage';
 import { CreateSecretPage } from '@/pages/CreateSecretPage';
 import { EditSecretPage } from '@/pages/EditSecretPage';
+import { FunctionListPage } from '@/pages/FunctionListPage';
+import { FunctionDetailPage } from '@/pages/FunctionDetailPage';
+import { CreateFunctionPage } from '@/pages/CreateFunctionPage';
+import { EditFunctionPage } from '@/pages/EditFunctionPage';
+import { PoolListPage } from '@/pages/PoolListPage';
+import { PoolDetailPage } from '@/pages/PoolDetailPage';
+import { CreatePoolPage } from '@/pages/CreatePoolPage';
+import { EditPoolPage } from '@/pages/EditPoolPage';
 
 const ProtectedLayout: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
@@ -64,6 +72,14 @@ const App: React.FC = () => {
           <Route path="/capps/:namespace/:name" element={<CappDetailPage />} />
           <Route path="/capps/:namespace/:name/edit" element={<EditCappPage />} />
           <Route path="/capps/:namespace/:name/revisions" element={<CappRevisionsPage />} />
+          <Route path="/functions" element={<FunctionListPage />} />
+          <Route path="/functions/new" element={<CreateFunctionPage />} />
+          <Route path="/functions/:namespace/:name" element={<FunctionDetailPage />} />
+          <Route path="/functions/:namespace/:name/edit" element={<EditFunctionPage />} />
+          <Route path="/pools" element={<PoolListPage />} />
+          <Route path="/pools/new" element={<CreatePoolPage />} />
+          <Route path="/pools/:namespace/:name" element={<PoolDetailPage />} />
+          <Route path="/pools/:namespace/:name/edit" element={<EditPoolPage />} />
           <Route path="/configmaps" element={<ConfigMapListPage />} />
           <Route path="/configmaps/new" element={<CreateConfigMapPage />} />
           <Route path="/configmaps/:namespace/:name" element={<ConfigMapDetailPage />} />
