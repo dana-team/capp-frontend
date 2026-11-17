@@ -76,7 +76,7 @@ export const BoundResourcesSection: React.FC<{ capp: CappResponse }> = ({ capp }
                       title={
                         ref.inPods
                           ? 'Rollout on change is off for this Capp.'
-                          : 'Used for log shipping or a Kafka source, which a rollout would not refresh.'
+                          : 'Used for log shipping, which a rollout would not refresh.'
                       }
                     >
                       No rollout

@@ -8,7 +8,7 @@ export interface BoundRef {
   via: string[];
   /**
    * Used by the Capp's pods. Only these references roll the Capp out on change:
-   * the operator reads log and Kafka Secrets itself, so a rollout would not refresh them.
+   * the operator reads log Secrets itself, so a rollout would not refresh them.
    */
   inPods: boolean;
 }
@@ -36,9 +36,6 @@ export function cappBoundResources(capp: BareCappResponse): BoundRef[] {
   capp.configMapVolumes?.forEach((v) => add('configmap', v.configMapName, 'volume', true));
   capp.imagePullSecrets?.forEach((s) => add('secret', s, 'image pull', true));
   add('secret', capp.logSpec?.passwordSecret, 'log', false);
-  capp.eventSourcesSpec?.sources?.forEach((s) =>
-    add('secret', s.kafkaSourceConfiguration?.secretRef, 'Kafka source', false),
-  );
 
   return [...refs.values()].sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
 }
