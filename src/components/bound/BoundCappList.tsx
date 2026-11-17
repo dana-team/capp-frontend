@@ -7,7 +7,7 @@ import { BoundCappsResponse, BoundResourceKind } from '@/types/bound'
 const NO_ROLLOUT_HINT: Record<BoundResourceKind, string> = {
   configmap: 'This Capp has rollout on bound resource change turned off.',
   secret:
-    'This Capp has rollout on bound resource change turned off, or uses the Secret only for log shipping or a Kafka source, which a rollout would not refresh.',
+    'This Capp has rollout on bound resource change turned off, or uses the Secret only for log shipping, which a rollout would not refresh.',
 }
 
 /** Bound Capps first by whether they roll out, then by name. */

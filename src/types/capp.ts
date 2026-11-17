@@ -130,44 +130,6 @@ export interface ScaleSpec {
   scaleDelaySeconds?: number;
 }
 
-// ── Event sources ──────────────────────────────────────────────────────────
-
-export interface PingSourceConfig {
-  schedule: string;
-  data?: string;
-}
-
-export interface KafkaSourceConfig {
-  bootstrapServers: string[];
-  topics: string[];
-  consumerGroup?: string;
-  consumers?: number;
-  secretRef: string;
-}
-
-export interface SourceConfig {
-  name: string;
-  uri?: string;
-  pingSourceConfiguration?: PingSourceConfig;
-  kafkaSourceConfiguration?: KafkaSourceConfig;
-}
-
-export interface EventSourcesSpec {
-  sources?: SourceConfig[];
-}
-
-export interface EventSourceStatusResponse {
-  name: string;
-  type: string;
-  status: string;
-  reason?: string;
-  message?: string;
-}
-
-export interface EventingStatusResponse {
-  eventSources?: EventSourceStatusResponse[];
-}
-
 // ── Request body for create / update ──────────────────────────────────────
 
 export interface CappRequest {
@@ -188,7 +150,6 @@ export interface CappRequest {
   configMapVolumes?: ConfigMapVolume[];
   /** Names of kubernetes.io/dockerconfigjson Secrets used to pull the image. */
   imagePullSecrets?: string[];
-  eventSourcesSpec?: EventSourcesSpec;
   /** Roll out when a Secret or ConfigMap the Capp uses is updated. Omitting it on update turns it off. */
   reloadOnBoundResourceChange?: boolean;
 }
@@ -217,7 +178,6 @@ export interface StateStatusResponse {
 
 export interface CappStatusResponse {
   conditions: ConditionResponse[];
-  eventingStatus?: EventingStatusResponse;
   stateStatus: StateStatusResponse;
   /** Absent when the operator reports no rollout. */
   rollout?: RolloutStatusResponse;
@@ -246,7 +206,6 @@ export interface BareCappResponse {
   secretVolumes?: SecretVolume[];
   configMapVolumes?: ConfigMapVolume[];
   imagePullSecrets?: string[];
-  eventSourcesSpec?: EventSourcesSpec;
   reloadOnBoundResourceChange?: boolean;
 }
 

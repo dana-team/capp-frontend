@@ -11,13 +11,11 @@ import type {
   ClusterMeta,
   ConditionResponse,
   EnvVar,
-  EventingStatusResponse,
   LogSpec,
   NFSVolume,
   ResourceSpec,
   RouteSpec,
   ScaleSpec,
-  SourceConfig,
 } from '../src/types/capp';
 import type { ConfigMapResponse } from '../src/types/configmap';
 import type { SecretResponse } from '../src/types/secret';
@@ -112,13 +110,10 @@ function genConfigMap(ns: string, name: string, rv: string, now: number): Config
   };
 }
 
-/** 70% ready, 15% failed on a random capability, 15% rolling out. A failing source forces Eventing. */
-function genConditions(capp: CappResponse, now: number, eventingFailed: boolean): ConditionResponse[] {
+/** 70% ready, 15% failed on a random capability, 15% rolling out. */
+function genConditions(capp: CappResponse, now: number): ConditionResponse[] {
   const t = iso(now, faker.number.int({ min: 1, max: 60 * 48 }));
   const caps = requiredCapabilities(capp);
-  if (eventingFailed && caps.includes('Eventing')) {
-    return cappConditions(capp, t, failuresFor(capp, 'Eventing')[0]);
-  }
   const roll = faker.number.float();
   if (roll < 0.7 || caps.length === 0) return cappConditions(capp, t);
   if (roll < 0.85) {
@@ -263,48 +258,11 @@ function genCapp(
     capp.configMapVolumes = [{ name: `config-${m.name}`.slice(0, 50), configMapName: m.name, mountPath: `/etc/config/${m.name}` }];
   }
 
-  let eventingFailed = false;
-  if (faker.datatype.boolean({ probability: 0.3 })) {
-    const sources: SourceConfig[] = [];
-    const eventing: EventingStatusResponse = { eventSources: [] };
-    if (faker.datatype.boolean()) {
-      sources.push({
-        name: 'heartbeat',
-        pingSourceConfiguration: { schedule: faker.helpers.arrayElement(['*/5 * * * *', '0 * * * *', '0 3 * * *']), data: '{"ping":true}' },
-      });
-      eventing.eventSources!.push({ name: 'heartbeat', type: 'PingSource', status: 'True', reason: 'Ready' });
-    }
-    if (objs.secrets.length && faker.datatype.boolean()) {
-      const ok = faker.datatype.boolean({ probability: 0.7 });
-      eventingFailed = !ok;
-      sources.push({
-        name: 'orders',
-        kafkaSourceConfiguration: {
-          bootstrapServers: [`kafka.${cluster}.example.com:9092`],
-          topics: [`${ns}.${dns(faker.word.noun())}`],
-          consumerGroup: `${name}-group`,
-          consumers: faker.number.int({ min: 1, max: 3 }),
-          secretRef: faker.helpers.arrayElement(objs.secrets).name,
-        },
-      });
-      eventing.eventSources!.push({
-        name: 'orders',
-        type: 'KafkaSource',
-        status: ok ? 'True' : 'False',
-        ...(ok ? { reason: 'Ready' } : { reason: 'ConnectionFailed', message: 'could not reach bootstrap server' }),
-      });
-    }
-    if (sources.length) {
-      capp.eventSourcesSpec = { sources };
-      capp.status.eventingStatus = eventing;
-    }
-  }
-
   if (objs.pullSecrets.length && faker.datatype.boolean({ probability: 0.5 })) {
     capp.imagePullSecrets = [faker.helpers.arrayElement(objs.pullSecrets).name];
   }
 
-  capp.status.conditions = genConditions(capp, now, eventingFailed);
+  capp.status.conditions = genConditions(capp, now);
   return capp;
 }
 
