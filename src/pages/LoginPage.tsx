@@ -11,10 +11,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { fetchClusters } from '@/api/clusters'
 import { useLastLocationStore } from '@/store/lastLocation'
 import { getBackendUrl } from '@/lib/config'
+import { useQueryClient } from '@tanstack/react-query'
 
 type AuthMode = 'detecting' | 'error' | 'ldap' | 'openshift' | 'passthrough'
 
 export const LoginPage: React.FC = () => {
+  const queryClient = useQueryClient()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [token, setToken] = useState('')
@@ -46,6 +48,7 @@ export const LoginPage: React.FC = () => {
       clusters.find((c) => c.name === lastCluster && c.healthy)
       ?? clusters.find((c) => c.healthy)
       ?? clusters[0]
+    queryClient.clear()
     setCredentials(defaultCluster.name, accessToken, refreshToken)
     navigate('/capps')
   }

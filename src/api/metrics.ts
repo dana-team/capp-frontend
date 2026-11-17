@@ -1,13 +1,13 @@
-import { BackendApiError, backendClient, clusterBase } from '@/api/client'
+import { BackendApiError, backendClient, clusterBase, isAccessDenied } from '@/api/client'
 import type { MetricListResponse, MetricQueryResponse } from '@/types/metrics'
 
 function metricsPath(namespace: string, name: string): string {
   return `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/metrics`
 }
 
-/** The backend answers 501 when observability is disabled. */
+/** Metrics are unavailable when access is denied or observability is disabled. */
 export function isMetricsUnavailable(error: unknown): boolean {
-  return error instanceof BackendApiError && error.status === 501
+  return isAccessDenied(error) || (error instanceof BackendApiError && error.status === 501)
 }
 
 export function listCappMetrics(namespace: string, name: string): Promise<MetricListResponse> {

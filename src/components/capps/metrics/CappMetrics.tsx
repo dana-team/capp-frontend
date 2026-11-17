@@ -58,6 +58,8 @@ const MetricChart: React.FC<{
   const pending = result.isPending
   const error = result.error
 
+  if (isMetricsUnavailable(error)) return null
+
   return (
     <div className="rounded-lg border border-border-subtle p-4">
       <div className="mb-1 flex items-baseline justify-between gap-3">
