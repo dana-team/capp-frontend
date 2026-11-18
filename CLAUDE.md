@@ -28,6 +28,7 @@ This is a **Kubernetes UI management console** for "Capps" — custom resources 
 - **`src/api/capps.ts`** / **`src/api/namespaces.ts`** — CRUD wrappers over `k8sClient`
 - **`src/hooks/`** — TanStack React Query hooks (`useCapps`, `useNamespaces`) consumed by pages
 - Pages are thin; domain logic lives in hooks and utils
+- **Capp logs** (`src/api/logs.ts`, `src/hooks/useCappLogStream.ts`, `src/components/capps/CappLogs.tsx`) read the backend's Server-Sent Events stream with `fetch` (via `backendFetch`, so auth/refresh apply), not `EventSource`, which cannot send the Authorization header. The parser is `src/utils/sse.ts`. The stream opens on request, keeps the last 5000 lines, and reconnects without history after the backend's `end` event or a dropped connection. `npm run dev:mock` serves a fake stream (`mock-server/logs.ts`).
 
 ### State Layers
 | Layer | Tool | Scope |

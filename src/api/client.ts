@@ -76,18 +76,58 @@ async function doRefresh(): Promise<string> {
   return pair.accessToken
 }
 
+/** Waits for the token refresh in flight, or starts one. */
+function refreshedToken(): Promise<string> {
+  if (isRefreshing) {
+    return new Promise<string>((resolve, reject) => {
+      refreshQueue.push({ resolve, reject })
+    })
+  }
+  isRefreshing = true
+  return doRefresh()
+    .then((t) => {
+      refreshQueue.forEach((p) => p.resolve(t))
+      refreshQueue = []
+      return t
+    })
+    .catch((e: Error) => {
+      refreshQueue.forEach((p) => p.reject(e))
+      refreshQueue = []
+      throw e
+    })
+    .finally(() => {
+      isRefreshing = false
+    })
+}
+
+async function errorFrom(response: Response): Promise<BackendApiError> {
+  let message = `HTTP ${response.status}: ${response.statusText}`
+  let code: string | undefined
+  try {
+    const parsed = readError(await response.json(), message)
+    message = parsed.message
+    code = parsed.code
+  } catch {
+    // ignore JSON parse errors
+  }
+  return new BackendApiError(message, response.status, code)
+}
+
 /**
- * Sends a request to the capp-backend.
+ * Sends a request to the capp-backend and returns the response once it is
+ * known to be successful; a 401 refreshes the token and retries once, and
+ * any other failure throws a BackendApiError. The body is left unread, so
+ * a streamed response (the Capp log stream) can be read as it arrives.
  *
  * In dev mode Vite proxies /api paths to the backend (see vite.config.ts),
  * so the explicit backendUrl from config is only needed in production.
  * The Authorization header always carries the stored Bearer token so that
  * Kubernetes RBAC is enforced per-user in passthrough auth mode.
  */
-export async function backendClient<T>(
+export async function backendFetch(
   path: string,
   options: RequestInit = {}
-): Promise<T> {
+): Promise<Response> {
   const { token } = useAuthStore.getState();
   const backendUrl = getBackendUrl();
 
@@ -105,64 +145,29 @@ export async function backendClient<T>(
     ...((options.headers as Record<string, string>) ?? {}),
   };
 
-  const response = await fetch(url, { ...options, headers });
+  let response = await fetch(url, { ...options, headers });
 
   if (response.status === HTTP_STATUS_UNAUTHORIZED) {
-    const newToken = await (isRefreshing
-      ? new Promise<string>((resolve, reject) => {
-          refreshQueue.push({ resolve, reject })
-        })
-      : (() => {
-          isRefreshing = true
-          return doRefresh()
-            .then((t) => {
-              refreshQueue.forEach((p) => p.resolve(t))
-              refreshQueue = []
-              return t
-            })
-            .catch((e: Error) => {
-              refreshQueue.forEach((p) => p.reject(e))
-              refreshQueue = []
-              throw e
-            })
-            .finally(() => {
-              isRefreshing = false
-            })
-        })())
-
+    const newToken = await refreshedToken()
     // Retry the original request with the new token
-    const retryHeaders: Record<string, string> = { ...headers, Authorization: `Bearer ${newToken}` }
-    const retryResponse = await fetch(url, { ...options, headers: retryHeaders })
-    if (!retryResponse.ok) {
-      const retryData = await retryResponse.json().catch(() => ({}))
-      const parsed = readError(retryData, retryResponse.statusText || `HTTP ${retryResponse.status}`)
-      throw new BackendApiError(parsed.message, retryResponse.status, parsed.code ?? 'UNKNOWN')
-    }
-    if (retryResponse.status === 204) {
-      return undefined as unknown as T
-    }
-    return retryResponse.json() as Promise<T>
+    response = await fetch(url, { ...options, headers: { ...headers, Authorization: `Bearer ${newToken}` } })
   }
 
   if (!response.ok) {
-    let message = `HTTP ${response.status}: ${response.statusText}`;
-    let code: string | undefined;
-
-    try {
-      const parsed = readError(await response.json(), message);
-      message = parsed.message;
-      code = parsed.code;
-    } catch {
-      // ignore JSON parse errors
-    }
-
-    throw new BackendApiError(message, response.status, code);
+    throw await errorFrom(response)
   }
+  return response
+}
 
+/** Sends a request to the capp-backend and decodes the JSON answer (see backendFetch). */
+export async function backendClient<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const response = await backendFetch(path, options)
   if (response.status === 204) {
     return undefined as T;
   }
-
   return response.json() as Promise<T>;
 }
 
