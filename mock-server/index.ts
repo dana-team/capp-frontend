@@ -16,6 +16,7 @@ import type {
 } from '../src/api/namespaces';
 import { store, ConflictError, NotFoundError } from './store';
 import { listMetrics, queryMetric } from './metrics';
+import { streamLogs } from './logs';
 import { strategyError } from './rollouts';
 import { seedStore } from './seed';
 import * as auth from './auth';
@@ -494,6 +495,15 @@ route('GET', `${CAPP}/:name/metrics/:metric`, ({ res, params, query }) => {
   if (result.ok) return send(res, 200, result.body);
   if (result.status === 404) return error(res, 404, 'NOT_FOUND', result.message);
   badRequest(res, result.message);
+});
+
+// ── Logs ─────────────────────────────────────────────────────────────────────
+
+route('GET', `${CAPP}/:name/logs`, ({ req, res, params, query }) => {
+  if (!store.getCapp(params.cluster, params.namespace, params.name)) return cappNotFound(res, params.name);
+  if (!streamLogs(req, res, params.name, 'user-container', query, CORS)) {
+    badRequest(res, 'tailLines must be between 0 and 1000');
+  }
 });
 
 // ── Server ───────────────────────────────────────────────────────────────────
