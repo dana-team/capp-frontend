@@ -7,6 +7,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { CappRequest, MigrateRequest, RolloutActionRequest, RolloutStrategy } from '../src/types/capp';
+import { RESERVED_CONTAINER_PORTS } from '../src/types/capp';
 import type { ConfigMapRequest, ConfigMapUpdateRequest } from '../src/types/configmap';
 import type { SecretRequest, SecretUpdateRequest } from '../src/types/secret';
 import type {
@@ -202,6 +203,18 @@ function checkCapp(res: ServerResponse, req: Body, requireName: boolean): boolea
         return false;
       }
       seen.add(n);
+    }
+  }
+  // Mirrors capp-backend's validateContainerPort.
+  if (req.containerPort !== undefined) {
+    const port = req.containerPort;
+    if (typeof port !== 'number' || !Number.isInteger(port) || port < 1 || port > 65535) {
+      badRequest(res, `containerPort: ${String(port)} is out of range, must be between 1 and 65535`);
+      return false;
+    }
+    if (RESERVED_CONTAINER_PORTS.includes(port)) {
+      badRequest(res, `containerPort: ${port} is reserved by Knative`);
+      return false;
     }
   }
   const strategy = (req.routeSpec as { rolloutStrategy?: RolloutStrategy } | undefined)?.rolloutStrategy;
