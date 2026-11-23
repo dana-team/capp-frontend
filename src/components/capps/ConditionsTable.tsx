@@ -23,7 +23,6 @@ const CONDITION_INFO: Record<string, string> = {
   ServingReady: 'The app is deployed and its latest revision is running.',
   RouteReady: 'The custom hostname works: DNS record, TLS certificate (if enabled) and domain mapping.',
   VolumesReady: 'The NFS volumes are provisioned and ready to mount.',
-  EventingReady: 'The event sources (Ping, Kafka) are running and delivering events.',
   LoggingReady: 'Logs are shipped to the configured logging target.',
 };
 

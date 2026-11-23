@@ -20,7 +20,6 @@ import { RouteSection } from "./sections/RouteSection";
 import { RolloutSection } from "./sections/RolloutSection";
 import { LogSection } from "./sections/LogSection";
 import { VolumesSection } from "./sections/VolumesSection";
-import { EventSourcesSection } from "./sections/EventSourcesSection";
 import { buildCappResource, cappToYaml, rolloutFormValues } from "@/utils/cappBuilder";
 import { ScaleMetric, CappState, CappSize, RolloutStrategy, ROLLOUT_ON_BOUND_CHANGE_ANNOTATION, RESERVED_CONTAINER_PORTS } from "@/types/capp";
 import { DURATION_RE } from "@/utils/rollout";
@@ -64,21 +63,6 @@ export interface ConfigMapVolumeFormValue {
 }
 
 export type LogType = "elastic" | "elastic-datastream";
-
-export type EventSourceType = 'ping' | 'kafka';
-
-export interface EventSourceFormEntry {
-  name: string;
-  uri: string;
-  sourceType: EventSourceType;
-  pingSchedule: string;
-  pingData: string;
-  kafkaBootstrapServers: string;
-  kafkaTopics: string;
-  kafkaConsumerGroup: string;
-  kafkaConsumers?: number;
-  kafkaSecretRef: string;
-}
 
 export type SizingMode = 'preset' | 'custom';
 
@@ -124,7 +108,6 @@ export interface CappFormValues {
   secretVolumes: SecretVolumeFormValue[];
   configMapVolumes: ConfigMapVolumeFormValue[];
   volumeMounts: VolumeMountFormValue[];
-  eventSources: EventSourceFormEntry[];
 }
 
 const k8sNameRegex = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
@@ -232,33 +215,6 @@ const schema = z.object({
     volumeName: z.string().min(1, "Name is required"),
     mountPath: z.string().min(1, "Mount path is required"),
   })).default([]),
-  eventSources: z.array(z.object({
-    name: z.string().min(1, 'Name is required'),
-    uri: z.string(),
-    sourceType: z.enum(['ping', 'kafka']),
-    pingSchedule: z.string(),
-    pingData: z.string(),
-    kafkaBootstrapServers: z.string(),
-    kafkaTopics: z.string(),
-    kafkaConsumerGroup: z.string(),
-    kafkaConsumers: z.number().int().min(1).optional(),
-    kafkaSecretRef: z.string(),
-  }).superRefine((row, ctx) => {
-    if (row.sourceType === 'ping' && !row.pingSchedule) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Schedule is required', path: ['pingSchedule'] });
-    }
-    if (row.sourceType === 'kafka') {
-      if (!row.kafkaBootstrapServers) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Bootstrap servers required', path: ['kafkaBootstrapServers'] });
-      }
-      if (!row.kafkaTopics) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Topics required', path: ['kafkaTopics'] });
-      }
-      if (!row.kafkaSecretRef) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Secret ref required', path: ['kafkaSecretRef'] });
-      }
-    }
-  })).default([]),
 }).superRefine((values, ctx) => {
   if (values.sizingMode === 'custom') {
     if (!values.cpuRequest && !values.cpuLimit && !values.memoryRequest && !values.memoryLimit) {
@@ -335,7 +291,6 @@ const defaultValues: CappFormValues = {
   secretVolumes: [],
   configMapVolumes: [],
   volumeMounts: [],
-  eventSources: [],
 };
 
 interface CappFormProps {
@@ -363,7 +318,6 @@ const SECTION_FIELDS: Record<string, string[]> = {
   rollout: ["rolloutStages", "rolloutAutoRollback", "rolloutProgressDeadline"],
   log: ["logType", "logHost", "logTarget", "logUser", "logPasswordSecret", "logPasswordKey"],
   volumes: ["nfsVolumes", "secretVolumes", "configMapVolumes", "volumeMounts"],
-  eventSources: ["eventSources"],
 };
 const SECTION_LABELS: Array<[string, string]> = [
   ["name", "General"],
@@ -373,7 +327,6 @@ const SECTION_LABELS: Array<[string, string]> = [
   ["rollout", "Rollout"],
   ["log", "Logging"],
   ["volumes", "Volumes"],
-  ["eventSources", "Event Sources"],
 ];
 
 // ResourceQuota charges requests × pods. Without a max replica count the impact is unbounded.
@@ -634,7 +587,6 @@ export const CappForm: React.FC<CappFormProps> = ({
             cpuLimit: ((container.resources as Record<string, Record<string, string>> | undefined)?.limits?.cpu) ?? '',
             memoryRequest: ((container.resources as Record<string, Record<string, string>> | undefined)?.requests?.memory) ?? '',
             memoryLimit: ((container.resources as Record<string, Record<string, string>> | undefined)?.limits?.memory) ?? '',
-            eventSources: [],
           });
         }
         setYamlError("");
@@ -860,12 +812,6 @@ export const CappForm: React.FC<CappFormProps> = ({
                 />
                 <LogSection control={control} />
                 <VolumesSection
-                  control={control}
-                  watch={watch as (name: keyof CappFormValues) => unknown}
-                  setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
-                  namespace={namespace}
-                />
-                <EventSourcesSection
                   control={control}
                   watch={watch as (name: keyof CappFormValues) => unknown}
                   setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}

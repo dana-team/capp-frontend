@@ -124,7 +124,7 @@ function nonEmpty(...vals: Array<string | undefined>): string[] {
   return vals.filter((v): v is string => !!v);
 }
 
-/** Names of secrets / configmaps a capp refers to (env refs, volumes, log + kafka secrets, image pull secrets). */
+/** Names of secrets / configmaps a capp refers to (env refs, volumes, log secret, image pull secrets). */
 export function referencedObjects(capp: CappResponse): { secrets: string[]; configMaps: string[] } {
   const secrets = new Set<string>();
   const configMaps = new Set<string>();
@@ -136,9 +136,6 @@ export function referencedObjects(capp: CappResponse): { secrets: string[]; conf
   for (const v of capp.configMapVolumes ?? []) configMaps.add(v.configMapName);
   for (const n of capp.imagePullSecrets ?? []) secrets.add(n);
   nonEmpty(capp.logSpec?.passwordSecret).forEach((s) => secrets.add(s));
-  for (const s of capp.eventSourcesSpec?.sources ?? []) {
-    nonEmpty(s.kafkaSourceConfiguration?.secretRef).forEach((n) => secrets.add(n));
-  }
   return { secrets: [...secrets], configMaps: [...configMaps] };
 }
 

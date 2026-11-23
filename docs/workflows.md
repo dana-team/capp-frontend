@@ -48,7 +48,6 @@ The sidebar is always visible on the left side of the screen.
    - **Route** - Set a **Hostname** if your app needs to be reachable via a URL. Choose whether **TLS** is enabled or disabled, and optionally set a **Route Timeout** in seconds.
    - **Logging** - If your app needs log forwarding, select a **Log Type** (Elasticsearch or Elasticsearch Data Stream), then fill in the **Host**, **Index** (for classic Elasticsearch), **User**, and **Password Secret Name**.
    - **Volumes** - Click **Add NFS Volume** to attach network storage. For each volume, provide a **Name**, **NFS Server** address, **Path**, and **Capacity**.
-   - **Sources** - Click **Add Kafka Source** to connect event-driven scaling. For each source, provide a **Name**, **Bootstrap Servers**, and **Topics**.
 
 5. Alternatively, click the **YAML** tab at the top to paste a complete manifest.
 6. Click **Create Capp**.
@@ -73,7 +72,6 @@ The sidebar is always visible on the left side of the screen.
    - **Container** - The container image (with a copy button), environment variables, and volume mounts.
    - **Status Conditions** - Health checks reported by the system. Each condition shows a type (e.g. "Ready"), a status (**True**, **False**, or **Unknown**), a reason, and when it was last updated.
    - **NFS Volumes** - If configured, shows each volume's name, server, path, and capacity.
-   - **KEDA Sources** - If configured, shows event sources with their type and metadata.
 4. Use the **Edit** button to modify the Capp, or the **Delete** button to remove it.
 
 ![Capps list with demo-app](images/capp-list.png)

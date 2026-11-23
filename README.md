@@ -16,7 +16,6 @@ It provides a clean, dark-themed UI for signing in with a bearer token, OpenShif
   - HTTP/HTTPS route with custom hostname
   - NFS volume mounts
   - Elasticsearch log output
-  - Kafka / ActiveMQ event sources
 - **Namespace Selector** — Switch the active namespace from the navigation bar.
 
 ## Tech Stack
