@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ConditionsTable } from './ConditionsTable'
 import { CappMetrics } from './metrics/CappMetrics'
+import { CappLogs } from './CappLogs'
 import { RolloutStrip } from './rollout/RolloutStrip'
 import { RolloutStrategySection } from './rollout/RolloutStrategySection'
 import { BoundResourcesSection } from './BoundResourcesSection'
@@ -224,6 +225,8 @@ export const CappDetail: React.FC<CappDetailProps> = ({
       </StatBand>
 
       <CappMetrics namespace={namespace} name={capp.name} />
+
+      <CappLogs namespace={namespace} name={capp.name} />
 
       {/* Container */}
       <SectionSheet title="Container">
