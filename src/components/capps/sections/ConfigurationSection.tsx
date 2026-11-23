@@ -12,12 +12,14 @@ import { useSizes } from '@/hooks/useCapps';
 import type { SecretResponse } from '@/types/secret';
 import type { ConfigMapResponse } from '@/types/configmap';
 import { DOCKER_CONFIG_JSON_TYPE } from '@/utils/dockerConfig';
+import { DEFAULT_CONTAINER_PORT } from '@/types/capp';
 import { cn } from '@/lib/utils';
 
 interface ConfigurationSectionProps {
   control: Control<CappFormValues>;
   errors: FieldErrors<CappFormValues>;
   namespace: string;
+  isEdit?: boolean;
   watch: (name: keyof CappFormValues) => unknown;
   setValue: (name: keyof CappFormValues, value: unknown) => void;
 }
@@ -351,6 +353,7 @@ export const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({
   control,
   errors,
   namespace,
+  isEdit = false,
   watch,
   setValue,
 }) => {
@@ -392,19 +395,45 @@ export const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({
             />
           )}
         />
-        <Controller
-          name="containerName"
-          control={control}
-          render={({ field }) => (
-            <Input
-              label="Container Name"
-              className="font-mono"
-              placeholder="my-container"
-              hint="Optional. Defaults to the Capp name."
-              {...field}
-            />
-          )}
-        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Controller
+            name="containerName"
+            control={control}
+            render={({ field }) => (
+              <Input
+                label="Container Name"
+                className="font-mono"
+                placeholder="my-container"
+                hint="Optional. Defaults to the Capp name."
+                {...field}
+              />
+            )}
+          />
+          <Controller
+            name="containerPort"
+            control={control}
+            render={({ field }) => (
+              <Input
+                label="Container Port"
+                type="number"
+                min={1}
+                max={65535}
+                className="font-mono"
+                placeholder={String(DEFAULT_CONTAINER_PORT)}
+                error={errors.containerPort?.message}
+                // The backend keeps the current port when the field is omitted, so clearing it can't reset it.
+                hint={isEdit
+                  ? `The port your app listens on. Leave empty to keep the current port; enter ${DEFAULT_CONTAINER_PORT} for the default.`
+                  : `Optional. The port your app listens on. Defaults to ${DEFAULT_CONTAINER_PORT}.`}
+                value={field.value ?? ''}
+                onChange={(e) => { const n = Number(e.target.value); field.onChange(e.target.value === '' || isNaN(n) ? undefined : n); }}
+                onBlur={field.onBlur}
+                name={field.name}
+                ref={field.ref}
+              />
+            )}
+          />
+        </div>
 
         <ResourcesField control={control} cpuRequestError={errors.cpuRequest?.message} />
 

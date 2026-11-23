@@ -367,8 +367,11 @@ export class MockStore {
     const { customResources, name, namespace: _ns, ...rest } = req;
     const resources = customResources ?? (req.size ? SIZES[req.size] : undefined);
     const state = req.state ?? 'enabled';
+    // Like the backend, an omitted port keeps the current one.
+    const containerPort = req.containerPort ?? prev?.containerPort;
     const capp: CappResponse = {
       ...rest,
+      ...(containerPort !== undefined ? { containerPort } : {}),
       name,
       namespace: ns,
       scaleSpec: req.scaleSpec ?? {},

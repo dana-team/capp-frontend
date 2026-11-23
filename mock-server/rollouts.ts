@@ -225,7 +225,7 @@ function nextRevision(capp: CappResponse, status: RolloutStatusResponse): string
 
 /** What creates a new Knative revision. */
 const revisionFields = (c: CappResponse) =>
-  JSON.stringify([c.image, c.containerName, c.env, c.resources, c.volumeMounts, c.nfsVolumes, c.secretVolumes, c.configMapVolumes]);
+  JSON.stringify([c.image, c.containerName, c.containerPort, c.env, c.resources, c.volumeMounts, c.nfsVolumes, c.secretVolumes, c.configMapVolumes]);
 
 /** Status for a brand new capp with a strategy: its first revision is stable right away. */
 export function initialRollout(capp: CappResponse): void {

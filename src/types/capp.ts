@@ -177,6 +177,8 @@ export interface CappRequest {
   state?: CappState;
   image: string;
   containerName?: string;
+  /** Port the container listens on (Knative's default is 8080). Omitting it on update keeps the current port. */
+  containerPort?: number;
   size?: CappSize;
   customResources?: ResourceSpec;
   env?: EnvVar[];
@@ -192,6 +194,11 @@ export interface CappRequest {
   /** Roll out when a Secret or ConfigMap the Capp uses is updated. Omitting it on update turns it off. */
   reloadOnBoundResourceChange?: boolean;
 }
+
+/** Knative's default container port, used when containerPort is unset. */
+export const DEFAULT_CONTAINER_PORT = 8080;
+/** Queue-proxy and profiling ports Knative rejects on the user container; capp-backend answers 400. */
+export const RESERVED_CONTAINER_PORTS: readonly number[] = [8008, 8012, 8013, 8022, 9090, 9091];
 
 /** Capp annotation the backend stores reloadOnBoundResourceChange in. */
 export const ROLLOUT_ON_BOUND_CHANGE_ANNOTATION = 'rcs.dana.io/rollout-on-bound-resource-change';
@@ -236,6 +243,8 @@ export interface BareCappResponse {
   state?: CappState;
   image: string;
   containerName?: string;
+  /** Absent when never set, which means Knative's default 8080. */
+  containerPort?: number;
   size?: CappSize;
   resources?: ResourceSpec;
   env?: EnvVar[];
@@ -370,6 +379,7 @@ export interface LegacyCappSpec {
         containers: Array<{
           name?: string;
           image: string;
+          ports?: Array<{ containerPort: number; name?: string }>;
           env?: EnvVar[];
           volumeMounts?: VolumeMount[];
           resources?: ResourceSpec;

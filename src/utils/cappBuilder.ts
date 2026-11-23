@@ -49,6 +49,8 @@ export function buildCappRequest(namespace: string, values: CappFormValues): Cap
 
   if (values.state) req.state = values.state;
   if (values.containerName) req.containerName = values.containerName;
+  // Omitting it on update keeps the current port, so an empty field never resets it.
+  if (values.containerPort !== undefined) req.containerPort = values.containerPort;
   // Omitted when empty: the backend replaces the list on update, so this clears it.
   const pullSecrets = values.imagePullSecrets.filter(Boolean);
   if (pullSecrets.length > 0) req.imagePullSecrets = pullSecrets;
@@ -194,6 +196,7 @@ export function cappToFormValues(capp: CappResponse): CappFormValues {
     state: capp.state ?? 'enabled',
     image: capp.image,
     containerName: capp.containerName ?? '',
+    containerPort: capp.containerPort,
     imagePullSecrets: capp.imagePullSecrets ?? [],
     reloadOnBoundResourceChange: capp.reloadOnBoundResourceChange ?? false,
     sizingMode: hasPresetSize ? 'preset' : (capp.resources ? 'custom' : 'preset'),
@@ -302,6 +305,7 @@ export function buildCappResource(namespace: string, values: CappFormValues): Le
             {
               ...(values.containerName ? { name: values.containerName } : {}),
               image: values.image,
+              ...(values.containerPort !== undefined ? { ports: [{ containerPort: values.containerPort }] } : {}),
               ...(values.envVars.length > 0
                 ? { env: values.envVars.map((ev) => {
                   if (ev.source === 'secretKeyRef') {
@@ -418,6 +422,7 @@ export function yamlToCappFormValues(yamlStr: string): CappFormValues {
     state: capp.spec.state ?? 'enabled',
     image: container.image,
     containerName: container.name ?? '',
+    containerPort: container.ports?.[0]?.containerPort,
     imagePullSecrets: (capp.spec.configurationSpec.template.spec.imagePullSecrets ?? []).map((s) => s.name),
     reloadOnBoundResourceChange: capp.metadata.annotations?.[ROLLOUT_ON_BOUND_CHANGE_ANNOTATION] === 'true',
     sizingMode: capp.spec.size ? 'preset' : (container.resources ? 'custom' : 'preset'),

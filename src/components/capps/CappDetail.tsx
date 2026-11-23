@@ -9,6 +9,7 @@ import { PencilSimpleIcon,
   ArrowsLeftRightIcon,
   LightningIcon,
   KeyIcon,
+  PlugIcon,
   ClockCounterClockwiseIcon,
   ArrowsClockwiseIcon } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +20,7 @@ import { CappMetrics } from './metrics/CappMetrics'
 import { RolloutStrip } from './rollout/RolloutStrip'
 import { RolloutStrategySection } from './rollout/RolloutStrategySection'
 import { BoundResourcesSection } from './BoundResourcesSection'
-import { CappResponse, hasBackupLabel, SyncToGitResponse } from '@/types/capp'
+import { CappResponse, DEFAULT_CONTAINER_PORT, hasBackupLabel, SyncToGitResponse } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
 import { SizeBadge } from '@/components/ui/SizeBadge'
 import { cn } from '@/lib/utils'
@@ -233,6 +234,15 @@ export const CappDetail: React.FC<CappDetailProps> = ({
               <CubeIcon size={14} weight="duotone" className="shrink-0 text-text-muted" />
               <span className="min-w-0 break-all font-mono text-sm text-text">{capp.image}</span>
               <CopyButton text={capp.image ?? ''} />
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1 text-xs text-text-muted">Port</p>
+            <div className="flex items-center gap-1">
+              <PlugIcon size={14} weight="duotone" className="shrink-0 text-text-muted" />
+              <span className="font-mono text-sm text-text">{capp.containerPort ?? DEFAULT_CONTAINER_PORT}</span>
+              {capp.containerPort === undefined && <span className="text-xs text-text-muted">(default)</span>}
             </div>
           </div>
 

@@ -22,7 +22,7 @@ import { LogSection } from "./sections/LogSection";
 import { VolumesSection } from "./sections/VolumesSection";
 import { EventSourcesSection } from "./sections/EventSourcesSection";
 import { buildCappResource, cappToYaml, rolloutFormValues } from "@/utils/cappBuilder";
-import { ScaleMetric, CappState, CappSize, RolloutStrategy, ROLLOUT_ON_BOUND_CHANGE_ANNOTATION } from "@/types/capp";
+import { ScaleMetric, CappState, CappSize, RolloutStrategy, ROLLOUT_ON_BOUND_CHANGE_ANNOTATION, RESERVED_CONTAINER_PORTS } from "@/types/capp";
 import { DURATION_RE } from "@/utils/rollout";
 import { CappYamlEditor } from "./CappYamlEditor";
 import { useSizes } from "@/hooks/useCapps";
@@ -102,6 +102,8 @@ export interface CappFormValues {
   memoryLimit: string;
   image: string;
   containerName: string;
+  /** Unset means Knative's default (8080) on create, and keeps the current port on edit. */
+  containerPort?: number;
   imagePullSecrets: string[];
   /** Roll out when a Secret or ConfigMap this Capp uses is updated. */
   reloadOnBoundResourceChange: boolean;
@@ -150,6 +152,13 @@ const schema = z.object({
   memoryLimit: z.string().optional().default(''),
   image: z.string().min(1, "Container image is required"),
   containerName: z.string().optional(),
+  containerPort: z
+    .number()
+    .int("Port must be a whole number")
+    .min(1, "Port must be between 1 and 65535")
+    .max(65535, "Port must be between 1 and 65535")
+    .refine((p) => !RESERVED_CONTAINER_PORTS.includes(p), "This port is reserved by Knative")
+    .optional(),
   imagePullSecrets: z.array(z.string()).default([]),
   reloadOnBoundResourceChange: z.boolean().default(false),
   envVars: z.array(z.object({
@@ -306,6 +315,7 @@ const defaultValues: CappFormValues = {
   memoryLimit: '',
   image: "",
   containerName: "",
+  containerPort: undefined,
   imagePullSecrets: [],
   reloadOnBoundResourceChange: false,
   envVars: [],
@@ -347,7 +357,7 @@ export type Tab = "form" | "yaml";
 // Form sections shown in the section index, and the fields that belong to each.
 const SECTION_FIELDS: Record<string, string[]> = {
   name: ["name", "state", "reloadOnBoundResourceChange"],
-  configuration: ["image", "imagePullSecrets", "containerName", "sizingMode", "size", "cpuRequest", "cpuLimit", "memoryRequest", "memoryLimit", "envVars"],
+  configuration: ["image", "imagePullSecrets", "containerName", "containerPort", "sizingMode", "size", "cpuRequest", "cpuLimit", "memoryRequest", "memoryLimit", "envVars"],
   scale: ["scaleMetric", "minReplicas", "maxReplicas", "scaleDelaySeconds"],
   route: ["hostname", "tlsEnabled", "routeTimeoutSeconds"],
   rollout: ["rolloutStages", "rolloutAutoRollback", "rolloutProgressDeadline"],
@@ -548,6 +558,7 @@ export const CappForm: React.FC<CappFormProps> = ({
             state: (spec.state as CappState) ?? "enabled",
             image: (container.image as string) ?? "",
             containerName: (container.name as string) ?? "",
+            containerPort: (container.ports as Array<{ containerPort?: number }> | undefined)?.[0]?.containerPort,
             imagePullSecrets: (
               (podSpec?.imagePullSecrets as Array<{ name: string }>) ?? []
             ).map((s) => s.name),
@@ -831,6 +842,7 @@ export const CappForm: React.FC<CappFormProps> = ({
                   control={control}
                   errors={errors}
                   namespace={namespace}
+                  isEdit={isEdit}
                   watch={watch as (name: keyof CappFormValues) => unknown}
                   setValue={setValue as (name: keyof CappFormValues, value: unknown) => void}
                 />
