@@ -6,8 +6,6 @@ import {
   createCapp,
   updateCapp,
   deleteCapp,
-  syncCappToGit,
-  disableCappGitSync,
   fetchSizes,
   migrateCapp,
   listCappRevisions,
@@ -15,7 +13,7 @@ import {
   rolloutAction,
   removeRolloutStrategy,
 } from "@/api/capps";
-import { CappRequest, MigrateRequest, RolloutActionRequest, SyncToGitResponse } from "@/types/capp";
+import { CappRequest, MigrateRequest, RolloutActionRequest } from "@/types/capp";
 import { useAuthStore } from "@/store/auth";
 import { getBackendUrl } from "@/lib/config";
 import { DEFAULT_REFETCH_MS, NO_AUTO_REFETCH, ROLLOUT_REFETCH_MS, refreshQueries } from "@/lib/query";
@@ -88,32 +86,6 @@ export function useUpdateCapp() {
         boundCappsPrefix(cluster),
       ),
   });
-}
-
-function useGitSyncMutation(
-  mutate: (namespace: string, name: string) => Promise<SyncToGitResponse>,
-) {
-  const queryClient = useQueryClient();
-  const cluster = useAuthStore((s) => s.cluster);
-
-  return useMutation({
-    mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
-      mutate(namespace, name),
-    onSuccess: (_data, variables) =>
-      refreshQueries(
-        queryClient,
-        ["capps", getBackendUrl(), cluster],
-        ["capp", getBackendUrl(), cluster, variables.namespace, variables.name],
-      ),
-  });
-}
-
-export function useSyncCappToGit() {
-  return useGitSyncMutation(syncCappToGit);
-}
-
-export function useDisableCappGitSync() {
-  return useGitSyncMutation(disableCappGitSync);
 }
 
 export function useDeleteCapp() {

@@ -8,7 +8,7 @@ interface WarningBannerProps {
 
 /**
  * Renders warnings returned alongside a successful response. The operation the
- * user asked for did happen — only a side effect, such as the Git backup,
+ * user asked for did happen — only a side effect, such as the backup,
  * did not.
  */
 export const WarningBanner: React.FC<WarningBannerProps> = ({ warnings }) => {

@@ -4,13 +4,13 @@ import { PencilSimpleIcon,
   TrashIcon,
   CubeIcon,
   CircleNotchIcon,
-  GitBranchIcon,
-  CheckCircleIcon,
   ArrowsLeftRightIcon,
   KeyIcon,
   PlugIcon,
   ClockCounterClockwiseIcon,
   ArrowsClockwiseIcon } from '@phosphor-icons/react'
+import { BackupBadge } from '@/components/backup/BackupBadge'
+import { DriftPanel } from '@/components/backup/DriftPanel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/CopyButton'
@@ -20,7 +20,7 @@ import { CappLogs } from './CappLogs'
 import { RolloutStrip } from './rollout/RolloutStrip'
 import { RolloutStrategySection } from './rollout/RolloutStrategySection'
 import { BoundResourcesSection } from './BoundResourcesSection'
-import { CappResponse, DEFAULT_CONTAINER_PORT, hasBackupLabel, SyncToGitResponse } from '@/types/capp'
+import { CappResponse, DEFAULT_CONTAINER_PORT } from '@/types/capp'
 import { relativeTime, formatTimestamp } from '@/utils/time'
 import { SizeBadge } from '@/components/ui/SizeBadge'
 import { cn } from '@/lib/utils'
@@ -33,11 +33,6 @@ interface CappDetailProps {
   capp: CappResponse
   onDelete?: () => void
   isDeleting?: boolean
-  onSync?: () => void
-  onDisableSync?: () => void
-  isSyncing?: boolean
-  syncResult?: SyncToGitResponse | null
-  syncError?: string | null
   onMigrate?: () => void
 }
 
@@ -50,10 +45,9 @@ const TileValue: React.FC<{ main: React.ReactNode; sub?: React.ReactNode; classN
 )
 
 export const CappDetail: React.FC<CappDetailProps> = ({
-  capp, onDelete, isDeleting, onSync, onDisableSync, isSyncing, syncResult, syncError, onMigrate,
+  capp, onDelete, isDeleting, onMigrate,
 }) => {
   const namespace = capp.namespace
-  const isSynced = hasBackupLabel(capp.labels)
 
   const health = cappHealth(capp)
   const ready = capp.status?.conditions?.find((c) => c.type === 'Ready')
@@ -71,11 +65,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
         title={capp.name}
         badges={
           <>
-            {isSynced && (
-              <Badge variant="info" className="gap-1">
-                <GitBranchIcon size={12} /> Git sync on
-              </Badge>
-            )}
+            <BackupBadge drift={capp.drift} />
             {capp.reloadOnBoundResourceChange && (
               <Badge
                 variant="info"
@@ -101,20 +91,6 @@ export const CappDetail: React.FC<CappDetailProps> = ({
         }
         actions={
           <>
-            {onSync && !isSynced && (
-              <Button variant="secondary" size="sm" onClick={onSync} disabled={isSyncing}>
-                {isSyncing
-                  ? <CircleNotchIcon size={14} className="mr-1.5 animate-spin" />
-                  : <GitBranchIcon size={14} className="mr-1.5" />
-                }
-                Enable Git sync
-              </Button>
-            )}
-            {isSynced && onDisableSync && (
-              <Button variant="danger" size="sm" onClick={onDisableSync} disabled={isSyncing}>
-                Disable Git sync
-              </Button>
-            )}
             {onMigrate && (
               <Button variant="secondary" size="sm" onClick={onMigrate}>
                 <ArrowsLeftRightIcon size={14} className="mr-1.5" /> Migrate
@@ -143,20 +119,7 @@ export const CappDetail: React.FC<CappDetailProps> = ({
         }
       />
 
-      {/* Sync result banner. Deliberately says nothing about the values file
-          path or the commit — those are Git internals the user does not act on. */}
-      {syncResult && (
-        <div className="flex items-center gap-2 rounded-[10px] border border-success/40 bg-card px-4 py-3 text-sm text-success shadow-[0_18px_50px_-18px_hsl(var(--text)/0.35)]">
-          <CheckCircleIcon size={16} weight="fill" />
-          <span>Git sync is {syncResult.enabled ? 'on' : 'off'}.</span>
-        </div>
-      )}
-
-      {syncError && (
-        <div className="flex items-center gap-2 rounded-[10px] border border-danger/40 bg-card px-4 py-3 text-sm text-danger shadow-[0_18px_50px_-18px_hsl(var(--text)/0.35)]">
-          <span>Git sync failed: {syncError}</span>
-        </div>
-      )}
+      <DriftPanel kind="capps" namespace={namespace} name={capp.name} drift={capp.drift} />
 
       <RolloutStrip capp={capp} />
 

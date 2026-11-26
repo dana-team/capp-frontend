@@ -1,6 +1,8 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { PencilSimple, Trash, CircleNotch } from '@phosphor-icons/react'
+import { BackupBadge } from '@/components/backup/BackupBadge'
+import { DriftPanel } from '@/components/backup/DriftPanel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatBand } from '@/components/layout/StatBand'
@@ -23,6 +25,7 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ configMap, onD
     <div className="flex flex-col gap-4">
       <DetailHeader
         title={configMap.name}
+        badges={<BackupBadge drift={configMap.drift} />}
         meta={
           <>
             <Badge variant="namespace">{namespace}</Badge>
@@ -52,6 +55,8 @@ export const ConfigMapDetail: React.FC<ConfigMapDetailProps> = ({ configMap, onD
           </>
         }
       />
+
+      <DriftPanel kind="configmaps" namespace={namespace} name={configMap.name} drift={configMap.drift} />
 
       <StatBand className="lg:grid-cols-4">
         <StatTile index={0} label="Keys" value={entries.length} />

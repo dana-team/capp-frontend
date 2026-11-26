@@ -1,11 +1,12 @@
 /**
  * Mock capp-backend HTTP server (node:http, no framework).
  * Env: PORT (8080), MOCK_SEED, MOCK_AUTH_MODE, MOCK_TOKEN_TTL, MOCK_LATENCY_MS, MOCK_NAMESPACE_SCOPED,
- * MOCK_CFUNC (see cfunc.ts).
+ * MOCK_CFUNC (see cfunc.ts), MOCK_DESIRED_STATE (see desired.ts).
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { BoundResourceKind } from '../src/types/bound';
 import type { CappRequest, MigrateRequest, RolloutActionRequest, RolloutStrategy } from '../src/types/capp';
 import { RESERVED_CONTAINER_PORTS } from '../src/types/capp';
 import type { ConfigMapRequest, ConfigMapUpdateRequest } from '../src/types/configmap';
@@ -16,6 +17,7 @@ import type {
   UpdateNamespaceRequest,
 } from '../src/api/namespaces';
 import { store, ConflictError, NotFoundError } from './store';
+import { ApiError, desiredStateMode, namespaceRef, type Kind, type Ref, type Tracked } from './desired';
 import { listMetrics, queryMetric } from './metrics';
 import { streamLogs } from './logs';
 import { strategyError } from './rollouts';
@@ -60,11 +62,19 @@ function send(res: ServerResponse, status: number, body?: unknown): void {
   res.writeHead(status, { ...CORS, 'Content-Type': 'application/json' }).end(JSON.stringify(body));
 }
 
-function error(res: ServerResponse, status: number, code: string, message: string): void {
-  send(res, status, { error: { code, message, status } });
+function error(res: ServerResponse, status: number, code: string, message: string, details?: Record<string, unknown>): void {
+  send(res, status, { error: { code, message, status, ...(details ? { details } : {}) } });
 }
 
-const notFound = (res: ServerResponse, what: string) => error(res, 404, 'NOT_FOUND', `${what} not found`);
+/** Answers a write, with warnings when its desired state was not recorded. */
+function sendWritten(res: ServerResponse, status: number, body?: object): void {
+  const warnings = store.desired.takeWarnings();
+  if (!warnings.length) return send(res, status, body);
+  send(res, status === 204 ? 200 : status, { ...body, warnings });
+}
+
+const notFound = (res: ServerResponse, what: string, details?: Record<string, unknown>) =>
+  error(res, 404, 'NOT_FOUND', `${what} not found`, details);
 const badRequest = (res: ServerResponse, message: string) => error(res, 400, 'BAD_REQUEST', message);
 
 function readBody(req: IncomingMessage): Promise<Body> {
@@ -156,6 +166,7 @@ function guarded(res: ServerResponse, fn: () => void): void {
   } catch (e) {
     if (e instanceof ConflictError) error(res, 409, 'CONFLICT', e.message);
     else if (e instanceof NotFoundError) error(res, 404, 'NOT_FOUND', e.message);
+    else if (e instanceof ApiError) error(res, e.status, e.code, e.message, e.details);
     else throw e;
   }
 }
@@ -230,6 +241,23 @@ function checkCapp(res: ServerResponse, req: Body, requireName: boolean): boolea
 
 const listOf = <T>(items: T[]) => ({ items, total: items.length });
 
+/** A list with the drift of its items, and the recorded objects that no longer exist. */
+function driftListOf<K extends Exclude<Kind, 'Namespace'>>(kind: K, cluster: string, items: Tracked[K][], ns?: string) {
+  const missing = store.missing(cluster, kind, ns);
+  return {
+    ...listOf(items.map((o) => store.withDrift({ cluster, kind, namespace: o.namespace, name: o.name }, o))),
+    ...(missing.length ? { missing } : {}),
+  };
+}
+
+/** Details of a 404 for an object that is gone but still has a desired state. */
+function missingDetails(ref: Ref): Record<string, unknown> | undefined {
+  const drift = store.desired.inspect(ref, undefined);
+  return drift?.state === 'missing' ? { drift } : undefined;
+}
+
+const onDrift = (query: URLSearchParams) => query.get('onDrift') ?? undefined;
+
 // ── Public routes ────────────────────────────────────────────────────────────
 
 route('GET', '/healthz', ({ res }) => send(res, 200, { status: 'ok' }));
@@ -269,26 +297,29 @@ route('GET', NS, ({ res, params }) => {
   if (!r) return notFound(res, 'cluster');
   // Like the backend, list only the namespaces the user has access to.
   const allowed = accessibleNamespaces(params.cluster);
-  send(res, 200, allowed ? { items: r.items.filter((ns) => allowed.has(ns.name)), canCreate: false } : r);
+  if (allowed) return send(res, 200, { items: r.items.filter((ns) => allowed.has(ns.name)), canCreate: false });
+  const missing = store.missing(params.cluster, 'Namespace');
+  send(res, 200, { ...r, ...(missing.length ? { missing } : {}) });
 });
 route('POST', NS, ({ res, params, body }) => {
   if (!checkName(res, body.name, 'namespace')) return;
   guarded(res, () => {
     const ns = store.createNamespace(params.cluster, body as unknown as CreateNamespaceRequest);
-    ns ? send(res, 201, ns) : notFound(res, 'cluster');
+    ns ? sendWritten(res, 201, ns) : notFound(res, 'cluster');
   });
 });
 route('GET', `${NS}/:namespace`, ({ res, params }) => {
+  const ref = namespaceRef(params.cluster, params.namespace);
   const ns = store.getNamespace(params.cluster, params.namespace);
-  ns ? send(res, 200, ns) : notFound(res, `namespace "${params.namespace}"`);
+  ns ? send(res, 200, store.withDrift(ref, ns)) : notFound(res, `namespace "${params.namespace}"`, missingDetails(ref));
 });
-route('PUT', `${NS}/:namespace`, ({ res, params, body }) => {
-  const ns = store.updateNamespace(params.cluster, params.namespace, body as unknown as UpdateNamespaceRequest);
-  ns ? send(res, 200, ns) : notFound(res, `namespace "${params.namespace}"`);
+route('PUT', `${NS}/:namespace`, ({ res, params, query, body }) => {
+  const ns = store.updateNamespace(params.cluster, params.namespace, body as unknown as UpdateNamespaceRequest, onDrift(query));
+  ns ? sendWritten(res, 200, ns) : notFound(res, `namespace "${params.namespace}"`);
 });
-route('PATCH', `${NS}/:namespace`, ({ res, params, body }) => {
-  const ns = store.patchNamespace(params.cluster, params.namespace, body as unknown as PatchNamespaceRequest);
-  ns ? send(res, 200, ns) : notFound(res, `namespace "${params.namespace}"`);
+route('PATCH', `${NS}/:namespace`, ({ res, params, query, body }) => {
+  const ns = store.patchNamespace(params.cluster, params.namespace, body as unknown as PatchNamespaceRequest, onDrift(query));
+  ns ? sendWritten(res, 200, ns) : notFound(res, `namespace "${params.namespace}"`);
 });
 route('DELETE', `${NS}/:namespace`, ({ res, params }) => {
   const { cluster, namespace } = params;
@@ -297,8 +328,25 @@ route('DELETE', `${NS}/:namespace`, ({ res, params }) => {
     return error(res, 409, 'CONFLICT', `namespace "${namespace}" contains Capps and cannot be deleted`);
   }
   store.deleteNamespace(cluster, namespace);
-  send(res, 204);
+  sendWritten(res, 204);
 });
+
+/** Registers a kind's /bound route. Its functions stay empty: the mock's do not read files. */
+function boundRoute(pattern: string, kind: BoundResourceKind): void {
+  route('GET', `${pattern}/:name/bound`, ({ res, params }) => {
+    const { cluster, namespace, name } = params;
+    const exists = kind === 'secret' ? store.getSecret(cluster, namespace, name) : store.getConfigMap(cluster, namespace, name);
+    if (!exists) return notFound(res, `${kind} "${name}"`);
+    send(res, 200, { ...store.boundCapps(cluster, kind, namespace, name), boundFunctions: [] });
+  });
+}
+
+/** Returns true (after replying 409) when capps still use the resource. */
+function inUse(res: ServerResponse, kind: BoundResourceKind, { cluster, namespace, name }: Record<string, string>): boolean {
+  const { boundCapps } = store.boundCapps(cluster, kind, namespace, name);
+  if (boundCapps.length) error(res, 409, 'CONFLICT', `${kind} ${name} is still in use by Capps: ${boundCapps.join(', ')}`);
+  return boundCapps.length > 0;
+}
 
 // ── ConfigMaps ───────────────────────────────────────────────────────────────
 
@@ -306,11 +354,11 @@ const CM = `${NS}/:namespace/configmaps`;
 
 route('GET', '/api/v1/clusters/:cluster/configmaps', ({ res, params }) => {
   const r = store.listConfigMaps(params.cluster);
-  r ? send(res, 200, listOf(r)) : notFound(res, 'cluster');
+  r ? send(res, 200, driftListOf('ConfigMap', params.cluster, r)) : notFound(res, 'cluster');
 });
 route('GET', CM, ({ res, params }) => {
   const r = store.listConfigMaps(params.cluster, params.namespace);
-  r ? send(res, 200, listOf(r)) : notFound(res, `namespace "${params.namespace}"`);
+  r ? send(res, 200, driftListOf('ConfigMap', params.cluster, r, params.namespace)) : notFound(res, `namespace "${params.namespace}"`);
 });
 route('GET', `${CM}/names`, ({ res, params }) => {
   const r = store.listConfigMapNames(params.cluster, params.namespace);
@@ -320,23 +368,27 @@ route('POST', CM, ({ res, params, body }) => {
   if (!checkName(res, body.name, 'configmap') || !checkData(res, body.data)) return;
   guarded(res, () => {
     const r = store.createConfigMap(params.cluster, params.namespace, body as unknown as ConfigMapRequest);
-    r ? send(res, 201, r) : notFound(res, 'cluster');
+    r ? sendWritten(res, 201, r) : notFound(res, 'cluster');
   });
 });
 route('GET', `${CM}/:name`, ({ res, params }) => {
+  const ref: Ref<'ConfigMap'> = { cluster: params.cluster, kind: 'ConfigMap', namespace: params.namespace, name: params.name };
   const r = store.getConfigMap(params.cluster, params.namespace, params.name);
-  r ? send(res, 200, r) : notFound(res, `configmap "${params.name}"`);
+  r ? send(res, 200, store.withDrift(ref, r)) : notFound(res, `configmap "${params.name}"`, missingDetails(ref));
 });
-route('PUT', `${CM}/:name`, ({ res, params, body }) => {
+route('PUT', `${CM}/:name`, ({ res, params, query, body }) => {
   if (!checkData(res, body.data)) return;
-  const r = store.updateConfigMap(params.cluster, params.namespace, params.name, body as unknown as ConfigMapUpdateRequest);
-  r ? send(res, 200, r) : notFound(res, `configmap "${params.name}"`);
+  const r = store.updateConfigMap(params.cluster, params.namespace, params.name, body as unknown as ConfigMapUpdateRequest, onDrift(query));
+  r ? sendWritten(res, 200, r) : notFound(res, `configmap "${params.name}"`);
 });
 route('DELETE', `${CM}/:name`, ({ res, params }) => {
+  if (inUse(res, 'configmap', params)) return;
   store.deleteConfigMap(params.cluster, params.namespace, params.name)
-    ? send(res, 204)
+    ? sendWritten(res, 204)
     : notFound(res, `configmap "${params.name}"`);
 });
+
+boundRoute(CM, 'configmap');
 
 // ── Secrets ──────────────────────────────────────────────────────────────────
 
@@ -344,11 +396,11 @@ const SEC = `${NS}/:namespace/secrets`;
 
 route('GET', '/api/v1/clusters/:cluster/secrets', ({ res, params }) => {
   const r = store.listSecrets(params.cluster);
-  r ? send(res, 200, listOf(r)) : notFound(res, 'cluster');
+  r ? send(res, 200, driftListOf('Secret', params.cluster, r)) : notFound(res, 'cluster');
 });
 route('GET', SEC, ({ res, params }) => {
   const r = store.listSecrets(params.cluster, params.namespace);
-  r ? send(res, 200, listOf(r)) : notFound(res, `namespace "${params.namespace}"`);
+  r ? send(res, 200, driftListOf('Secret', params.cluster, r, params.namespace)) : notFound(res, `namespace "${params.namespace}"`);
 });
 route('GET', `${SEC}/names`, ({ res, params }) => {
   const r = store.listSecretNames(params.cluster, params.namespace);
@@ -358,23 +410,27 @@ route('POST', SEC, ({ res, params, body }) => {
   if (!checkName(res, body.name, 'secret') || !checkData(res, body.data)) return;
   guarded(res, () => {
     const r = store.createSecret(params.cluster, params.namespace, body as unknown as SecretRequest);
-    r ? send(res, 201, r) : notFound(res, 'cluster');
+    r ? sendWritten(res, 201, r) : notFound(res, 'cluster');
   });
 });
 route('GET', `${SEC}/:name`, ({ res, params }) => {
+  const ref: Ref<'Secret'> = { cluster: params.cluster, kind: 'Secret', namespace: params.namespace, name: params.name };
   const r = store.getSecret(params.cluster, params.namespace, params.name);
-  r ? send(res, 200, r) : notFound(res, `secret "${params.name}"`);
+  r ? send(res, 200, store.withDrift(ref, r)) : notFound(res, `secret "${params.name}"`, missingDetails(ref));
 });
-route('PUT', `${SEC}/:name`, ({ res, params, body }) => {
+route('PUT', `${SEC}/:name`, ({ res, params, query, body }) => {
   if (!checkData(res, body.data)) return;
-  const r = store.updateSecret(params.cluster, params.namespace, params.name, body as unknown as SecretUpdateRequest);
-  r ? send(res, 200, r) : notFound(res, `secret "${params.name}"`);
+  const r = store.updateSecret(params.cluster, params.namespace, params.name, body as unknown as SecretUpdateRequest, onDrift(query));
+  r ? sendWritten(res, 200, r) : notFound(res, `secret "${params.name}"`);
 });
 route('DELETE', `${SEC}/:name`, ({ res, params }) => {
+  if (inUse(res, 'secret', params)) return;
   store.deleteSecret(params.cluster, params.namespace, params.name)
-    ? send(res, 204)
+    ? sendWritten(res, 204)
     : notFound(res, `secret "${params.name}"`);
 });
+
+boundRoute(SEC, 'secret');
 
 // ── cfunc ────────────────────────────────────────────────────────────────────
 
@@ -388,42 +444,36 @@ registerCfuncRoutes({
 // ── Capps ────────────────────────────────────────────────────────────────────
 
 const CAPP = `${NS}/:namespace/capps`;
-const cappNotFound = (res: ServerResponse, name: string) => error(res, 404, 'CAPP_NOT_FOUND', `capp "${name}" not found`);
+const cappNotFound = (res: ServerResponse, name: string, details?: Record<string, unknown>) =>
+  error(res, 404, 'CAPP_NOT_FOUND', `capp "${name}" not found`, details);
 
 route('GET', '/api/v1/clusters/:cluster/capps', ({ res, params }) => {
   const r = store.listCapps(params.cluster);
-  r ? send(res, 200, listOf(r)) : notFound(res, 'cluster');
+  r ? send(res, 200, driftListOf('Capp', params.cluster, r)) : notFound(res, 'cluster');
 });
 route('GET', CAPP, ({ res, params }) => {
   const r = store.listCapps(params.cluster, params.namespace);
-  r ? send(res, 200, listOf(r)) : notFound(res, `namespace "${params.namespace}"`);
+  r ? send(res, 200, driftListOf('Capp', params.cluster, r, params.namespace)) : notFound(res, `namespace "${params.namespace}"`);
 });
 route('POST', CAPP, ({ res, params, body }) => {
   if (!checkCapp(res, body, true)) return;
   guarded(res, () => {
     const r = store.createCapp(params.cluster, params.namespace, body as unknown as CappRequest);
-    r ? send(res, 201, r) : notFound(res, 'cluster');
+    r ? sendWritten(res, 201, r) : notFound(res, 'cluster');
   });
 });
 route('GET', `${CAPP}/:name`, ({ res, params }) => {
+  const ref: Ref<'Capp'> = { cluster: params.cluster, kind: 'Capp', namespace: params.namespace, name: params.name };
   const r = store.getCapp(params.cluster, params.namespace, params.name);
-  r ? send(res, 200, r) : cappNotFound(res, params.name);
+  r ? send(res, 200, store.withDrift(ref, r)) : cappNotFound(res, params.name, missingDetails(ref));
 });
-route('PUT', `${CAPP}/:name`, ({ res, params, body }) => {
+route('PUT', `${CAPP}/:name`, ({ res, params, query, body }) => {
   if (!checkCapp(res, body, false)) return;
-  const r = store.updateCapp(params.cluster, params.namespace, params.name, body as unknown as CappRequest);
-  r ? send(res, 200, r) : cappNotFound(res, params.name);
+  const r = store.updateCapp(params.cluster, params.namespace, params.name, body as unknown as CappRequest, onDrift(query));
+  r ? sendWritten(res, 200, r) : cappNotFound(res, params.name);
 });
 route('DELETE', `${CAPP}/:name`, ({ res, params }) => {
-  store.deleteCapp(params.cluster, params.namespace, params.name) ? send(res, 204) : cappNotFound(res, params.name);
-});
-route('POST', `${CAPP}/:name/sync`, ({ res, params }) => {
-  const r = store.setBackupLabel(params.cluster, params.namespace, params.name, true);
-  r ? send(res, 200, r) : cappNotFound(res, params.name);
-});
-route('DELETE', `${CAPP}/:name/sync`, ({ res, params }) => {
-  const r = store.setBackupLabel(params.cluster, params.namespace, params.name, false);
-  r ? send(res, 200, r) : cappNotFound(res, params.name);
+  store.deleteCapp(params.cluster, params.namespace, params.name) ? sendWritten(res, 204) : cappNotFound(res, params.name);
 });
 route('POST', `${CAPP}/:name/migrate`, ({ res, params, body }) => {
   const { targetCluster, targetNamespace } = body;
@@ -441,7 +491,7 @@ route('POST', `${CAPP}/:name/migrate`, ({ res, params, body }) => {
     ...(typeof body.targetHostname === 'string' && body.targetHostname ? { targetHostname: body.targetHostname } : {}),
   };
   const r = store.migrateCapp(params.cluster, params.namespace, params.name, req);
-  if (r.ok) return send(res, 200, r.data);
+  if (r.ok) return sendWritten(res, 200, r.data);
   if (r.error === 'bad_request') return badRequest(res, r.message);
   if (r.error === 'conflict') return error(res, 409, 'CONFLICT', r.message);
   error(res, 404, r.error === 'source_not_found' ? 'CAPP_NOT_FOUND' : r.error === 'target_cluster_not_found' ? 'CLUSTER_NOT_FOUND' : 'NOT_FOUND', r.message);
@@ -459,9 +509,9 @@ route('POST', `${CAPP}/:name/rollout`, ({ res, params, body }) => {
     r ? send(res, 202, r) : cappNotFound(res, params.name);
   });
 });
-route('DELETE', `${CAPP}/:name/rollout/strategy`, ({ res, params }) => {
-  const r = store.removeRolloutStrategy(params.cluster, params.namespace, params.name);
-  r ? send(res, 200, r) : cappNotFound(res, params.name);
+route('DELETE', `${CAPP}/:name/rollout/strategy`, ({ res, params, query }) => {
+  const r = store.removeRolloutStrategy(params.cluster, params.namespace, params.name, onDrift(query));
+  r ? sendWritten(res, 200, r) : cappNotFound(res, params.name);
 });
 
 // ── Capp revisions ───────────────────────────────────────────────────────────
@@ -492,7 +542,42 @@ route('POST', `${REV}/:revision/rollback`, ({ res, params }) => {
   const n = revisionNumber(res, params.revision);
   if (n === undefined) return;
   const r = store.rollbackCapp(params.cluster, params.namespace, params.name, n);
-  r.ok ? send(res, 200, r.data) : error(res, 404, 'NOT_FOUND', r.message);
+  r.ok ? sendWritten(res, 200, r.data) : error(res, 404, 'NOT_FOUND', r.message);
+});
+
+// ── Drift ────────────────────────────────────────────────────────────────────
+
+/** Registers a kind's revert and accept routes. `ref` may reply itself and return undefined. */
+function driftRoutes(pattern: string, ref: (ctx: Ctx, action: 'revert' | 'accept') => Ref | undefined): void {
+  for (const action of ['revert', 'accept'] as const) {
+    route('POST', `${pattern}/drift/${action}`, (ctx) => {
+      store.desired.require();
+      const { generation = 0, liveVersion } = ctx.body;
+      if (typeof generation !== 'number' || (liveVersion !== undefined && typeof liveVersion !== 'string')) {
+        return badRequest(ctx.res, 'invalid request body: generation must be a number and liveVersion a string');
+      }
+      const target = ref(ctx, action);
+      if (!target) return;
+      const seen = { generation, liveVersion };
+      send(ctx.res, 200, action === 'revert' ? store.revertDrift(target, seen) : store.acceptDrift(target, seen));
+    });
+  }
+}
+
+const objectRef = (kind: Kind) => ({ params }: Ctx): Ref => ({ cluster: params.cluster, kind, namespace: params.namespace, name: params.name });
+driftRoutes(`${CAPP}/:name`, objectRef('Capp'));
+driftRoutes(`${CM}/:name`, objectRef('ConfigMap'));
+driftRoutes(`${SEC}/:name`, objectRef('Secret'));
+driftRoutes(`${NS}/:namespace`, ({ res, params }, action) => {
+  // Reverting a namespace needs the permission of PUT; accepting one only needs a read.
+  if (action === 'revert' && accessibleNamespaces(params.cluster)) {
+    error(res, 403, 'FORBIDDEN', 'not allowed to update namespaces');
+    return undefined;
+  }
+  return namespaceRef(params.cluster, params.namespace);
+});
+route('POST', `${NS}/:namespace/drift/adopt`, ({ res, params }) => {
+  send(res, 200, store.adoptDrift(params.cluster, params.namespace));
 });
 
 // ── Metrics ──────────────────────────────────────────────────────────────────
@@ -560,7 +645,8 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
         return badRequest(res, (e as Error).message);
       }
     }
-    return r.handler({ req, res, params, query: url.searchParams, body });
+    store.desired.startRequest(auth.userOf(req));
+    return guarded(res, () => r.handler({ req, res, params, query: url.searchParams, body }));
   }
 
   console.warn(`[mock] no route for ${method} ${path}`);
@@ -584,7 +670,7 @@ for (const c of store.listClusters()) {
 }
 server.listen(PORT, () => {
   console.log(`[mock] capp-backend mock listening on http://localhost:${PORT}`);
-  console.log(`[mock] seed=${seed} (MOCK_SEED=${seed} to reproduce)  auth=${auth.authMode}  latency=${LATENCY_MS}ms`);
+  console.log(`[mock] seed=${seed} (MOCK_SEED=${seed} to reproduce)  auth=${auth.authMode}  latency=${LATENCY_MS}ms  desired-state=${desiredStateMode}`);
   for (const c of store.listClusters()) {
     const nss = store.listNamespaces(c.name)?.items.length ?? 0;
     const capps = store.listCapps(c.name)?.length ?? 0;

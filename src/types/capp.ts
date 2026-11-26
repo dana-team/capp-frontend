@@ -1,3 +1,4 @@
+import type { Drift, DriftMissing } from './drift';
 import type { K8sResource } from './kubernetes';
 
 // ── Backend DTO types (capp-backend REST API) ─────────────────────────────────
@@ -222,6 +223,8 @@ export interface CappResponse extends BareCappResponse {
   status: CappStatusResponse;
   /** Side effects that failed while the cluster write itself succeeded. */
   warnings?: Warning[];
+  /** Set on reads, unless desired state is disabled. */
+  drift?: Drift;
 }
 
 /** A non-fatal problem attached to an otherwise successful response. */
@@ -243,6 +246,8 @@ export interface WarningNavState {
 export interface CappListResponse {
   items: CappResponse[];
   total: number;
+  /** Recorded Capps that no longer exist; not counted in total. */
+  missing?: DriftMissing[];
 }
 
 /**
@@ -273,25 +278,13 @@ export interface CappSizesResponse {
   large: ResourceSize;
 }
 
-// ── Sync to Git ────────────────────────────────────────────────────────────
-
-export interface SyncToGitResponse {
-  enabled: boolean;
-  commitSha?: string;
-  path: string;
-}
-
-export const LABEL_BACKUP_TO_GIT = 'rcs.dana.io/backup-to-git';
+// ── Annotations ────────────────────────────────────────────────────────────
 
 /** Free-text message shown as a banner on the Capp page. */
 export const ANNOTATION_MESSAGE = 'rcs.dana.io/message';
 
 /** Holds `<action>:<revision>` until the operator consumes the rollout action. */
 export const ANNOTATION_ROLLOUT = 'rcs.dana.io/rollout';
-
-export function hasBackupLabel(labels?: Record<string, string>): boolean {
-  return labels != null && labels[LABEL_BACKUP_TO_GIT] === 'true';
-}
 
 // ── Migration ──────────────────────────────────────────────────────────────
 
@@ -311,6 +304,7 @@ export interface MigrateResponse {
   sourceDeleted: boolean;
   copiedSecrets?: string[];
   copiedConfigMaps?: string[];
+  warnings?: Warning[];
 }
 
 // ── Cluster ────────────────────────────────────────────────────────────────
@@ -320,7 +314,6 @@ export interface ClusterMeta {
   displayName: string;
   healthy: boolean;
   isOpenShift?: boolean;
-  gitOpsPath?: string;
   allowedNamespaces?: string[];
 }
 

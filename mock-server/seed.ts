@@ -20,9 +20,10 @@ import type {
 import type { ConfigMapResponse } from '../src/types/configmap';
 import type { SecretResponse } from '../src/types/secret';
 import type { NamespaceItem } from '../src/api/namespaces';
-import { ANNOTATION_MESSAGE, LABEL_BACKUP_TO_GIT } from '../src/types/capp';
+import { ANNOTATION_MESSAGE } from '../src/types/capp';
 import { buildDockerConfigJson, DOCKER_CONFIG_JSON_KEY, DOCKER_CONFIG_JSON_TYPE } from '../src/utils/dockerConfig';
 import { cappConditions, failuresFor, progressing, requiredCapabilities } from './conditions';
+import { namespaceRef } from './desired';
 import { seedRollout, type RolloutScenario } from './rollouts';
 import { REVISION_HISTORY_LIMIT, SIZES, toRevision, type MockStore } from './store';
 
@@ -50,7 +51,6 @@ function genClusters(): ClusterMeta[] {
       displayName: `${faker.location.city()} (${name})`,
       healthy: !(i === count - 1), // last one is unhealthy
       ...(i === 1 ? { isOpenShift: true } : {}),
-      ...(i === 0 ? { gitOpsPath: name } : {}),
     };
   });
 }
@@ -195,7 +195,7 @@ function genCapp(
     },
   };
 
-  if (faker.datatype.boolean({ probability: 0.25 })) capp.labels = { [LABEL_BACKUP_TO_GIT]: 'true' };
+  if (faker.datatype.boolean({ probability: 0.25 })) capp.labels = { team: faker.helpers.arrayElement(['payments', 'platform', 'search']) };
   if (faker.datatype.boolean({ probability: 0.2 })) {
     capp.annotations = { 'rcs.dana.io/owner': faker.internet.email().toLowerCase() };
   }
@@ -324,6 +324,97 @@ function genRevisions(capp: CappResponse, now: number): CappRevisionResponse[] {
   );
 }
 
+/** Records everything in the cluster but `unmanagedNs` itself as desired state, so that it starts in sync. */
+function recordCluster(store: MockStore, cluster: string, unmanagedNs: string, now: number): void {
+  const by = () => faker.internet.email().toLowerCase();
+  const at = () => now - faker.number.int({ min: 1, max: 60 * 24 * 7 }) * 60_000;
+  for (const ns of store.listNamespaces(cluster)?.items ?? []) {
+    if (ns.name !== unmanagedNs) store.desired.seed(namespaceRef(cluster, ns.name), ns, by(), at());
+  }
+  for (const c of store.listCapps(cluster) ?? []) {
+    store.desired.seed({ cluster, kind: 'Capp', namespace: c.namespace, name: c.name }, c, by(), at());
+  }
+  for (const m of store.listConfigMaps(cluster) ?? []) {
+    store.desired.seed({ cluster, kind: 'ConfigMap', namespace: m.namespace, name: m.name }, m, by(), at());
+  }
+  for (const s of store.listSecrets(cluster) ?? []) {
+    store.desired.seed({ cluster, kind: 'Secret', namespace: s.namespace, name: s.name }, s, by(), at());
+  }
+}
+
+/**
+ * Records the cluster, then adds drift in every state, named so it is easy to find: `drift-changed`, `drift-missing` and
+ * `drift-unmanaged` of each kind in the first namespace, a changed second and an unmanaged third
+ * namespace, and a missing `drift-missing` namespace.
+ */
+function seedDrift(store: MockStore, cluster: string, namespaces: string[], now: number): void {
+  const [ns, changedNs, unmanagedNs] = namespaces;
+  recordCluster(store, cluster, unmanagedNs, now);
+  const by = 'owner@example.com';
+  const at = now - 2 * 24 * 60 * 60_000;
+  const ref = <K extends 'Capp' | 'ConfigMap' | 'Secret'>(kind: K, name: string) => ({ cluster, kind, namespace: ns, name });
+  const capp = (name: string): CappResponse => {
+    const c: CappResponse = {
+      ...genCapp(name, ns, cluster, { secrets: [], configMaps: [], pullSecrets: [] }, store.allocResourceVersion(), now, new Set()),
+      state: 'enabled',
+      labels: { team: 'payments' },
+      annotations: { 'rcs.dana.io/owner': by },
+      image: 'ghcr.io/dana-team/checkout:1.4.0',
+      scaleSpec: { metric: 'concurrency', minReplicas: 1, maxReplicas: 5 },
+      size: 'small',
+      resources: SIZES.small,
+    };
+    c.status.stateStatus = { state: 'enabled', lastChange: iso(now, 30) };
+    c.status.conditions = cappConditions(c, iso(now, 30));
+    return c;
+  };
+
+  const recorded = capp('drift-changed');
+  store.desired.seed(ref('Capp', recorded.name), recorded, by, at);
+  const changed: CappResponse = {
+    ...structuredClone(recorded),
+    image: 'ghcr.io/dana-team/checkout:1.4.1-hotfix',
+    scaleSpec: { ...recorded.scaleSpec, maxReplicas: 10 },
+    size: 'medium',
+    resources: SIZES.medium,
+    env: [...(recorded.env ?? []), { name: 'DEBUG', value: 'true' }],
+    labels: undefined,
+  };
+  store.putCapp(cluster, changed);
+  const versions = [recorded, changed].map((c, i) =>
+    toRevision(c, i + 1, { createdAt: iso(now, 60 - 30 * i), uid: faker.string.uuid(), resourceVersion: store.allocResourceVersion() }),
+  );
+  store.putRevisions(cluster, ns, changed.name, versions);
+
+  store.desired.seed(ref('Capp', 'drift-missing'), capp('drift-missing'), by, at);
+  const unmanaged = capp('drift-unmanaged');
+  store.putCapp(cluster, unmanaged);
+  store.putRevisions(cluster, ns, unmanaged.name, genRevisions(unmanaged, now));
+
+  const cm = (name: string) => genConfigMap(ns, name, store.allocResourceVersion(), now);
+  const recordedCm = cm('drift-changed');
+  store.desired.seed(ref('ConfigMap', recordedCm.name), recordedCm, by, at);
+  const { API_URL: _removed, ...cmData } = recordedCm.data;
+  store.putConfigMap(cluster, { ...recordedCm, data: { ...cmData, LOG_LEVEL: 'trace', ADDED_BY_HAND: 'true' } });
+  store.desired.seed(ref('ConfigMap', 'drift-missing'), cm('drift-missing'), by, at);
+  store.putConfigMap(cluster, cm('drift-unmanaged'));
+
+  const secret = (name: string) => genSecret(ns, name, store.allocResourceVersion(), now);
+  const recordedSecret = secret('drift-changed');
+  store.desired.seed(ref('Secret', recordedSecret.name), recordedSecret, by, at);
+  store.putSecret(cluster, { ...recordedSecret, data: { ...recordedSecret.data, password: faker.internet.password({ length: 20 }) } });
+  store.desired.seed(ref('Secret', 'drift-missing'), secret('drift-missing'), by, at);
+  store.putSecret(cluster, secret('drift-unmanaged'));
+
+  const item = store.getNamespace(cluster, changedNs)!;
+  store.putNamespace(cluster, {
+    ...item,
+    users: [...(item.users ?? []), 'added-by-hand@example.com'],
+    quota: { ...item.quota, pods: (item.quota?.pods ?? 0) * 2 },
+  });
+  store.desired.seed(namespaceRef(cluster, 'drift-missing'), { ...item, name: 'drift-missing' }, by, at);
+}
+
 /**
  * Fills `store` with 3 clusters of namespaces, capps, configmaps and secrets.
  * @param seed  defaults to MOCK_SEED (if numeric) else random
@@ -412,6 +503,7 @@ export function seedStore(store: MockStore, seed?: number, now: number = Date.no
         }
       }
     });
+    seedDrift(store, meta.name, nsList, now);
   }
   return used;
 }

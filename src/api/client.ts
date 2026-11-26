@@ -1,15 +1,23 @@
 import { useAuthStore } from '@/store/auth';
 import { getBackendUrl } from '@/lib/config';
+import { askToKeepDrift } from '@/store/driftPrompt';
+import type { Drift } from '@/types/drift';
+
+interface BackendErrorDetails {
+  drift?: Drift;
+}
 
 export class BackendApiError extends Error {
   status: number;
   code?: string;
+  details?: BackendErrorDetails;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, details?: BackendErrorDetails) {
     super(message);
     this.name = 'BackendApiError';
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -21,12 +29,13 @@ interface BackendErrorBody {
   error?: {
     code?: string;
     message?: string;
+    details?: BackendErrorDetails;
   } | string;
   message?: string;
 }
 
 /** Reads a capp-backend error envelope, or a Prometheus `{ "error": "..." }` body. */
-function readError(body: unknown, fallback: string): { message: string; code?: string } {
+function readError(body: unknown, fallback: string): { message: string; code?: string; details?: BackendErrorDetails } {
   if (!body || typeof body !== 'object') return { message: fallback };
   const record = body as BackendErrorBody;
   if (typeof record.error === 'string' && record.error.trim()) {
@@ -34,7 +43,7 @@ function readError(body: unknown, fallback: string): { message: string; code?: s
   }
   if (record.error && typeof record.error === 'object') {
     const message = record.error.message?.trim() ? record.error.message : fallback;
-    return { message, code: record.error.code };
+    return { message, code: record.error.code, details: record.error.details };
   }
   if (typeof record.message === 'string' && record.message.trim()) {
     return { message: record.message };
@@ -103,14 +112,16 @@ function refreshedToken(): Promise<string> {
 async function errorFrom(response: Response): Promise<BackendApiError> {
   let message = `HTTP ${response.status}: ${response.statusText}`
   let code: string | undefined
+  let details: BackendErrorDetails | undefined
   try {
     const parsed = readError(await response.json(), message)
     message = parsed.message
     code = parsed.code
+    details = parsed.details
   } catch {
     // ignore JSON parse errors
   }
-  return new BackendApiError(message, response.status, code)
+  return new BackendApiError(message, response.status, code, details)
 }
 
 /**
@@ -159,12 +170,38 @@ export async function backendFetch(
   return response
 }
 
-/** Sends a request to the capp-backend and decodes the JSON answer (see backendFetch). */
+/** The drift an update was refused for, if that is why it failed. */
+function refusedDrift(error: unknown): Drift | undefined {
+  return error instanceof BackendApiError && error.code === 'DRIFT_DETECTED' ? error.details?.drift : undefined
+}
+
+/**
+ * Sends an update. When the object was changed outside the console, asks whether to keep
+ * those changes and repeats the update. There is no choice to discard them: a form sends every
+ * field it shows, filled from the live object.
+ */
+async function updateFetch(path: string, options: RequestInit): Promise<Response> {
+  try {
+    return await backendFetch(path, options)
+  } catch (error) {
+    const drift = refusedDrift(error)
+    if (!drift) throw error
+    if (!(await askToKeepDrift(drift))) {
+      throw new BackendApiError('Not saved: this was changed outside the console.', 409, 'DRIFT_DETECTED', { drift })
+    }
+    return backendFetch(`${path}?onDrift=accept`, options)
+  }
+}
+
+const UPDATE_METHODS = ['PUT', 'PATCH', 'DELETE']
+
+/** Sends a request to the capp-backend and decodes the JSON answer (see backendFetch and updateFetch). */
 export async function backendClient<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const response = await backendFetch(path, options)
+  const send = UPDATE_METHODS.includes(options.method ?? 'GET') ? updateFetch : backendFetch
+  const response = await send(path, options)
   if (response.status === 204) {
     return undefined as T;
   }

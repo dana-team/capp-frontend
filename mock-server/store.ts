@@ -6,18 +6,20 @@
  *      get*      -> returns `undefined`            (404)
  *      list*     -> returns `undefined` when the cluster (or the namespace, if given)
  *                   does not exist, otherwise an array (possibly empty)   (404)
- *      update*, delete*, patch*, setBackupLabel -> return `undefined`    (404)
+ *      update*, delete*, patch* -> return `undefined`                    (404)
  *  - Duplicates on create (and on create-through-migrate): throws `ConflictError`  (409)
  *  - Creating a resource in a namespace that does not exist: throws `NotFoundError` (404)
+ *  - Desired state (see desired.ts): throws `ApiError`, which carries its own status. Writes
+ *    leave their warnings in `desired.takeWarnings()`.
  *  - Cluster health is NOT enforced here; check `getCluster(c)?.healthy` in the HTTP layer (503).
  *  - Returned objects are the live store objects; treat them as read-only (JSON-serialise them).
  *
  * All DTO shapes come from the frontend types, so drift fails to compile.
  */
-import { createHash, randomBytes } from 'node:crypto';
-import { LABEL_BACKUP_TO_GIT } from '../src/types/capp';
+import { createHash } from 'node:crypto';
 import { ANNOTATION_ROLLOUT } from '../src/types/capp';
 import { cappConditions } from './conditions';
+import { ApiError, canonical, DesiredState, desiredStateMode, namespaceRef, trackedMetadata, type Kind, type Ref, type Tracked } from './desired';
 import {
   initialRollout,
   normalizeStrategy,
@@ -37,13 +39,14 @@ import type {
   MigrateRequest,
   MigrateResponse,
   RolloutActionRequest,
-  SyncToGitResponse,
 } from '../src/types/capp';
+import type { BoundCappsResponse, BoundResourceKind } from '../src/types/bound';
 import type {
   ConfigMapRequest,
   ConfigMapResponse,
   ConfigMapUpdateRequest,
 } from '../src/types/configmap';
+import type { Drift, DriftActionRequest, DriftActionResponse, DriftAdoptResponse, DriftMissing } from '../src/types/drift';
 import type { SecretRequest, SecretResponse, SecretUpdateRequest } from '../src/types/secret';
 import type {
   CreateNamespaceRequest,
@@ -151,17 +154,8 @@ export const revisionName = (capp: string, n: number) => childName(capp, `-${Str
 
 /** Capp spec, labels and annotations: what the operator compares and records. */
 function cappTemplate(capp: BareCappResponse & Partial<CappResponse & CappRevisionResponse>) {
-  const { name: _n, namespace: _ns, createdAt: _c, uid: _u, resourceVersion: _rv, status: _s, warnings: _w, revisionNumber: _r, ...tmpl } = capp;
+  const { name: _n, namespace: _ns, createdAt: _c, uid: _u, resourceVersion: _rv, status: _s, warnings: _w, drift: _d, revisionNumber: _r, ...tmpl } = capp;
   return tmpl;
-}
-
-/** JSON with sorted keys, for order-insensitive deep equality. */
-function canonical(v: unknown): string {
-  return JSON.stringify(v, (_, x: unknown) =>
-    x && typeof x === 'object' && !Array.isArray(x)
-      ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b)))
-      : x,
-  );
 }
 
 function sameTemplate(a: BareCappResponse, b: BareCappResponse): boolean {
@@ -189,7 +183,14 @@ export function toRevision(
   };
 }
 
+/** Lays the desired labels or annotations over the live ones; keys the record does not name stay. */
+function overlay(live: Record<string, string> | undefined, desired: Record<string, string>): Record<string, string> | undefined {
+  const merged = { ...live, ...desired };
+  return Object.keys(merged).length ? merged : undefined;
+}
+
 export class MockStore {
+  readonly desired = new DesiredState(desiredStateMode);
   private clusters = new Map<string, ClusterData>();
   private rv = 1000;
 
@@ -217,6 +218,7 @@ export class MockStore {
 
   reset(): void {
     this.clusters.clear();
+    this.desired.reset();
     this.rv = 1000;
   }
   addCluster(meta: ClusterMeta): void {
@@ -284,30 +286,39 @@ export class MockStore {
       ...(req.quota ? { quota: { ...req.quota, used: { cpu: '0', memory: '0', pods: 0 } } } : {}),
     };
     c.namespaces.set(req.name, item);
+    this.desired.save(namespaceRef(cluster, req.name), item);
     return item;
   }
   /** PUT: replaces users and quota (keeps `used`). */
-  updateNamespace(cluster: string, name: string, req: UpdateNamespaceRequest): NamespaceItem | undefined {
+  updateNamespace(cluster: string, name: string, req: UpdateNamespaceRequest, onDrift?: string): NamespaceItem | undefined {
     const c = this.cluster(cluster);
-    const cur = c?.namespaces.get(name);
-    if (!c || !cur) return undefined;
+    const live = c?.namespaces.get(name);
+    if (!c || !live) return undefined;
+    const ref = namespaceRef(cluster, name);
+    const cur = this.updateBase(ref, live, onDrift);
     const next: NamespaceItem = { ...cur, users: req.users, quota: req.quota ? { ...req.quota, used: cur.quota?.used } : undefined };
     c.namespaces.set(name, next);
+    this.desired.save(ref, next);
     return next;
   }
   /** PATCH: only users. */
-  patchNamespace(cluster: string, name: string, req: PatchNamespaceRequest): NamespaceItem | undefined {
+  patchNamespace(cluster: string, name: string, req: PatchNamespaceRequest, onDrift?: string): NamespaceItem | undefined {
     const c = this.cluster(cluster);
-    const cur = c?.namespaces.get(name);
-    if (!c || !cur) return undefined;
+    const live = c?.namespaces.get(name);
+    if (!c || !live) return undefined;
+    const ref = namespaceRef(cluster, name);
+    const cur = this.updateBase(ref, live, onDrift);
     const next: NamespaceItem = { ...cur, ...(req.users !== undefined ? { users: req.users } : {}) };
     c.namespaces.set(name, next);
+    this.desired.save(ref, next);
     return next;
   }
   /** Cascades to the namespace's capps, configmaps and secrets. Returns true if deleted. */
   deleteNamespace(cluster: string, name: string): boolean | undefined {
     const c = this.cluster(cluster);
-    if (!c?.namespaces.delete(name)) return undefined;
+    if (!c?.namespaces.has(name)) return undefined;
+    c.namespaces.delete(name);
+    this.desired.forgetNamespace(cluster, name);
     dropNamespace(c.capps, name);
     dropNamespace(c.configMaps, name);
     dropNamespace(c.secrets, name);
@@ -348,14 +359,18 @@ export class MockStore {
   }
 
   /** `undefined` if not found. A capp with no strategy is returned unchanged. */
-  removeRolloutStrategy(cluster: string, ns: string, name: string): CappResponse | undefined {
+  removeRolloutStrategy(cluster: string, ns: string, name: string, onDrift?: string): CappResponse | undefined {
     const c = this.cluster(cluster);
-    const capp = this.getCapp(cluster, ns, name);
-    if (!c || !capp) return undefined;
-    if (!capp.routeSpec?.rolloutStrategy) return capp;
+    const live = this.getCapp(cluster, ns, name);
+    if (!c || !live) return undefined;
+    if (!live.routeSpec?.rolloutStrategy) return live;
+    const ref: Ref<'Capp'> = { cluster, kind: 'Capp', namespace: ns, name };
+    const capp = this.updateBase(ref, live, onDrift);
     removeStrategy(capp);
     capp.resourceVersion = this.nextRV();
+    c.capps.set(key(ns, name), capp);
     this.recordRevision(c, capp);
+    this.desired.save(ref, capp);
     return capp;
   }
 
@@ -401,42 +416,30 @@ export class MockStore {
     initialRollout(capp);
     c.capps.set(key(ns, req.name), capp);
     this.recordRevision(c, capp);
+    this.desired.save({ cluster, kind: 'Capp', namespace: ns, name: req.name }, capp);
     return capp;
   }
   /** Full replace of the spec; keeps uid, createdAt, labels, annotations. `undefined` if not found. */
-  updateCapp(cluster: string, ns: string, name: string, req: CappRequest): CappResponse | undefined {
+  updateCapp(cluster: string, ns: string, name: string, req: CappRequest, onDrift?: string): CappResponse | undefined {
     const c = this.cluster(cluster);
-    const prev = c?.capps.get(key(ns, name));
-    if (!c || !prev) return undefined;
-    const capp = this.buildCapp(ns, { ...req, name }, prev);
-    updateRollout(prev, capp, Date.now());
+    const live = c?.capps.get(key(ns, name));
+    if (!c || !live) return undefined;
+    const ref: Ref<'Capp'> = { cluster, kind: 'Capp', namespace: ns, name };
+    const capp = this.buildCapp(ns, { ...req, name }, this.updateBase(ref, live, onDrift));
+    updateRollout(live, capp, Date.now());
     c.capps.set(key(ns, name), capp);
     this.recordRevision(c, capp);
+    this.desired.save(ref, capp);
     return capp;
   }
   /** Revisions are owned by the capp, so they go with it. */
   deleteCapp(cluster: string, ns: string, name: string): boolean | undefined {
     const c = this.cluster(cluster);
-    if (!c?.capps.delete(key(ns, name))) return undefined;
+    if (!c?.capps.has(key(ns, name))) return undefined;
+    c.capps.delete(key(ns, name));
     c.revisions.delete(key(ns, name));
+    this.desired.forget({ cluster, kind: 'Capp', namespace: ns, name });
     return true;
-  }
-  /** Toggles the backup-to-git label. Returns the SyncToGitResponse (fake sha) or `undefined`. */
-  setBackupLabel(cluster: string, ns: string, name: string, enabled: boolean): SyncToGitResponse | undefined {
-    const c = this.cluster(cluster);
-    const capp = c?.capps.get(key(ns, name));
-    if (!c || !capp) return undefined;
-    const labels = { ...capp.labels };
-    if (enabled) labels[LABEL_BACKUP_TO_GIT] = 'true';
-    else delete labels[LABEL_BACKUP_TO_GIT];
-    capp.labels = labels;
-    capp.resourceVersion = this.nextRV();
-    this.recordRevision(c, capp);
-    return {
-      enabled,
-      path: `${c.meta.gitOpsPath ?? c.meta.name}/${ns}/${name}.yaml`,
-      ...(enabled ? { commitSha: randomBytes(20).toString('hex') } : {}),
-    };
   }
 
   /**
@@ -469,27 +472,29 @@ export class MockStore {
       }
     }
 
+    const targetRef = <K extends Kind>(kind: K, objectName: string): Ref<K> => ({
+      cluster: req.targetCluster,
+      kind,
+      namespace: req.targetNamespace,
+      name: objectName,
+    });
     const refs = referencedObjects(capp);
     const copiedSecrets: string[] = [];
     const copiedConfigMaps: string[] = [];
     for (const sn of refs.secrets) {
       const s = src.secrets.get(key(ns, sn));
       if (!s || dst.secrets.has(key(req.targetNamespace, sn))) continue;
-      dst.secrets.set(key(req.targetNamespace, sn), {
-        ...structuredClone(s),
-        namespace: req.targetNamespace,
-        ...this.meta(),
-      });
+      const copied = { ...structuredClone(s), namespace: req.targetNamespace, ...this.meta() };
+      dst.secrets.set(key(req.targetNamespace, sn), copied);
+      this.desired.save(targetRef('Secret', sn), copied);
       copiedSecrets.push(sn);
     }
     for (const cn of refs.configMaps) {
       const m = src.configMaps.get(key(ns, cn));
       if (!m || dst.configMaps.has(key(req.targetNamespace, cn))) continue;
-      dst.configMaps.set(key(req.targetNamespace, cn), {
-        ...structuredClone(m),
-        namespace: req.targetNamespace,
-        ...this.meta(),
-      });
+      const copied = { ...structuredClone(m), namespace: req.targetNamespace, ...this.meta() };
+      dst.configMaps.set(key(req.targetNamespace, cn), copied);
+      this.desired.save(targetRef('ConfigMap', cn), copied);
       copiedConfigMaps.push(cn);
     }
 
@@ -501,10 +506,9 @@ export class MockStore {
     if (req.targetHostname && copy.routeSpec) {
       copy.routeSpec = { ...copy.routeSpec, hostname: req.targetHostname };
     }
-    // Migrated capps start un-synced on the target.
-    if (copy.labels) delete copy.labels[LABEL_BACKUP_TO_GIT];
     dst.capps.set(key(req.targetNamespace, name), copy);
     this.recordRevision(dst, copy);
+    this.desired.save(targetRef('Capp', name), copy);
 
     let sourceDeleted = false;
     if (req.deleteSource) sourceDeleted = !!this.deleteCapp(cluster, ns, name);
@@ -551,8 +555,8 @@ export class MockStore {
     return this.cluster(cluster)?.revisions.get(key(ns, cappName))?.find((r) => r.revisionNumber === n);
   }
   /**
-   * Replaces the capp's spec, labels and annotations with revision `n`'s, keeping the
-   * live backup-to-git label. The result is recorded as a new revision (unless unchanged).
+   * Replaces the capp's spec, labels and annotations with revision `n`'s, whether or not it has
+   * drifted. The result is recorded as a new revision (unless unchanged).
    */
   rollbackCapp(cluster: string, ns: string, cappName: string, n: number): RollbackResult {
     const c = this.cluster(cluster);
@@ -563,13 +567,9 @@ export class MockStore {
     const live = c.capps.get(key(ns, cappName));
     if (!live) return { ok: false, error: 'capp_not_found', message: `Capp "${cappName}" not found` };
 
-    const { labels: revLabels, ...tmpl } = structuredClone(cappTemplate(rev));
+    const tmpl = structuredClone(cappTemplate(rev));
     // A past rollout action must not be replayed.
     if (tmpl.annotations) delete tmpl.annotations[ANNOTATION_ROLLOUT];
-    const labels = { ...revLabels };
-    delete labels[LABEL_BACKUP_TO_GIT];
-    const backup = live.labels?.[LABEL_BACKUP_TO_GIT];
-    if (backup !== undefined) labels[LABEL_BACKUP_TO_GIT] = backup;
 
     const now = new Date().toISOString();
     const next: CappResponse = {
@@ -579,7 +579,6 @@ export class MockStore {
       createdAt: live.createdAt,
       uid: live.uid,
       resourceVersion: this.nextRV(),
-      ...(Object.keys(labels).length ? { labels } : {}),
       status:
         tmpl.state === live.state
           ? live.status
@@ -587,6 +586,7 @@ export class MockStore {
     };
     c.capps.set(key(ns, cappName), next);
     this.recordRevision(c, next);
+    this.desired.save({ cluster, kind: 'Capp', namespace: ns, name: cappName }, next);
     return { ok: true, data: next };
   }
 
@@ -611,18 +611,25 @@ export class MockStore {
     if (c.configMaps.has(key(ns, req.name))) throw new ConflictError(`configmap "${req.name}" already exists`);
     const cm: ConfigMapResponse = { name: req.name, namespace: ns, data: req.data ?? {}, ...this.meta() };
     c.configMaps.set(key(ns, req.name), cm);
+    this.desired.save({ cluster, kind: 'ConfigMap', namespace: ns, name: req.name }, cm);
     return cm;
   }
-  updateConfigMap(cluster: string, ns: string, name: string, req: ConfigMapUpdateRequest): ConfigMapResponse | undefined {
+  updateConfigMap(cluster: string, ns: string, name: string, req: ConfigMapUpdateRequest, onDrift?: string): ConfigMapResponse | undefined {
     const c = this.cluster(cluster);
-    const cur = c?.configMaps.get(key(ns, name));
-    if (!c || !cur) return undefined;
-    const next = { ...cur, data: req.data ?? {}, resourceVersion: this.nextRV() };
+    const live = c?.configMaps.get(key(ns, name));
+    if (!c || !live) return undefined;
+    const ref: Ref<'ConfigMap'> = { cluster, kind: 'ConfigMap', namespace: ns, name };
+    const next = { ...this.updateBase(ref, live, onDrift), data: req.data ?? {}, resourceVersion: this.nextRV() };
     c.configMaps.set(key(ns, name), next);
+    this.desired.save(ref, next);
     return next;
   }
   deleteConfigMap(cluster: string, ns: string, name: string): boolean | undefined {
-    return this.cluster(cluster)?.configMaps.delete(key(ns, name)) ? true : undefined;
+    const c = this.cluster(cluster);
+    if (!c?.configMaps.has(key(ns, name))) return undefined;
+    c.configMaps.delete(key(ns, name));
+    this.desired.forget({ cluster, kind: 'ConfigMap', namespace: ns, name });
+    return true;
   }
 
   // ── Secrets ────────────────────────────────────────────────────────────────
@@ -651,18 +658,150 @@ export class MockStore {
       ...this.meta(),
     };
     c.secrets.set(key(ns, req.name), s);
+    this.desired.save({ cluster, kind: 'Secret', namespace: ns, name: req.name }, s);
     return s;
   }
-  updateSecret(cluster: string, ns: string, name: string, req: SecretUpdateRequest): SecretResponse | undefined {
+  updateSecret(cluster: string, ns: string, name: string, req: SecretUpdateRequest, onDrift?: string): SecretResponse | undefined {
     const c = this.cluster(cluster);
-    const cur = c?.secrets.get(key(ns, name));
-    if (!c || !cur) return undefined;
-    const next = { ...cur, data: req.data ?? {}, resourceVersion: this.nextRV() };
+    const live = c?.secrets.get(key(ns, name));
+    if (!c || !live) return undefined;
+    const ref: Ref<'Secret'> = { cluster, kind: 'Secret', namespace: ns, name };
+    const next = { ...this.updateBase(ref, live, onDrift), data: req.data ?? {}, resourceVersion: this.nextRV() };
     c.secrets.set(key(ns, name), next);
+    this.desired.save(ref, next);
     return next;
   }
   deleteSecret(cluster: string, ns: string, name: string): boolean | undefined {
-    return this.cluster(cluster)?.secrets.delete(key(ns, name)) ? true : undefined;
+    const c = this.cluster(cluster);
+    if (!c?.secrets.has(key(ns, name))) return undefined;
+    c.secrets.delete(key(ns, name));
+    this.desired.forget({ cluster, kind: 'Secret', namespace: ns, name });
+    return true;
+  }
+
+  // ── Bound capps ────────────────────────────────────────────────────────────
+
+  /** Capps that refer to a secret or configmap. A secret used only for logs never rolls one out. */
+  boundCapps(cluster: string, kind: BoundResourceKind, ns: string, name: string): BoundCappsResponse {
+    const refers = (capp: CappResponse) => {
+      const refs = referencedObjects(capp);
+      return (kind === 'secret' ? refs.secrets : refs.configMaps).includes(name);
+    };
+    const bound = (this.listCapps(cluster, ns) ?? []).filter(refers);
+    const names = (capps: CappResponse[]) => capps.map((c) => c.name).sort();
+    return {
+      boundCapps: names(bound),
+      toReload: names(bound.filter((c) => c.reloadOnBoundResourceChange && refers({ ...c, logSpec: undefined }))),
+    };
+  }
+
+  // ── Drift ──────────────────────────────────────────────────────────────────
+
+  /** A copy of a live object with its drift, as reads return it. */
+  withDrift<K extends Kind>(ref: Ref<K>, live: Tracked[K]): Tracked[K] & { drift?: Drift } {
+    const drift = this.desired.inspect(ref, live);
+    return drift ? { ...live, drift } : live;
+  }
+  /** Recorded objects of a kind that no longer exist. */
+  missing(cluster: string, kind: Kind, ns?: string): DriftMissing[] {
+    return this.desired.missing(cluster, kind, ns, (namespace, name) => !!this.live({ cluster, kind, namespace, name }));
+  }
+  /** Makes the cluster match the desired state, recreating a missing object. */
+  revertDrift<K extends Kind>(ref: Ref<K>, seen: DriftActionRequest): DriftActionResponse {
+    const live = this.live(ref);
+    const drift = this.desired.confirm(ref, live, seen);
+    const desired = this.desired.desired(ref);
+    if (!desired) throw new ApiError(404, 'NOT_FOUND', `desired state of ${ref.kind} "${ref.name}" not found`);
+    if (drift.state === 'inSync') return { drift };
+    const c = this.cluster(ref.cluster)!;
+    if (ref.kind !== 'Namespace') this.requireNs(c, ref.namespace);
+    const object = this.reverted(ref, live, desired);
+    this.putLive(c, ref, object);
+    return { drift: this.desired.inspect(ref, object) };
+  }
+  /** Makes the desired state match the cluster; archives the record of a missing object. */
+  acceptDrift<K extends Kind>(ref: Ref<K>, seen: DriftActionRequest): DriftActionResponse {
+    const live = this.live(ref);
+    this.desired.confirm(ref, live, seen);
+    const drift = this.desired.accept(ref, live);
+    return drift ? { drift } : {};
+  }
+  /** Records the namespace's capps, configmaps and secrets that have no desired state yet. */
+  adoptDrift(cluster: string, ns: string): DriftAdoptResponse {
+    this.desired.require();
+    const c = this.cluster(cluster)!;
+    const adopted: DriftAdoptResponse['adopted'] = [];
+    const adopt = <K extends Kind>(kind: K, objects: Array<Tracked[K] & { name: string }>) => {
+      for (const o of objects) {
+        if (this.desired.adopt({ cluster, kind, namespace: ns, name: o.name }, o)) adopted.push({ kind, name: o.name });
+      }
+    };
+    adopt('Capp', inNamespace(c.capps, ns));
+    adopt('ConfigMap', inNamespace(c.configMaps, ns));
+    adopt('Secret', inNamespace(c.secrets, ns));
+    return { adopted, total: adopted.length };
+  }
+
+  private live<K extends Kind>(ref: Ref<K>): Tracked[K] | undefined;
+  private live({ cluster, kind, namespace, name }: Ref): Tracked[Kind] | undefined {
+    switch (kind) {
+      case 'Capp': return this.getCapp(cluster, namespace, name);
+      case 'ConfigMap': return this.getConfigMap(cluster, namespace, name);
+      case 'Secret': return this.getSecret(cluster, namespace, name);
+      case 'Namespace': return this.getNamespace(cluster, name);
+    }
+  }
+  private putLive<K extends Kind>(c: ClusterData, ref: Ref<K>, object: Tracked[K]): void;
+  private putLive(c: ClusterData, { kind, namespace, name }: Ref, object: Tracked[Kind]): void {
+    switch (kind) {
+      case 'Capp':
+        c.capps.set(key(namespace, name), object as CappResponse);
+        return this.recordRevision(c, object as CappResponse);
+      case 'ConfigMap': return void c.configMaps.set(key(namespace, name), object as ConfigMapResponse);
+      case 'Secret': return void c.secrets.set(key(namespace, name), object as SecretResponse);
+      case 'Namespace': return void c.namespaces.set(name, object as NamespaceItem);
+    }
+  }
+
+  /** The object an update starts from: the live one, or a copy reverted to its desired state. */
+  private updateBase<K extends Kind, T extends Tracked[K]>(ref: Ref<K>, live: T, onDrift?: string): T {
+    if (this.desired.startFrom(ref, live, onDrift) === 'live') return live;
+    return this.reverted(ref, live, this.desired.desired(ref)!) as T;
+  }
+
+  /** `live` with the recorded fields set to `desired`, or a new object when `live` is gone. */
+  private reverted<K extends Kind>(ref: Ref<K>, live: Tracked[K] | undefined, desired: Tracked[K]): Tracked[K];
+  private reverted({ kind }: Ref, live: Tracked[Kind] | undefined, desired: Tracked[Kind]): Tracked[Kind] {
+    if (kind === 'Namespace') {
+      const cur = live as NamespaceItem | undefined;
+      const { name, users, quota } = desired as NamespaceItem;
+      const used = cur?.quota?.used ?? { cpu: '0', memory: '0', pods: 0 };
+      return { name, status: 'Active', canEdit: true, ...cur, users, quota: quota && { ...quota, used } };
+    }
+    const cur = live as CappResponse | ConfigMapResponse | SecretResponse | undefined;
+    const want = trackedMetadata(desired as CappResponse);
+    const meta = {
+      ...this.meta(),
+      ...(cur ? { createdAt: cur.createdAt, uid: cur.uid } : {}),
+      labels: overlay(cur?.labels, want.labels),
+      annotations: overlay(cur?.annotations, want.annotations),
+    };
+    if (kind !== 'Capp') return { ...(desired as ConfigMapResponse | SecretResponse), ...meta };
+
+    const { name, namespace } = desired as CappResponse;
+    const tmpl = cappTemplate(desired as CappResponse);
+    const state = tmpl.state ?? 'enabled';
+    const next: CappResponse = {
+      ...tmpl,
+      name,
+      namespace,
+      ...meta,
+      status: { conditions: [], stateStatus: { state, lastChange: new Date().toISOString() } },
+    };
+    next.status.conditions = cappConditions(next, next.status.stateStatus.lastChange!);
+    if (cur) updateRollout(cur as CappResponse, next, Date.now());
+    else initialRollout(next);
+    return next;
   }
 }
 

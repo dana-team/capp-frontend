@@ -100,7 +100,15 @@ Sign in with any token (default `passthrough` mode) and keep the default backend
 | `MOCK_LATENCY_MS` | `0` | Artificial delay per request |
 | `MOCK_NAMESPACE_SCOPED` | unset | `1` simulates a user with access to only the first 2 namespaces of each cluster: other namespaces are hidden and return 403, as do the all-namespaces lists |
 | `MOCK_CFUNC` | `on` | `off` leaves out every cfunc route, `pools` leaves out the function routes, like a backend with the feature off: the Functions tab hides, or shows only its Pools view |
+| `MOCK_DESIRED_STATE` | `on` | Desired state and drift. `off`: the feature is disabled (no `drift` in responses, 501 from the drift endpoints). `down`: MongoDB is unreachable (reads report `unavailable`; writes succeed with a `DESIRED_STATE_FAILED` warning and are not recorded; requests about the desired state answer 503) |
 | `MOCK_FRONTEND_URL` | `http://localhost:3000` | Where the `openshift` authorize URL redirects back to |
+
+Everything starts in sync with its desired state, except for drift that is seeded in each cluster:
+
+- In the first namespace, a Capp, ConfigMap and Secret each named `drift-changed`, `drift-missing` and `drift-unmanaged`.
+- The second namespace's quota and users were changed, and the third namespace is unmanaged. A namespace named `drift-missing` is missing.
+
+The UI shows the state as a backup badge on the detail pages. Updating a changed object answers 409 until the request carries `onDrift=accept` or `onDrift=revert`; the UI asks before it sends `accept`. Restart the mock to get the drift back.
 
 Auth modes:
 

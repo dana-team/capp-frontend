@@ -18,8 +18,8 @@ import { Sheet } from '@/components/layout/Sheet'
 import { defineInkThemes } from '@/components/capps/CappYamlEditor'
 import { useCapp, useCappRevisions, useRollbackCapp } from '@/hooks/useCapps'
 import { useThemeStore } from '@/store/theme'
-import { CappRevisionResponse, hasBackupLabel, WarningNavState } from '@/types/capp'
-import { changedFields, rollbackResult, templateYaml } from '@/utils/cappRevisions'
+import { CappRevisionResponse, WarningNavState } from '@/types/capp'
+import { changedFields, templateYaml } from '@/utils/cappRevisions'
 import { formatTimestamp, relativeTime } from '@/utils/time'
 import { cn } from '@/lib/utils'
 
@@ -45,7 +45,7 @@ export const CappRevisionsPage: React.FC = () => {
     const set = new Set<number>()
     if (!capp || !revisions) return set
     for (const r of revisions) {
-      if (changedFields(rollbackResult(r, capp), capp).length === 0) set.add(r.revisionNumber)
+      if (changedFields(r, capp).length === 0) set.add(r.revisionNumber)
     }
     return set
   }, [capp, revisions])
@@ -85,7 +85,7 @@ export const CappRevisionsPage: React.FC = () => {
     if (!selected || !capp) return null
     return compareTo === 'previous' && previous
       ? { original: templateYaml(previous), modified: templateYaml(selected), left: `#${previous.revisionNumber}`, right: `#${selected.revisionNumber}` }
-      : { original: templateYaml(capp), modified: templateYaml(rollbackResult(selected, capp)), left: 'Current', right: `After rollback to #${selected.revisionNumber}` }
+      : { original: templateYaml(capp), modified: templateYaml(selected), left: 'Current', right: `After rollback to #${selected.revisionNumber}` }
   }, [selected, previous, capp, compareTo])
 
   const canRollback = selected && !matchesCurrent.has(selected.revisionNumber)
@@ -95,7 +95,7 @@ export const CappRevisionsPage: React.FC = () => {
     setRollbackError(null)
     try {
       const updated = await rollback({ namespace, name, revision: selected.revisionNumber })
-      // Warnings mean the Git backup is stale; the detail page reports them.
+      // Warnings mean it was not backed up; the detail page reports them.
       navigate(cappPath, {
         state: updated?.warnings?.length ? ({ warnings: updated.warnings } satisfies WarningNavState) : undefined,
       })
@@ -256,8 +256,7 @@ export const CappRevisionsPage: React.FC = () => {
                 <AlertDialogDescription>
                   The spec, labels and annotations of &quot;{name}&quot; will be replaced with those
                   recorded in revision #{selected?.revisionNumber}, and the result is recorded as a new
-                  revision. Its Git sync setting is kept as it is now
-                  {hasBackupLabel(capp.labels) ? ', and the new state is pushed to Git.' : '.'}
+                  revision.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               {rollbackError && (

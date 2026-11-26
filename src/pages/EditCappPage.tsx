@@ -8,7 +8,7 @@ import { buildCappRequest, cappToFormValues } from '@/utils/cappBuilder';
 import { Sheet } from '@/components/layout/Sheet';
 import { DetailHeader } from '@/components/layout/DetailParts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { hasBackupLabel, WarningNavState } from '@/types/capp';
+import { WarningNavState } from '@/types/capp';
 import { NO_AUTO_REFETCH } from '@/lib/query';
 
 export const EditCappPage: React.FC = () => {
@@ -23,7 +23,7 @@ export const EditCappPage: React.FC = () => {
   const handleSubmit = async (values: CappFormValues) => {
     if (!capp) return;
     const req = buildCappRequest(namespace, values);
-    // The save succeeded; warnings mean the Git backup is stale, which the
+    // The save succeeded; warnings mean it was not backed up, which the
     // detail page reports once we land there.
     const updated = await updateCapp({ namespace, name, req });
     navigate(`/capps/${namespace}/${name}`, {
@@ -80,7 +80,6 @@ export const EditCappPage: React.FC = () => {
                 <span>
                   Namespace <span className="font-mono text-primary">{namespace}</span>
                 </span>
-                {hasBackupLabel(capp?.labels) && <span>Changes will be committed to Git.</span>}
               </>
             }
             actions={toggle}

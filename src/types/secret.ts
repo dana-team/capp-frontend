@@ -1,3 +1,6 @@
+import type { Warning } from './capp';
+import type { Drift, DriftMissing } from './drift';
+
 export interface SecretRequest {
   name: string;
   namespace: string;
@@ -15,11 +18,16 @@ export interface SecretResponse {
   resourceVersion?: string;
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
+  warnings?: Warning[];
+  /** Set on reads, unless desired state is disabled. */
+  drift?: Drift;
 }
 
 export interface SecretListResponse {
   items: SecretResponse[];
   total: number;
+  /** Recorded Secrets that no longer exist; not counted in total. */
+  missing?: DriftMissing[];
 }
 
 export interface SecretUpdateRequest {

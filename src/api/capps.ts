@@ -1,5 +1,5 @@
 import { backendClient, clusterBase } from './client';
-import { CappRequest, CappResponse, CappListResponse, CappRevisionListResponse, CappSizesResponse, SyncToGitResponse, DeleteCappResponse, MigrateRequest, MigrateResponse, RolloutActionRequest } from '@/types/capp';
+import { CappRequest, CappResponse, CappListResponse, CappRevisionListResponse, CappSizesResponse, DeleteCappResponse, MigrateRequest, MigrateResponse, RolloutActionRequest } from '@/types/capp';
 
 /** Fetch the configured t-shirt size definitions (no auth required). */
 export function fetchSizes(): Promise<CappSizesResponse> {
@@ -49,20 +49,6 @@ export function deleteCapp(
 ): Promise<DeleteCappResponse | undefined> {
   return backendClient<DeleteCappResponse | undefined>(
     `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}`,
-    { method: 'DELETE' }
-  );
-}
-
-export function syncCappToGit(namespace: string, name: string): Promise<SyncToGitResponse> {
-  return backendClient<SyncToGitResponse>(
-    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/sync`,
-    { method: 'POST' }
-  );
-}
-
-export function disableCappGitSync(namespace: string, name: string): Promise<SyncToGitResponse> {
-  return backendClient<SyncToGitResponse>(
-    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/capps/${encodeURIComponent(name)}/sync`,
     { method: 'DELETE' }
   );
 }

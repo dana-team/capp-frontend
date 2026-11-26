@@ -1,5 +1,7 @@
 import { backendClient } from './client';
 import { useAuthStore } from '@/store/auth';
+import type { Warning } from '@/types/capp';
+import type { Drift, DriftMissing } from '@/types/drift';
 
 export interface UsedQuotaInfo {
     cpu?: string;
@@ -17,11 +19,16 @@ export interface NamespaceItem {
     quota?: QuotaInfo;
     users?: string[];
     canEdit: boolean;
+    warnings?: Warning[];
+    /** Set only when one namespace is read, unless desired state is disabled. */
+    drift?: Drift;
 }
 
 export interface NamespaceListResponse {
     items: NamespaceItem[];
     canCreate: boolean;
+    /** Recorded namespaces that no longer exist. Only for users who can create namespaces. */
+    missing?: DriftMissing[];
 }
 
 export interface NamespaceQuota {

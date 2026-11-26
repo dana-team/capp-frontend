@@ -17,6 +17,7 @@ import { TopBar } from './TopBar'
 import { Sheet } from './Sheet'
 import { ScrollContainerContext } from './ScrollContainer'
 import { InkLandscape } from '@/components/landscape/InkLandscape'
+import { DriftPrompt } from '@/components/backup/DriftPrompt'
 import { cn } from '@/lib/utils'
 
 /** Route patterns that render as dashboard pages (no default Sheet wrapper). */
@@ -77,6 +78,7 @@ export const AppShell: React.FC = () => {
 
   return (
     <div className="relative h-[100dvh] overflow-hidden bg-background">
+      <DriftPrompt />
       <InkLandscape variant="stage" station={stationForPath(location.pathname)} />
       <TopBar />
       <main ref={mainRef} className="absolute inset-0 z-[1] overflow-y-auto">

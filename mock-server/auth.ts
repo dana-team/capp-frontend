@@ -104,9 +104,16 @@ export function openshiftCallback(body: Record<string, unknown>): AuthResult<Tok
   return { ok: true, data: issue('openshift-user') };
 }
 
+const bearer = (req: IncomingMessage) => /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? '');
+
+/** The caller's username. Empty in passthrough mode, where the backend does not know it either. */
+export function userOf(req: IncomingMessage): string {
+  return tokens.get(bearer(req)?.[1] ?? '')?.user ?? '';
+}
+
 /** Bearer check for /api/v1/clusters/**: passthrough accepts any non-empty token, others need a live access token. */
 export function authenticate(req: IncomingMessage): boolean {
-  const m = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? '');
+  const m = bearer(req);
   if (!m) return false;
   if (authMode === 'passthrough') return true;
   const info = tokens.get(m[1]);

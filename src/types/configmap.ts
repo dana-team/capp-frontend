@@ -1,3 +1,6 @@
+import type { Warning } from './capp';
+import type { Drift, DriftMissing } from './drift';
+
 export interface ConfigMapRequest {
   name: string;
   namespace: string;
@@ -13,11 +16,16 @@ export interface ConfigMapResponse {
   resourceVersion?: string;
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
+  warnings?: Warning[];
+  /** Set on reads, unless desired state is disabled. */
+  drift?: Drift;
 }
 
 export interface ConfigMapListResponse {
   items: ConfigMapResponse[];
   total: number;
+  /** Recorded ConfigMaps that no longer exist; not counted in total. */
+  missing?: DriftMissing[];
 }
 
 export interface ConfigMapUpdateRequest {

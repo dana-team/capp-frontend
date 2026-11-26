@@ -1,10 +1,10 @@
 import yaml from 'js-yaml';
-import { BareCappResponse, CappResponse, CappRevisionResponse, LABEL_BACKUP_TO_GIT } from '@/types/capp';
+import { BareCappResponse } from '@/types/capp';
 
 type Template = Omit<BareCappResponse, 'name' | 'namespace' | 'createdAt' | 'uid' | 'resourceVersion'>;
 
 /** Object identity, status and response-only fields: not part of what a revision records. */
-const NON_TEMPLATE_KEYS = ['name', 'namespace', 'createdAt', 'uid', 'resourceVersion', 'status', 'warnings', 'revisionNumber'];
+const NON_TEMPLATE_KEYS = ['name', 'namespace', 'createdAt', 'uid', 'resourceVersion', 'status', 'warnings', 'drift', 'revisionNumber'];
 
 /** The part of a Capp a revision records: spec, labels and annotations. */
 export function cappTemplate(capp: BareCappResponse): Template {
@@ -26,18 +26,4 @@ export function changedFields(a: BareCappResponse, b: BareCappResponse): string[
   return [...keys]
     .filter((k) => yaml.dump(ta[k] ?? null, { sortKeys: true }) !== yaml.dump(tb[k] ?? null, { sortKeys: true }))
     .sort();
-}
-
-/**
- * What the Capp would look like after rolling back to `rev`: the revision's template,
- * except the backup-to-git label, which the backend keeps as it is on the live Capp.
- */
-export function rollbackResult(rev: CappRevisionResponse, live: CappResponse): BareCappResponse {
-  const labels = { ...rev.labels };
-  delete labels[LABEL_BACKUP_TO_GIT];
-  const backup = live.labels?.[LABEL_BACKUP_TO_GIT];
-  if (backup !== undefined) labels[LABEL_BACKUP_TO_GIT] = backup;
-  const result: BareCappResponse = { ...rev, labels };
-  if (!Object.keys(labels).length) delete result.labels;
-  return result;
 }

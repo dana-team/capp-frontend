@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PencilSimple, Trash, CircleNotch, Eye, EyeSlash } from '@phosphor-icons/react'
+import { BackupBadge } from '@/components/backup/BackupBadge'
+import { DriftPanel } from '@/components/backup/DriftPanel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatBand } from '@/components/layout/StatBand'
@@ -36,6 +38,7 @@ export const SecretDetail: React.FC<SecretDetailProps> = ({ secret, onDelete, is
     <div className="flex flex-col gap-4">
       <DetailHeader
         title={secret.name}
+        badges={<BackupBadge drift={secret.drift} />}
         meta={
           <>
             <Badge variant="namespace">{namespace}</Badge>
@@ -70,6 +73,8 @@ export const SecretDetail: React.FC<SecretDetailProps> = ({ secret, onDelete, is
           </>
         }
       />
+
+      <DriftPanel kind="secrets" namespace={namespace} name={secret.name} drift={secret.drift} />
 
       <StatBand className={registry ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}>
         <StatTile index={0} label="Type">
