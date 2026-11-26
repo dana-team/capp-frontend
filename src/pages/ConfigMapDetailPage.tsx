@@ -8,6 +8,8 @@ import { useConfigMap, useDeleteConfigmap } from '@/hooks/useConfigmaps'
 import { ConfigMapDetail } from '@/components/configmaps/ConfigmapDetail'
 import { BoundCappsSection } from '@/components/bound/BoundCappsSection'
 import { DeleteBoundResourceDialog } from '@/components/bound/DeleteBoundResourceDialog'
+import { BackedUpNotFound } from '@/components/backup/Deleted'
+import { notFoundDrift } from '@/utils/backup'
 
 export const ConfigMapDetailPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>()
@@ -15,7 +17,8 @@ export const ConfigMapDetailPage: React.FC = () => {
 
   const { data: configMap, isLoading, error } = useConfigMap(namespace, name)
   const { mutateAsync: deleteConfigMap, isPending: isDeleting } = useDeleteConfigmap()
-    
+  const backedUp = notFoundDrift(error)
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
@@ -38,7 +41,9 @@ export const ConfigMapDetailPage: React.FC = () => {
         </Sheet>
       )}
 
-      {error && (
+      {backedUp && <BackedUpNotFound kind="configmaps" namespace={namespace} name={name} drift={backedUp} />}
+
+      {error && !backedUp && (
         <Alert variant="destructive" className="bg-card">
           <WarningCircle className="h-4 w-4" />
           <AlertDescription>{(error as Error).message ?? 'Failed to load ConfigMap'}</AlertDescription>

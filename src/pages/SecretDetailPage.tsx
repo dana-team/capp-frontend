@@ -8,6 +8,8 @@ import { useSecret, useDeleteSecret } from '@/hooks/useSecrets'
 import { SecretDetail } from '@/components/secrets/SecretDetail'
 import { BoundCappsSection } from '@/components/bound/BoundCappsSection'
 import { DeleteBoundResourceDialog } from '@/components/bound/DeleteBoundResourceDialog'
+import { BackedUpNotFound } from '@/components/backup/Deleted'
+import { notFoundDrift } from '@/utils/backup'
 
 export const SecretDetailPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>()
@@ -15,6 +17,7 @@ export const SecretDetailPage: React.FC = () => {
 
   const { data: secret, isLoading, error } = useSecret(namespace, name)
   const { mutateAsync: deleteSecretMut, isPending: isDeleting } = useDeleteSecret()
+  const backedUp = notFoundDrift(error)
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -38,7 +41,9 @@ export const SecretDetailPage: React.FC = () => {
         </Sheet>
       )}
 
-      {error && (
+      {backedUp && <BackedUpNotFound kind="secrets" namespace={namespace} name={name} drift={backedUp} />}
+
+      {error && !backedUp && (
         <Alert variant="destructive" className="bg-card">
           <WarningCircle className="h-4 w-4" />
           <AlertDescription>{(error as Error).message ?? 'Failed to load Secret'}</AlertDescription>

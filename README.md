@@ -108,7 +108,7 @@ Everything starts in sync with its desired state, except for drift that is seede
 - In the first namespace, a Capp, ConfigMap and Secret each named `drift-changed`, `drift-missing` and `drift-unmanaged`.
 - The second namespace's quota and users were changed, and the third namespace is unmanaged. A namespace named `drift-missing` is missing.
 
-The UI shows the state as a backup badge on the detail pages. Updating a changed object answers 409 until the request carries `onDrift=accept` or `onDrift=revert`; the UI asks before it sends `accept`. Restart the mock to get the drift back.
+The UI shows the state as a backup badge on the detail pages. Updating a changed object answers 409 until the request carries `onDrift=accept` or `onDrift=revert`; the UI asks before it sends `accept`. Deleted objects are listed under "Deleted from cluster" on their list page, and their detail page offers the same choice: restore (revert, which creates them again from the backup) or forget (accept, which archives the backup). Deleted namespaces are under "Restore deleted" in the namespace selector, for users who can create namespaces. Restart the mock to get the drift back.
 
 Auth modes:
 

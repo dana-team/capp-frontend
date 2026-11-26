@@ -1,3 +1,4 @@
+import { BackendApiError } from '@/api/client'
 import type { Drift, DriftState } from '@/types/drift'
 
 export type BackupState = DriftState | 'off'
@@ -29,6 +30,16 @@ export const BACKUP_INFO: Record<BackupState, BackupInfo> = {
 
 /** The backend leaves `drift` out when backups are turned off. */
 export const backupState = (drift: Drift | undefined): BackupState => drift?.state ?? 'off'
+
+/**
+ * The drift a 404 carries when the object has a backup: `missing` when it was deleted from the
+ * cluster, `changed` when it exists but lost the label that puts it under the console.
+ */
+export function notFoundDrift(error: unknown): Drift | undefined {
+  if (!(error instanceof BackendApiError) || error.status !== 404) return undefined
+  const drift = error.details?.drift
+  return drift?.state === 'missing' || drift?.state === 'changed' ? drift : undefined
+}
 
 /** Where a field of the compared state lives, from the most specific prefix down. */
 const FIELD_PREFIXES: Array<{ prefix: string; label: string; key?: boolean }> = [

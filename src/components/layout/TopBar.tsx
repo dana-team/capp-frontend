@@ -20,6 +20,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { NamespaceQuotaBar } from './NamespaceQuotaBar'
 import { CreateNamespaceDialog } from '@/components/namespace/CreateNamespaceDialog'
 import { NamespaceSettingsDialog } from '@/components/namespace/NamespaceSettingsDialog'
+import { DeletedNamespacesDialog } from '@/components/namespace/DeletedNamespacesDialog'
 
 /** The one Functions tab also holds the Pools pages. It shows only when the backend serves cfunc. */
 const CFUNC_PATHS = ['/functions', '/pools']
@@ -123,11 +124,14 @@ export const TopBar: React.FC = () => {
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
+  const [deletedDialogOpen, setDeletedDialogOpen] = useState(false)
 
   const wide = useWide()
   const more = usePanel()
 
   const canCreate = namespaces?.canCreate ?? false
+  // The backend lists deleted namespaces only to users who may create namespaces.
+  const deletedNamespaces = namespaces?.missing ?? []
   const currentCluster = clusters?.find((c) => c.name === cluster)
   const selectedNsItem = namespaces?.items?.find((ns) => ns.name === selectedNamespace)
 
@@ -142,6 +146,7 @@ export const TopBar: React.FC = () => {
       value={selectedNamespace ?? (canListAll === false ? '' : '__all__')}
       onValueChange={(v) => {
         if (v === '__create__') { setCreateDialogOpen(true); return }
+        if (v === '__deleted__') { setDeletedDialogOpen(true); return }
         setSelectedNamespace(v === '__all__' ? undefined : v)
       }}
     >
@@ -155,6 +160,9 @@ export const TopBar: React.FC = () => {
         ))}
         {canCreate && (
           <SelectItem value="__create__">+ Create Namespace</SelectItem>
+        )}
+        {deletedNamespaces.length > 0 && (
+          <SelectItem value="__deleted__">Restore deleted ({deletedNamespaces.length})…</SelectItem>
         )}
       </SelectContent>
     </Select>
@@ -324,6 +332,11 @@ export const TopBar: React.FC = () => {
         open={settingsDialogOpen}
         onOpenChange={setSettingsDialogOpen}
         isAdmin={canCreate}
+      />
+      <DeletedNamespacesDialog
+        missing={deletedNamespaces}
+        open={deletedDialogOpen}
+        onOpenChange={setDeletedDialogOpen}
       />
     </header>
   )

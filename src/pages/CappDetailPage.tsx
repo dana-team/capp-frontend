@@ -15,6 +15,8 @@ import { CappMessageBanner } from '@/components/capps/CappMessageBanner'
 import { useCapp, useDeleteCapp } from '@/hooks/useCapps'
 import { WarningNavState } from '@/types/capp'
 import { MigrateDialog } from '@/components/capps/MigrateDialog'
+import { BackedUpNotFound } from '@/components/backup/Deleted'
+import { notFoundDrift } from '@/utils/backup'
 
 export const CappDetailPage: React.FC = () => {
   const { namespace = '', name = '' } = useParams<{ namespace: string; name: string }>()
@@ -24,6 +26,7 @@ export const CappDetailPage: React.FC = () => {
 
   const { data: capp, isLoading, error } = useCapp(namespace, name)
   const { mutateAsync: deleteCapp, isPending: isDeleting } = useDeleteCapp()
+  const backedUp = notFoundDrift(error)
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showMigrate, setShowMigrate] = useState(false)
@@ -52,7 +55,9 @@ export const CappDetailPage: React.FC = () => {
         </Sheet>
       )}
 
-      {error && (
+      {backedUp && <BackedUpNotFound kind="capps" namespace={namespace} name={name} drift={backedUp} />}
+
+      {error && !backedUp && (
         <Alert variant="destructive" className="bg-card">
           <WarningCircleIcon className="h-4 w-4" />
           <AlertDescription>{(error as Error).message ?? 'Failed to load Capp'}</AlertDescription>

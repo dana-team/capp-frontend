@@ -31,6 +31,8 @@ import { useNamespaceContext } from "@/context/NamespaceContext";
 import { DeleteBoundResourceDialog } from "@/components/bound/DeleteBoundResourceDialog";
 import { relativeTime } from "@/utils/time";
 import { useConfigmaps, useDeleteConfigmap } from "@/hooks/useConfigmaps";
+import { useMissing } from "@/hooks/useDrift";
+import { MissingSection } from "@/components/backup/Deleted";
 import { ConfigMapResponse } from "@/types/configmap";
 
 type SortField = "name" | "namespace" | "keys" | "createdAt";
@@ -49,6 +51,7 @@ const keyCount = (r: { data?: Record<string, string> }) => Object.keys(r.data ||
 export const ConfigMapListPage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedNamespace } = useNamespaceContext();
+  const { data: missing } = useMissing("configmaps", selectedNamespace);
   const { data: items, isPending: isLoading, error } = useConfigmaps(selectedNamespace);
 
   const [search, setSearch] = useState("");
@@ -227,6 +230,8 @@ export const ConfigMapListPage: React.FC = () => {
           </ul>
         </StatTile>
       </StatBand>
+
+      <MissingSection kind="configmaps" missing={missing} showNamespace={!selectedNamespace} />
 
       <Sheet>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle px-4 py-3">

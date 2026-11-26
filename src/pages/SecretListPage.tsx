@@ -31,6 +31,8 @@ import { useNamespaceContext } from "@/context/NamespaceContext";
 import { DeleteBoundResourceDialog } from "@/components/bound/DeleteBoundResourceDialog";
 import { relativeTime } from "@/utils/time";
 import { useSecrets, useDeleteSecret } from "@/hooks/useSecrets";
+import { useMissing } from "@/hooks/useDrift";
+import { MissingSection } from "@/components/backup/Deleted";
 import { SecretResponse } from "@/types/secret";
 
 type SortField = "name" | "namespace" | "type" | "keys" | "createdAt";
@@ -50,6 +52,7 @@ const keyCount = (r: { data?: Record<string, string> }) => Object.keys(r.data ||
 export const SecretListPage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedNamespace } = useNamespaceContext();
+  const { data: missing } = useMissing("secrets", selectedNamespace);
   const { data: items, isPending: isLoading, error } = useSecrets(selectedNamespace);
 
   const [search, setSearch] = useState("");
@@ -219,6 +222,8 @@ export const SecretListPage: React.FC = () => {
           </ul>
         </StatTile>
       </StatBand>
+
+      <MissingSection kind="secrets" missing={missing} showNamespace={!selectedNamespace} />
 
       <Sheet>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle px-4 py-3">

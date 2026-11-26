@@ -21,3 +21,15 @@ export function resolveDrift(
     { method: 'POST', body: JSON.stringify(seen) },
   );
 }
+
+/** resolveDrift for a namespace: its quota and who may use it. Reverting a missing namespace creates it again. */
+export function resolveNamespaceDrift(
+  action: DriftAction,
+  namespace: string,
+  seen: DriftActionRequest,
+): Promise<DriftActionResponse> {
+  return backendClient<DriftActionResponse>(
+    `${clusterBase()}/namespaces/${encodeURIComponent(namespace)}/drift/${action}`,
+    { method: 'POST', body: JSON.stringify(seen) },
+  );
+}

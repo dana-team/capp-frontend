@@ -41,6 +41,8 @@ import { StatBand } from "@/components/layout/StatBand";
 import { StatTile } from "@/components/layout/StatTile";
 import { ResourceList, ResourceRow } from "@/components/layout/ResourceList";
 import { useCapps, useDeleteCapp } from "@/hooks/useCapps";
+import { useMissing } from "@/hooks/useDrift";
+import { MissingSection } from "@/components/backup/Deleted";
 import { Warning, WarningNavState } from "@/types/capp";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useNamespaces } from "@/hooks/useNamespaces";
@@ -67,6 +69,7 @@ const COL = {
 export const CappListPage: React.FC = () => {
   const navigate = useNavigate();
   const { selectedNamespace } = useNamespaceContext();
+  const { data: missing } = useMissing("capps", selectedNamespace);
   const { data: capps, isPending: isLoading, error } = useCapps(selectedNamespace);
   const { data: namespacesData } = useNamespaces();
   const selectedNsQuota = selectedNamespace
@@ -275,6 +278,8 @@ export const CappListPage: React.FC = () => {
           </ul>
         </StatTile>
       </StatBand>
+
+      <MissingSection kind="capps" missing={missing} showNamespace={!selectedNamespace} />
 
       <Sheet>
         {/* Toolbar */}
