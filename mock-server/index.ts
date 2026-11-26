@@ -17,7 +17,7 @@ import type {
   UpdateNamespaceRequest,
 } from '../src/api/namespaces';
 import { store, ConflictError, NotFoundError } from './store';
-import { ApiError, desiredStateMode, namespaceRef, type Kind, type Ref, type Tracked } from './desired';
+import { ApiError, desiredStateMode, namespaceRef, type Kind, type OnDrift, type Ref, type Tracked } from './desired';
 import { listMetrics, queryMetric } from './metrics';
 import { streamLogs } from './logs';
 import { strategyError } from './rollouts';
@@ -256,7 +256,15 @@ function missingDetails(ref: Ref): Record<string, unknown> | undefined {
   return drift?.state === 'missing' ? { drift } : undefined;
 }
 
-const onDrift = (query: URLSearchParams) => query.get('onDrift') ?? undefined;
+/** The onDrift decision of an update, and the drift it is about (liveVersion, generation) when given. */
+const onDrift = (query: URLSearchParams): OnDrift => {
+  const generation = query.get('generation');
+  return {
+    action: query.get('onDrift') ?? undefined,
+    liveVersion: query.get('liveVersion') || undefined,
+    generation: generation ? Number(generation) : undefined,
+  };
+};
 
 // ── Public routes ────────────────────────────────────────────────────────────
 

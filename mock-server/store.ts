@@ -19,7 +19,7 @@
 import { createHash } from 'node:crypto';
 import { ANNOTATION_ROLLOUT } from '../src/types/capp';
 import { cappConditions } from './conditions';
-import { ApiError, canonical, DesiredState, desiredStateMode, namespaceRef, trackedMetadata, type Kind, type Ref, type Tracked } from './desired';
+import { ApiError, canonical, DesiredState, desiredStateMode, namespaceRef, trackedMetadata, type Kind, type OnDrift, type Ref, type Tracked } from './desired';
 import {
   initialRollout,
   normalizeStrategy,
@@ -290,7 +290,7 @@ export class MockStore {
     return item;
   }
   /** PUT: replaces users and quota (keeps `used`). */
-  updateNamespace(cluster: string, name: string, req: UpdateNamespaceRequest, onDrift?: string): NamespaceItem | undefined {
+  updateNamespace(cluster: string, name: string, req: UpdateNamespaceRequest, onDrift?: OnDrift): NamespaceItem | undefined {
     const c = this.cluster(cluster);
     const live = c?.namespaces.get(name);
     if (!c || !live) return undefined;
@@ -302,7 +302,7 @@ export class MockStore {
     return next;
   }
   /** PATCH: only users. */
-  patchNamespace(cluster: string, name: string, req: PatchNamespaceRequest, onDrift?: string): NamespaceItem | undefined {
+  patchNamespace(cluster: string, name: string, req: PatchNamespaceRequest, onDrift?: OnDrift): NamespaceItem | undefined {
     const c = this.cluster(cluster);
     const live = c?.namespaces.get(name);
     if (!c || !live) return undefined;
@@ -359,7 +359,7 @@ export class MockStore {
   }
 
   /** `undefined` if not found. A capp with no strategy is returned unchanged. */
-  removeRolloutStrategy(cluster: string, ns: string, name: string, onDrift?: string): CappResponse | undefined {
+  removeRolloutStrategy(cluster: string, ns: string, name: string, onDrift?: OnDrift): CappResponse | undefined {
     const c = this.cluster(cluster);
     const live = this.getCapp(cluster, ns, name);
     if (!c || !live) return undefined;
@@ -420,7 +420,7 @@ export class MockStore {
     return capp;
   }
   /** Full replace of the spec; keeps uid, createdAt, labels, annotations. `undefined` if not found. */
-  updateCapp(cluster: string, ns: string, name: string, req: CappRequest, onDrift?: string): CappResponse | undefined {
+  updateCapp(cluster: string, ns: string, name: string, req: CappRequest, onDrift?: OnDrift): CappResponse | undefined {
     const c = this.cluster(cluster);
     const live = c?.capps.get(key(ns, name));
     if (!c || !live) return undefined;
@@ -614,7 +614,7 @@ export class MockStore {
     this.desired.save({ cluster, kind: 'ConfigMap', namespace: ns, name: req.name }, cm);
     return cm;
   }
-  updateConfigMap(cluster: string, ns: string, name: string, req: ConfigMapUpdateRequest, onDrift?: string): ConfigMapResponse | undefined {
+  updateConfigMap(cluster: string, ns: string, name: string, req: ConfigMapUpdateRequest, onDrift?: OnDrift): ConfigMapResponse | undefined {
     const c = this.cluster(cluster);
     const live = c?.configMaps.get(key(ns, name));
     if (!c || !live) return undefined;
@@ -661,7 +661,7 @@ export class MockStore {
     this.desired.save({ cluster, kind: 'Secret', namespace: ns, name: req.name }, s);
     return s;
   }
-  updateSecret(cluster: string, ns: string, name: string, req: SecretUpdateRequest, onDrift?: string): SecretResponse | undefined {
+  updateSecret(cluster: string, ns: string, name: string, req: SecretUpdateRequest, onDrift?: OnDrift): SecretResponse | undefined {
     const c = this.cluster(cluster);
     const live = c?.secrets.get(key(ns, name));
     if (!c || !live) return undefined;
@@ -764,7 +764,7 @@ export class MockStore {
   }
 
   /** The object an update starts from: the live one, or a copy reverted to its desired state. */
-  private updateBase<K extends Kind, T extends Tracked[K]>(ref: Ref<K>, live: T, onDrift?: string): T {
+  private updateBase<K extends Kind, T extends Tracked[K]>(ref: Ref<K>, live: T, onDrift?: OnDrift): T {
     if (this.desired.startFrom(ref, live, onDrift) === 'live') return live;
     return this.reverted(ref, live, this.desired.desired(ref)!) as T;
   }

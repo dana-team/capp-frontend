@@ -42,6 +42,13 @@ const driftDetected = (message: string, drift: Drift) => new ApiError(409, 'DRIF
 const storeUnavailable = () =>
   new ApiError(503, 'DESIRED_STATE_FAILED', 'the desired state store is unavailable; nothing was changed, retry the request');
 
+/** The onDrift query parameters of an update: the decision, and the drift it is about when given. */
+export interface OnDrift {
+  action?: string;
+  liveVersion?: string;
+  generation?: number;
+}
+
 // ── Projection ───────────────────────────────────────────────────────────────
 
 /** The objects that have a desired state, by kind. */
@@ -319,26 +326,34 @@ export class DesiredState {
 
   /**
    * Decides what an update of `live` starts from: 'live' or 'desired'.
-   * Throws 409 when the object has drifted and the caller did not say what to do.
+   * Throws 409 when the object has drifted and the caller did not say what to do, or when it
+   * named a drift (liveVersion, generation) that is no longer the current one.
    */
-  startFrom<K extends Kind>(ref: Ref<K>, live: Tracked[K], onDrift: string | undefined): 'live' | 'desired' {
+  startFrom<K extends Kind>(ref: Ref<K>, live: Tracked[K], onDrift: OnDrift = {}): 'live' | 'desired' {
+    const { action, liveVersion, generation } = onDrift;
     if (!this.enabled) return 'live';
-    if (onDrift && onDrift !== 'accept' && onDrift !== 'revert') {
+    if (action && action !== 'accept' && action !== 'revert') {
       throw new ApiError(400, 'BAD_REQUEST', 'onDrift must be "accept" or "revert"');
     }
+    if (generation !== undefined && !(Number.isInteger(generation) && generation >= 0)) {
+      throw new ApiError(400, 'BAD_REQUEST', 'generation must be a non-negative integer');
+    }
     if (this.mode === 'down') {
-      if (onDrift === 'revert') throw storeUnavailable();
+      if (action === 'revert') throw storeUnavailable();
       return 'live';
     }
     const drift = this.evaluate(ref, live);
     if (drift?.state !== 'changed') return 'live';
-    if (!onDrift) {
+    if (!action) {
       throw driftDetected(
         'the object differs from its desired state; repeat the request with onDrift=accept to keep the live changes, or onDrift=revert to discard them',
         drift,
       );
     }
-    return onDrift === 'revert' ? 'desired' : 'live';
+    if ((liveVersion !== undefined && liveVersion !== drift.liveVersion) || (generation !== undefined && generation !== drift.generation)) {
+      throw driftDetected('the object or its desired state changed since its drift was shown; review the drift again', drift);
+    }
+    return action === 'revert' ? 'desired' : 'live';
   }
 
   /** The recorded object. Undefined when there is no active record. */

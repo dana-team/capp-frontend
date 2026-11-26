@@ -175,21 +175,44 @@ function refusedDrift(error: unknown): Drift | undefined {
   return error instanceof BackendApiError && error.code === 'DRIFT_DETECTED' ? error.details?.drift : undefined
 }
 
+/** How often an update asks again when the object keeps changing while the question is open. */
+const MAX_DRIFT_QUESTIONS = 3
+
+/** `path` with the query parameters that are set added to it. */
+function withQuery(path: string, params: Record<string, string | undefined>): string {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) query.set(key, value)
+  }
+  return `${path}${path.includes('?') ? '&' : '?'}${query}`
+}
+
 /**
  * Sends an update. When the object was changed outside the console, asks whether to keep
  * those changes and repeats the update. There is no choice to discard them: a form sends every
  * field it shows, filled from the live object.
+ *
+ * The repeat names the drift that was shown, so the backend keeps only those changes: when the
+ * object changed again while the question was open, it answers 409 again and the question is
+ * asked again with the new differences.
  */
 async function updateFetch(path: string, options: RequestInit): Promise<Response> {
-  try {
-    return await backendFetch(path, options)
-  } catch (error) {
-    const drift = refusedDrift(error)
-    if (!drift) throw error
-    if (!(await askToKeepDrift(drift))) {
-      throw new BackendApiError('Not saved: this was changed outside the console.', 409, 'DRIFT_DETECTED', { drift })
+  let target = path
+  for (let asked = 0; ; asked++) {
+    try {
+      return await backendFetch(target, options)
+    } catch (error) {
+      const drift = refusedDrift(error)
+      if (!drift || asked === MAX_DRIFT_QUESTIONS) throw error
+      if (!(await askToKeepDrift(drift))) {
+        throw new BackendApiError('Not saved: this was changed outside the console.', 409, 'DRIFT_DETECTED', { drift })
+      }
+      target = withQuery(path, {
+        onDrift: 'accept',
+        liveVersion: drift.liveVersion,
+        generation: drift.generation?.toString(),
+      })
     }
-    return backendFetch(`${path}?onDrift=accept`, options)
   }
 }
 
